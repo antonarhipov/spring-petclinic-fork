@@ -43,7 +43,7 @@ public class SecurityConfig {
 			.requestMatchers("/resources/**", "/webjars/**", "/css/**", "/images/**", "/js/**", "/favicon.ico",
 					"/error")
 			.permitAll()
-			.requestMatchers("/", "/oups", "/vets/**", "/vets.html", "/login", "/logout", "/change-password",
+			.requestMatchers("/", "/vets/**", "/vets.html", "/login", "/logout", "/change-password",
 					"/change-password/**")
 			.permitAll()
 			.requestMatchers("/staff/**", "/owners/**")
