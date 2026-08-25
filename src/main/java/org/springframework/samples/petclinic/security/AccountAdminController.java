@@ -49,7 +49,7 @@ public class AccountAdminController {
 
 	@GetMapping
 	public String listAccounts(Model model) {
-		List<UserAccount> accounts = this.userAccountRepository.findAll();
+		List<UserAccount> accounts = this.userAccountRepository.findAllWithOwner();
 		model.addAttribute("accounts", accounts);
 		return "security/accountList";
 	}
