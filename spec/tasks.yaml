@@ -1,0 +1,372 @@
+tasks:
+  feature: "Smart Appointment Scheduling"
+  review_verdict: "PASS"
+  organizing_principle: "tracer_bullet"
+
+  assumptions:
+    - "Spring AI 2.0.1, its Ollama starter, and a Timefold build are all resolvable against Spring Boot 4.1.0 at implementation time; coordinates are verified in task-1.1 before proceeding (review Hotspot 2, spec D-1)."
+    - "Java baseline is 21 (bumped from 17): Spring AI 2.0 and current Timefold Solver both require Java 21, while Spring Security and Flyway only need 17. Both build files already target 21 and the existing suite passes; task-1.1 assumes this baseline is in place."
+    - "The tracer slice (phase 4) exercises a ROUTINE, general-care request on the happy path; urgency, emergencies, rejection, expiry, and fallback are added in phase 5."
+    - "H2 is the primary dev/test DB; every migration is validated on H2 plus Testcontainers MySQL and Postgres."
+    - "Review verdict is PASS; the three former majors (MAJOR-1/2/3) are already resolved in rules.md and are carried here as source-tagged tasks and risk annotations for traceability."
+
+  decisions:
+    - id: dec-1
+      decision: "Organize by tracer_bullet with two enabling foundation phases (Flyway, then Security) before the end-to-end scheduling slice."
+      reason: "Dominant risk is new-framework integration on a bleeding-edge Boot 4.1 baseline; a thin end-to-end slice after foundations validates the whole stack early."
+      alternatives: ["layered (data→domain→app→ui)", "risk_first"]
+    - id: dec-2
+      decision: "Use 6 phases, exceeding the soft limit of 5."
+      reason: "The feature spans four new frameworks plus auth, config, the guided flow, and appointment lifecycle; collapsing guided-flow and lifecycle into one phase would produce >7 tasks and lose clean rollback boundaries. A split into two features was considered but the flows are too coupled (shared SchedulingRequest/Appointment aggregates)."
+      alternatives: ["merge phases 5 and 6", "split into two separate features"]
+    - id: dec-3
+      decision: "Model slot exclusivity as a single shared slot_occupancy table with a plain UNIQUE(vet_id, start_time)."
+      reason: "A constraint cannot span the hold and appointment tables, and MySQL has no filtered indexes; one occupancy row per taken slot is portable across H2/MySQL/Postgres (resolves review MAJOR-1, MAJOR-2)."
+      alternatives: ["partial/filtered unique index (not MySQL-portable)", "application-level locking only (no DB guarantee)"]
+
+  phases:
+    - id: phase-1
+      name: "Foundation: dependencies and Flyway"
+      description: "Add the four new libraries to both build files and migrate schema/seed ownership from spring.sql.init to Flyway, with the existing schema+data preserved as the V1 baseline. No behavior change."
+      covers: [AC-63, AC-64]
+      entry_criteria: "Pipeline PASS; clean working tree."
+      tasks:
+        - id: task-1.1
+          name: "Add new dependencies to pom.xml and build.gradle"
+          description: "Add Spring Security, Spring AI 2.0.1 (BOM + Ollama), Timefold (starter if Boot-4.1-compatible, else timefold-solver-core), and Flyway (core + vendor modules for MySQL/Postgres) to BOTH build files, kept in sync. Verify each coordinate resolves against Boot 4.1.0."
+          artifact: "pom.xml, build.gradle"
+          covers:
+            acs: []
+            rules: [RULE-25, RULE-4, RULE-3, RULE-13]
+          depends_on: []
+          complexity: "M"
+          validation: "mvn dependency:resolve and gradle build both succeed; no version conflicts."
+          risk: "Spring AI 2.0.1 / Timefold / Boot 4.1 coordinate drift can fail the build (Hotspot 2); confirm exact versions here before any downstream task."
+          source: "review/MAJOR-3"
+        - id: task-1.2
+          name: "Adopt Flyway as sole schema/seed owner"
+          description: "Disable spring.sql.init; set spring.flyway.locations=classpath:db/migration/common,classpath:db/migration/{vendor}; convert existing per-vendor schema.sql/data.sql into V1 baseline migrations (H2/MySQL/Postgres), preserving current seed data unchanged."
+          artifact: "src/main/resources/db/migration/{common,h2,mysql,postgres}/V1__*.sql, application*.properties"
+          covers:
+            acs: [AC-64, AC-63]
+            rules: [RULE-3, RULE-2]
+          depends_on: [task-1.1]
+          complexity: "L"
+          validation: "Fresh DB on H2, Testcontainers MySQL, and Postgres migrates cleanly; all existing PetClinic tests remain green."
+      checkpoint:
+        id: cp-1
+        description: "Existing application unchanged in behavior, now schema-managed by Flyway across all three databases."
+        criteria:
+          - "App boots on H2/MySQL/Postgres with Flyway applying V1."
+          - "spring.sql.init is disabled and no schema.sql is auto-run."
+          - "Full existing test suite passes."
+
+    - id: phase-2
+      name: "Authentication and accounts"
+      description: "Introduce Spring Security form login, the UserAccount model, access zones, first-login password change, staff-driven account management, and owner self-service scoping."
+      covers: [AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-67, AC-68]
+      entry_criteria: "cp-1 passed."
+      tasks:
+        - id: task-2.1
+          name: "UserAccount model and password hashing"
+          description: "Create UserAccount entity (username, bcrypt password, role OWNER|STAFF, must_change_password, nullable owner FK), repository, and a BCryptPasswordEncoder bean; add V2 migration for the user_account table (all vendors)."
+          artifact: "petclinic/security/UserAccount.java, UserAccountRepository.java, db/migration/**/V2__user_account.sql"
+          covers:
+            acs: [AC-67]
+            rules: [RULE-13, RULE-2, RULE-1]
+          depends_on: [task-1.2]
+          complexity: "M"
+          validation: "Persisted passwords are bcrypt hashes; unit test asserts no plaintext stored."
+        - id: task-2.2
+          name: "Security config and access zones"
+          description: "Configure form login and URL zones: /staff/** and /owners/** require ROLE_STAFF; owner self-service requires ROLE_OWNER; login/change-password/welcome public. Add spring-security-test."
+          artifact: "petclinic/security/SecurityConfig.java"
+          covers:
+            acs: [AC-1, AC-2, AC-7]
+            rules: [RULE-13, RULE-14]
+          depends_on: [task-2.1]
+          complexity: "M"
+          validation: "MockMvc + spring-security-test: unauthenticated → redirect to login; owner hitting /staff/** → 403."
+        - id: task-2.3
+          name: "First-login forced password change"
+          description: "Add a filter/interceptor that redirects users with must_change_password to the change-password page for all routes except logout and that page; implement the change-password screen clearing the flag."
+          artifact: "petclinic/security/PasswordChangeInterceptor.java, templates/security/changePassword.html"
+          covers:
+            acs: [AC-3]
+            rules: [RULE-13]
+          depends_on: [task-2.2]
+          complexity: "M"
+          validation: "State-setup test: flagged user is redirected until password changed, then reaches normal routes."
+        - id: task-2.4
+          name: "Bootstrap initial staff account"
+          description: "ApplicationRunner that creates/reconciles a staff UserAccount from config/system properties at startup; never seeded in Flyway."
+          artifact: "petclinic/security/StaffAccountBootstrap.java"
+          covers:
+            acs: [AC-6]
+            rules: [RULE-13]
+          depends_on: [task-2.1]
+          complexity: "S"
+          validation: "Integration test: with bootstrap properties set, a staff account exists after startup."
+        - id: task-2.5
+          name: "Staff account management"
+          description: "Extend the staff owner form to create owner accounts (staff-set username + temp password + must_change_password), create staff accounts, and reset passwords."
+          artifact: "petclinic/security/AccountAdminController.java, templates updates"
+          covers:
+            acs: [AC-4, AC-5]
+            rules: [RULE-13]
+          depends_on: [task-2.3, task-2.4]
+          complexity: "M"
+          validation: "MockMvc: staff creates owner/staff accounts and resets a password; new accounts require change on first login."
+        - id: task-2.6
+          name: "Owner self-service and ownership checks"
+          description: "Add owner profile update-only screen and own-pet CRUD; move existing /owners/** owner+pet CRUD to staff-only; enforce per-handler ownership checks on request/pet/profile."
+          artifact: "petclinic/owner/* (zone move), petclinic/scheduling/ profile+pet owner controllers"
+          covers:
+            acs: [AC-8, AC-9, AC-10, AC-11, AC-68]
+            rules: [RULE-14, RULE-21]
+          depends_on: [task-2.2]
+          complexity: "L"
+          validation: "MockMvc: owner edits own profile/pets; access to another owner's profile/pet → 403; ID tampering blocked at handler."
+      checkpoint:
+        id: cp-2
+        description: "Authentication and authorization in place; accounts manageable by staff."
+        criteria:
+          - "All authz negative ACs (AC-2, AC-7, AC-9, AC-11) have passing negative tests."
+          - "First-login change and staff account management work end to end."
+          - "Existing owner/pet CRUD reachable only by staff."
+
+    - id: phase-3
+      name: "Clinic configuration and availability"
+      description: "Add clinic settings, parts-of-day, and per-vet availability with a timezone-aware availability service and staff configuration screens."
+      covers: [AC-31, AC-61, AC-62, AC-63]
+      entry_criteria: "cp-2 passed."
+      tasks:
+        - id: task-3.1
+          name: "ClinicSettings and PartOfDay"
+          description: "Entities + repositories + V3 migration for clinic_settings (single row: timeZone, min/max/defaultVisitMinutes, bookingHorizonDays, holdDurationMinutes, gridMinutes=15) and part_of_day; seed sensible defaults via Flyway."
+          artifact: "petclinic/clinic/ClinicSettings.java, PartOfDay.java, db/migration/**/V3__clinic_config.sql"
+          covers:
+            acs: [AC-63]
+            rules: [RULE-2, RULE-3]
+          depends_on: [task-1.2]
+          complexity: "M"
+          validation: "Fresh DB has default settings + parts-of-day; loadable via repository."
+        - id: task-3.2
+          name: "Vet availability model"
+          description: "Entities + V3 migration for vet_weekly_shift (split shifts as multiple rows), vet_date_exception (LEAVE|MODIFIED_HOURS|EXTRA), and clinic_closure."
+          artifact: "petclinic/vet/VetWeeklyShift.java, VetDateException.java, petclinic/clinic/ClinicClosure.java, migration"
+          covers:
+            acs: []
+            rules: [RULE-2, RULE-1]
+          depends_on: [task-3.1]
+          complexity: "M"
+          validation: "Entities persist; split shifts (two rows/day) round-trip correctly."
+        - id: task-3.3
+          name: "Timezone-aware AvailabilityService"
+          description: "Compute a vet's bookable time on a date = weekly shifts minus exceptions/leave minus clinic closures, all in ClinicSettings.timeZone; expose now/horizon in clinic zone."
+          artifact: "petclinic/clinic/AvailabilityService.java"
+          covers:
+            acs: [AC-61, AC-31]
+            rules: [RULE-20]
+          depends_on: [task-3.2]
+          complexity: "L"
+          validation: "Unit tests including a DST-boundary date; closures and leave correctly subtract."
+          risk: "Timezone/DST off-by-one errors (Hotspot 5); test explicitly across a DST transition."
+        - id: task-3.4
+          name: "Staff configuration screens"
+          description: "Thymeleaf screens under /staff for clinic settings, parts-of-day, vet weekly shifts/exceptions, and closures."
+          artifact: "petclinic/clinic/ClinicConfigController.java, templates/clinic/*.html"
+          covers:
+            acs: [AC-62]
+            rules: [RULE-14, RULE-21]
+          depends_on: [task-3.3]
+          complexity: "M"
+          validation: "MockMvc: staff edits each config type and changes persist; owners get 403."
+      checkpoint:
+        id: cp-3
+        description: "Clinic and vet availability configurable and correctly computed in the clinic time zone."
+        criteria:
+          - "AvailabilityService passes shift/exception/closure and DST tests."
+          - "Default settings applied out of the box."
+          - "Staff can edit all configuration; owners cannot."
+
+    - id: phase-4
+      name: "Scheduling tracer (happy path end-to-end)"
+      description: "Thin end-to-end slice: free text + consent → async interpretation → confirmation → async single-request solve → held suggestion → accept → appointment, for a ROUTINE general-care request."
+      covers: [AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27, AC-28, AC-29, AC-30, AC-32, AC-33, AC-34, AC-36, AC-37, AC-38, AC-40, AC-41, AC-65, AC-66]
+      entry_criteria: "cp-3 passed."
+      tasks:
+        - id: task-4.1
+          name: "SchedulingRequest aggregate and state machine"
+          description: "Entity + repository + V4 migration: state (enum), consent flag, raw free text, embedded interpretation, queue_reason, priority, queued_at, nullable active_pet_key; centralize guarded state transitions in the domain/service layer."
+          artifact: "petclinic/scheduling/SchedulingRequest.java, SchedulingRequestRepository.java, migration"
+          covers:
+            acs: [AC-25]
+            rules: [RULE-2, RULE-10, RULE-15]
+          depends_on: [task-3.1]
+          complexity: "L"
+          validation: "Illegal transitions rejected in unit tests; raw text + interpretation survive restart."
+        - id: task-4.2
+          name: "Interpretation service (Spring AI + Ollama)"
+          description: "Interpretation record + InterpretationService using ChatClient → Ollama (model configurable, default gemma4:latest), structured output binding, duration clamp to clinic bounds (+default), and symbolic-window resolution via PartOfDay; absent ChatModel or LLM error/timeout → STAFF_QUEUED(AI_UNAVAILABLE)."
+          artifact: "petclinic/scheduling/Interpretation.java, InterpretationService.java"
+          covers:
+            acs: [AC-15, AC-17, AC-20, AC-21, AC-22, AC-23, AC-24]
+            rules: [RULE-7, RULE-8, RULE-16]
+          depends_on: [task-4.1]
+          complexity: "L"
+          validation: "Mocked ChatModel tests: valid text → structured record; duration boundary triple (within/at/beyond→clamped, absent→default); no-ChatModel → queued."
+          risk: "Spring AI coordinate/config drift (Hotspot 2); pin BOM and test the no-model fallback path."
+        - id: task-4.3
+          name: "Request form, consent, async status/confirmation flow"
+          description: "Owner request form with always-visible urgent-care banner and consent; on consent run interpretation on a bounded @Async executor without blocking; auto-refreshing status page driven by request state; confirmation screen; declining consent → STAFF_QUEUED(CONSENT_DECLINED); editing text after confirmation → DRAFT + fresh consent/interpretation."
+          artifact: "petclinic/scheduling/SchedulingController.java, AsyncConfig.java, templates/scheduling/*.html"
+          covers:
+            acs: [AC-12, AC-13, AC-14, AC-16, AC-18, AC-19, AC-65]
+            rules: [RULE-9, RULE-15, RULE-23]
+          depends_on: [task-4.2]
+          complexity: "L"
+          validation: "MockMvc: consent submit returns status page immediately; state advances page; decline → queued without LLM call; text edit resets to DRAFT."
+          risk: "Async read/write races on request state (Hotspot 3); transactional state writes and every state mapped to a screen."
+        - id: task-4.4
+          name: "Timefold single-request solver"
+          description: "Planning model + ConstraintProvider (hard: availability, no-overlap, contiguous fit, specialty, horizon/not-past, excluded, previously-rejected; soft: preferred≫allowed, preferred vet, earlier-by-urgency, load-balance); 15-min grid generation; SolverManager async with ~1s spent-limit termination; frozen snapshot of confirmed appts + active holds."
+          artifact: "petclinic/scheduling/solver/*.java"
+          covers:
+            acs: [AC-26, AC-27, AC-28, AC-29, AC-30, AC-32, AC-33, AC-34, AC-66]
+            rules: [RULE-4, RULE-5, RULE-6, RULE-20]
+          depends_on: [task-4.3, task-3.3]
+          complexity: "L"
+          validation: "Small-fixture solver tests: only hard-valid slots offered; horizon boundary (within/at/beyond) and past excluded; solve terminates within bound."
+          risk: "Score design can loop on near-identical slots or declare infeasible early (Hotspot 1); rejected pairs as hard constraints."
+          source: "review/MAJOR-3"
+        - id: task-4.5
+          name: "Slot occupancy, holds, and accept"
+          description: "slot_occupancy table with plain UNIQUE(vet_id, start_time) shared by holds and appointments; place a transactional hold with countdown on offer; expose only vet/specialty/date/start/duration to the owner; Accept → create BOOKED Appointment + transition CONFIRMED."
+          artifact: "petclinic/scheduling/SlotOccupancy.java, Hold.java, Appointment.java, HoldService.java, migration"
+          covers:
+            acs: [AC-36, AC-37, AC-38, AC-40, AC-41]
+            rules: [RULE-11, RULE-10]
+          depends_on: [task-4.4]
+          complexity: "L"
+          validation: "Concurrent hold attempts on one slot: exactly one succeeds (DB constraint); accept-before-expiry books; owner view shows only suggestion fields."
+          risk: "Hold-expiry vs accept race (Hotspot 4); re-validate expiry inside the accept transaction."
+          source: "review/MAJOR-1"
+      checkpoint:
+        id: cp-4
+        description: "A logged-in owner completes a ROUTINE request end to end and receives a booked appointment."
+        criteria:
+          - "text → consent → interpret → confirm → offer → hold → accept → Appointment works on H2."
+          - "Async status pages render and advance without blocking."
+          - "Slot double-book prevented by the slot_occupancy constraint."
+
+    - id: phase-5
+      name: "Full guided flow and staff fallback"
+      description: "Thicken the tracer: rejection/exclusion loop, hold expiry and sweeper, one-active-request-per-pet, urgency/emergency handling, failure routing, and the staff fallback queue."
+      covers: [AC-35, AC-39, AC-42, AC-43, AC-44, AC-45, AC-46, AC-47, AC-48, AC-49, AC-50, AC-59, AC-60]
+      entry_criteria: "cp-4 passed."
+      tasks:
+        - id: task-5.1
+          name: "Reject / ask-again exclusion loop"
+          description: "On reject, release the hold, permanently exclude the exact (vet_id, start_time) for the request, transition to SUGGESTING, and re-solve against the updated exclusions."
+          artifact: "petclinic/scheduling/ (exclusion handling + solver wiring)"
+          covers:
+            acs: [AC-42]
+            rules: [RULE-10, RULE-11, RULE-5]
+          depends_on: [task-4.5]
+          complexity: "M"
+          validation: "Reject then ask-again never re-offers the excluded pair; loop converges toward exhaustion."
+          risk: "Re-solve loop convergence (Hotspot 1)."
+        - id: task-5.2
+          name: "Hold expiry and scheduled sweeper"
+          description: "Lazy expiry validation on each owner action (expired hold releases without excluding, returns to SUGGESTING); @Scheduled sweeper reclaims abandoned holds/occupancy rows."
+          artifact: "petclinic/scheduling/HoldSweeper.java, HoldService updates"
+          covers:
+            acs: [AC-39, AC-43, AC-44]
+            rules: [RULE-11, RULE-12]
+          depends_on: [task-5.1]
+          complexity: "M"
+          validation: "Action at/after expiry treated as expired; sweeper frees stale slots; timeout does not exclude."
+          risk: "Hold-expiry vs accept race (Hotspot 4)."
+        - id: task-5.3
+          name: "One active request per pet"
+          description: "Enforce at most one non-terminal SchedulingRequest per pet via the nullable active_pet_key column (plain UNIQUE) plus a transactional service check; allow one active request per distinct pet."
+          artifact: "petclinic/scheduling/ (guard + migration confirmation)"
+          covers:
+            acs: [AC-59, AC-60]
+            rules: [RULE-22]
+          depends_on: [task-4.1]
+          complexity: "M"
+          validation: "Second active request for a pet blocked and existing surfaced; concurrent requests for different pets allowed; verified on MySQL."
+          source: "review/MAJOR-2"
+        - id: task-5.4
+          name: "Urgency, emergency, and failure routing"
+          description: "Weight earlier-is-better up for URGENT (stay automated); EMERGENCY short-circuits the solver to STAFF_QUEUED(EMERGENCY) top priority; route NO_SPECIALTY_VET, SUGGESTIONS_EXHAUSTED (infeasible solve), and SOLVER_UNAVAILABLE (solver error) to the queue."
+          artifact: "petclinic/scheduling/ (routing + constraint weighting)"
+          covers:
+            acs: [AC-35, AC-45, AC-46, AC-47, AC-48]
+            rules: [RULE-5, RULE-10, RULE-17]
+          depends_on: [task-5.1]
+          complexity: "M"
+          validation: "Each condition transitions to the correct STAFF_QUEUED reason; URGENT stays automated and offers earliest feasible."
+        - id: task-5.5
+          name: "Staff fallback queue"
+          description: "Queue view over SchedulingRequest where state=STAFF_QUEUED, ordered emergency-first then FIFO with reason/queued time; staff verify/complete the interpretation and book on the owner's behalf."
+          artifact: "petclinic/scheduling/StaffQueueController.java, templates/scheduling/queue*.html"
+          covers:
+            acs: [AC-49, AC-50]
+            rules: [RULE-21, RULE-18]
+          depends_on: [task-5.4]
+          complexity: "M"
+          validation: "MockMvc: queue ordering correct; staff completes interpretation and books; owner not exposed to queue."
+      checkpoint:
+        id: cp-5
+        description: "Complete guided flow including rejection, expiry, concurrency, emergencies, and staff fallback."
+        criteria:
+          - "Reject/ask-again, expiry, and sweeper behave per ACs."
+          - "All STAFF_QUEUED routing reasons reachable and correctly labeled."
+          - "One-active-request-per-pet enforced on all three DBs."
+
+    - id: phase-6
+      name: "Appointment lifecycle and management"
+      description: "Complete the BookingService: staff direct booking/reschedule/cancel with reasons, completion-to-Visit and no-show, and owner self-service view/cancel."
+      covers: [AC-51, AC-52, AC-53, AC-54, AC-55, AC-56, AC-57, AC-58]
+      entry_criteria: "cp-5 passed."
+      tasks:
+        - id: task-6.1
+          name: "Staff direct booking, reschedule, cancel"
+          description: "BookingService paths for staff to book directly (null SchedulingRequest), reschedule (re-validate availability + non-overlap via slot_occupancy), and cancel; record changeReason for staff-initiated changes."
+          artifact: "petclinic/scheduling/BookingService.java, staff appointment controller/templates"
+          covers:
+            acs: [AC-51, AC-52, AC-53]
+            rules: [RULE-18]
+          depends_on: [task-4.5]
+          complexity: "L"
+          validation: "Reschedule to an occupied slot rejected; changeReason persisted; direct booking has no request."
+        - id: task-6.2
+          name: "Completion-to-Visit and no-show"
+          description: "Mark BOOKED appointment COMPLETED (transactionally create a Visit in the pet's history) or NO_SHOW (no Visit); statuses terminal."
+          artifact: "petclinic/scheduling/BookingService.java (lifecycle), templates"
+          covers:
+            acs: [AC-54, AC-55]
+            rules: [RULE-18, RULE-19]
+          depends_on: [task-6.1]
+          complexity: "M"
+          validation: "Completion writes exactly one Visit; no-show writes none; both statuses terminal."
+        - id: task-6.3
+          name: "Owner view and cancel own appointments"
+          description: "Owner screen listing own upcoming appointments; cancel allowed while start is in the future (frees the slot); at/after start not shown as upcoming and not cancellable; other owners' appointments inaccessible."
+          artifact: "petclinic/scheduling/OwnerAppointmentController.java, templates"
+          covers:
+            acs: [AC-56, AC-57, AC-58]
+            rules: [RULE-18, RULE-14]
+          depends_on: [task-6.2]
+          complexity: "M"
+          validation: "Boundary tests: cancel before start frees slot; at/after start blocked; accessing another owner's appointment → 403."
+      checkpoint:
+        id: cp-6
+        description: "Full appointment lifecycle complete; all AC-1..AC-68 covered and green."
+        criteria:
+          - "Completion creates a Visit; no-show does not."
+          - "Owner self-cancel bounded correctly by start time and ownership."
+          - "Full feature test suite green on H2 with migrations validated on MySQL and Postgres."
