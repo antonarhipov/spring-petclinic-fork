@@ -43,20 +43,30 @@ Pick an organizing principle and state it in `organizing_principle`:
 
 - **walking_skeleton**: thin end-to-end slice first, then thicken. Default. Best when integration risk dominates.
 - **layered**: data → domain → application → presentation. Best for layered architectures.
-- **feature_slice**: one phase per AC cluster, each shippable. Best for feature-sliced or hexagonal projects.
+- **feature_slice**: one phase per AC cluster, each shippable. Best for feature-sliced or hexagonal projects. Refer to the Tracer Bullets section.
 - **risk_first**: highest-risk decisions first. Best when Risk Hotspots are non-trivial.
-- **tracer_bullet**: one phase per AC cluster, each shippable. Best for feature-sliced or hexagonal projects. Refer to the Tracer Bullets section.
-
-By default, choose the **tracer_bullet** option.
 
 State the choice and one-line reason in `decisions`.
+
+## Selection Ladder for Phase Organization
+
+1. **Explicit mandate.** If `rules.md` or the invocation specifies a principle, use it. Note the source in `decisions`. Do not second-guess it, even if a lower rung would fire.
+2. **Architectural risk.** If `review.md` lists Risk Hotspots that are architectural rather than local — an unproven external dependency, a contract that may not hold, a performance or concurrency assumption load-bearing for the design — use `risk_first`. Local hotspots (a tricky parsing edge case, a fiddly migration) do not qualify; they stay as task `risk` annotations.
+3. **No existing skeleton.** If nothing within the spec's scope currently runs end to end — new service, new module, new integration boundary, or the spec's happy path crosses a seam that has never been exercised — use `walking_skeleton`.
+4. **Separable ACs.** If the ACs partition into two or more clusters that could each ship on their own without the others, use `feature_slice`. One cluster is not a partition.
+5. **Fallback.** Mirror the existing architecture. For most codebases this is `layated`; use the structure you found during Codebase Grounding.
+
+Rungs are ordered by signal strength: an explicit instruction beats an observable artifact, an observable artifact beats a structural inference, and the fallback follows code that already exists. If a rung's signal is ambiguous, treat it as not fired and continue down the ladder.
+
+### Hybrids
+
+Phasing is often hybrid in practice — a thin skeleton, then slices. When the plan genuinely mixes principles, set `organizing_principle` to the sequence, e.g. `"walking_skeleton then feature_slice"`, and name the phase where the handoff occurs in `decisions`. Do not distort phasing to fit a single label. Do not chain more than two principles; if you need three, the feature is too large, and you should recommend a split.
 
 ## Tracer Bullets
 
 When building features, build a tiny, end-to-end slice of the feature first, seek feedback, then expand out from there.
 
-Tracer bullets comes from the Pragmatic Programmer. When building systems, you want to write code that gets you feedback as quickly as possible. Tracer bullets are small slices of functionality that go through all layers of the system, allowing you to test and validate your approach early. This helps in identifying potential issues and ensures that the overall architecture is sound before investing significant time in development.
-
+"Tracer Bullets" comes from the Pragmatic Programmer. When building systems, you want to write code that gets you feedback as quickly as possible. Tracer bullets are small slices of functionality that go through all layers of the system, allowing you to test and validate your approach early. This helps in identifying potential issues and ensures that the overall architecture is sound before investing significant time in development.
 
 # Task Granularity
 
