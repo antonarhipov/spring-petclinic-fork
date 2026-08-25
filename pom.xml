@@ -177,9 +177,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <!-- Provides org.springframework.boot.restclient.RestClientCustomizer (and the RestClient
+           auto-configuration) used by AiHttpClientConfig to force the JDK HttpClient with a long
+           read timeout on Spring AI's blocking Ollama call. Needed at compile and runtime, not just
+           for tests. -->
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-restclient</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

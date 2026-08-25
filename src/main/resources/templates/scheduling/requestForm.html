@@ -16,7 +16,9 @@
     </div>
   </div>
 
-  <form th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/schedule/new}" method="post" class="form-horizontal">
+  <form th:action="${currentUserIsStaff}
+      ? @{/owners/{ownerId}/pets/{petId}/schedule/new(ownerId=${owner.id},petId=${pet.id})}
+      : @{/my-pets/{petId}/schedule/new(petId=${pet.id})}" method="post" class="form-horizontal">
     <div class="form-group mb-3">
       <label for="rawText" class="form-label"><strong th:text="'Describe the reason for your visit and preferred timing:'">Describe the reason for your visit and preferred timing:</strong></label>
       <textarea id="rawText" name="rawText" class="form-control" rows="4" required

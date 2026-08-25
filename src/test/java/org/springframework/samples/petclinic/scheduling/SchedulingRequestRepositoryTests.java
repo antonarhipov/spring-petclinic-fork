@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.LocalDate;
 import java.util.Optional;
 import jakarta.persistence.EntityManager;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -75,6 +76,78 @@ class SchedulingRequestRepositoryTests {
 		assertThat(found).isPresent();
 		assertThat(found.get().getRawText()).isEqualTo("Checkup next Monday");
 		assertThat(found.get().isAiConsent()).isTrue();
+	}
+
+	/**
+	 * Reproduces the {@code LazyInitializationException} that crashed the
+	 * {@code scheduling/status} view. With {@code spring.jpa.open-in-view=false} the
+	 * Hibernate session is closed once the repository call returns, so the lazy
+	 * {@code owner}/{@code pet} associations must be fetched by
+	 * {@link SchedulingRequestRepository#findByIdWithOwnerAndPet(Integer)}; otherwise
+	 * they are uninitialized proxies that fail during view rendering.
+	 */
+	@Test
+	void findByIdWithOwnerAndPetEagerlyInitializesAssociations() {
+		Owner owner = this.owners.findById(1).orElseThrow();
+		Pet pet = owner.getPets().get(0);
+
+		SchedulingRequest request = new SchedulingRequest();
+		request.setOwner(owner);
+		request.setPet(pet);
+		request.setRawText("Checkup");
+		request.setState(RequestState.INTERPRETING);
+		SchedulingRequest saved = this.schedulingRequests.saveAndFlush(request);
+
+		// Detach everything so the finder performs a fresh load, mirroring a new request
+		// without an open session.
+		this.entityManager.clear();
+
+		SchedulingRequest loaded = this.schedulingRequests.findByIdWithOwnerAndPet(saved.getId()).orElseThrow();
+
+		assertThat(loaded.getPet()).isNotNull();
+		assertThat(Hibernate.isInitialized(loaded.getPet())).isTrue();
+		assertThat(loaded.getPet().getName()).isNotBlank();
+		assertThat(loaded.getOwner()).isNotNull();
+		assertThat(Hibernate.isInitialized(loaded.getOwner())).isTrue();
+		assertThat(loaded.getOwner().getFirstName()).isNotBlank();
+	}
+
+	/**
+	 * Reproduces the {@code LazyInitializationException} that crashed the
+	 * {@code scheduling/queueList} view for staff. With
+	 * {@code spring.jpa.open-in-view=false} the Hibernate session is closed once the
+	 * repository call returns, so the lazy {@code owner}/{@code pet} associations of
+	 * every queued request must be fetched by
+	 * {@link SchedulingRequestRepository#findByStateWithOwnerAndPet(RequestState)};
+	 * otherwise they are uninitialized proxies that fail during view rendering.
+	 */
+	@Test
+	void findByStateWithOwnerAndPetEagerlyInitializesAssociations() {
+		Owner owner = this.owners.findById(5).orElseThrow();
+		Pet pet = owner.getPets().get(0);
+
+		SchedulingRequest request = new SchedulingRequest();
+		request.setOwner(owner);
+		request.setPet(pet);
+		request.setRawText("Emergency visit");
+		request.setState(RequestState.STAFF_QUEUED);
+		request.setQueueReason(QueueReason.EMERGENCY);
+		this.schedulingRequests.saveAndFlush(request);
+
+		// Detach everything so the finder performs a fresh load, mirroring a new request
+		// without an open session.
+		this.entityManager.clear();
+
+		var loaded = this.schedulingRequests.findByStateWithOwnerAndPet(RequestState.STAFF_QUEUED);
+
+		assertThat(loaded).isNotEmpty();
+		SchedulingRequest queued = loaded.get(0);
+		assertThat(queued.getOwner()).isNotNull();
+		assertThat(Hibernate.isInitialized(queued.getOwner())).isTrue();
+		assertThat(queued.getOwner().getFirstName()).isNotBlank();
+		assertThat(queued.getPet()).isNotNull();
+		assertThat(Hibernate.isInitialized(queued.getPet())).isTrue();
+		assertThat(queued.getPet().getName()).isNotBlank();
 	}
 
 	@Test

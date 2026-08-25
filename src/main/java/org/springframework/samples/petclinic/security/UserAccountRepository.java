@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -28,7 +29,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Intege
 	@Query("SELECT ua FROM UserAccount ua LEFT JOIN FETCH ua.owner")
 	List<UserAccount> findAllWithOwner();
 
-	Optional<UserAccount> findByUsername(String username);
+	@Query("SELECT ua FROM UserAccount ua LEFT JOIN FETCH ua.owner WHERE ua.username = :username")
+	Optional<UserAccount> findByUsername(@Param("username") String username);
 
 	Optional<UserAccount> findByOwnerId(Integer ownerId);
 

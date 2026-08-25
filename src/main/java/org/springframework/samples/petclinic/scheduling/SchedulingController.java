@@ -175,7 +175,7 @@ public class SchedulingController {
 
 	@GetMapping("/scheduling/requests/{requestId}")
 	public String showStatus(@PathVariable("requestId") int requestId, Authentication authentication, Model model) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 

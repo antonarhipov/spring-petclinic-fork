@@ -48,7 +48,9 @@ import org.springframework.samples.petclinic.scheduling.model.QueueReason;
 import org.springframework.samples.petclinic.scheduling.model.RequestState;
 import org.springframework.samples.petclinic.scheduling.model.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.model.SchedulingRequestRepository;
+import org.springframework.samples.petclinic.security.UserAccount;
 import org.springframework.samples.petclinic.security.UserAccountRepository;
+import org.springframework.samples.petclinic.security.UserRole;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -121,6 +123,29 @@ class SchedulingControllerTests {
 	}
 
 	@Test
+	@WithMockUser(username = "owner1", roles = "OWNER")
+	void ownerFormPostsToMyPetsPathNotStaffOnlyOwnersUrl() throws Exception {
+		when(this.schedulingRequests.findByActivePetKey(TEST_PET_ID)).thenReturn(Optional.empty());
+		UserAccount account = new UserAccount("owner1", "secret", UserRole.OWNER, false, this.owner);
+		when(this.userAccountRepository.findByUsername("owner1")).thenReturn(Optional.of(account));
+
+		// An OWNER reaches the form via the /my-pets entry point; the rendered form must
+		// submit back to /my-pets/{petId}/schedule/new. Posting to
+		// /owners/{ownerId}/pets/{petId}/schedule/new is denied for owners because the
+		// security config restricts /owners/** to STAFF, which produced the 403
+		// Forbidden.
+		String html = this.mockMvc.perform(get("/my-pets/{petId}/schedule/new", TEST_PET_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/requestForm"))
+			.andReturn()
+			.getResponse()
+			.getContentAsString();
+
+		assertThat(html).contains("action=\"/my-pets/1/schedule/new\"");
+		assertThat(html).doesNotContain("/owners/1/pets/1/schedule/new");
+	}
+
+	@Test
 	void shouldRedirectToActiveRequestIfDuplicateAttempted() throws Exception {
 		SchedulingRequest existing = new SchedulingRequest();
 		existing.setId(TEST_REQUEST_ID);
@@ -185,7 +210,7 @@ class SchedulingControllerTests {
 		request.setOwner(this.owner);
 		request.setPet(this.pet);
 		request.setState(RequestState.INTERPRETING);
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(get("/scheduling/requests/{requestId}", TEST_REQUEST_ID))
 			.andExpect(status().isOk())
@@ -202,7 +227,7 @@ class SchedulingControllerTests {
 		request.setPet(this.pet);
 		request.setState(RequestState.AWAITING_CONFIRMATION);
 		request.setRawText("Ear infection");
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		Interpretation interpretation = new Interpretation("Ear infection exam", 30, CareType.GENERAL, null,
 				UrgencyLevel.ROUTINE, java.util.List.of(), java.util.List.of(), java.util.List.of(), null, 0.9);
@@ -261,7 +286,7 @@ class SchedulingControllerTests {
 		request.setPet(this.pet);
 		request.setState(RequestState.STAFF_QUEUED);
 		request.setQueueReason(QueueReason.CONSENT_DECLINED);
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(get("/scheduling/requests/{requestId}", TEST_REQUEST_ID))
 			.andExpect(status().isOk())

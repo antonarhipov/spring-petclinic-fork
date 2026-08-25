@@ -121,8 +121,13 @@ class StaffQueueControllerTests {
 		this.appointment.setVet(vet);
 		this.appointment.setStatus(AppointmentStatus.BOOKED);
 
-		when(this.schedulingRequests.findAll()).thenReturn(List.of(this.regularRequest, this.emergencyRequest));
-		when(this.schedulingRequests.findById(2)).thenReturn(Optional.of(this.emergencyRequest));
+		when(this.schedulingRequests.findByStateWithOwnerAndPet(RequestState.STAFF_QUEUED))
+			.thenReturn(List.of(this.regularRequest, this.emergencyRequest));
+		// The queue-details page and the book-on-behalf error path load the request with
+		// its owner/pet join-fetched, so the lazy associations are initialized before the
+		// (open-in-view=false) session closes and the template renders without a
+		// LazyInitializationException.
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(2)).thenReturn(Optional.of(this.emergencyRequest));
 		when(this.vets.findAll()).thenReturn(List.of(vet));
 	}
 

@@ -62,9 +62,8 @@ public class StaffQueueController {
 
 	@GetMapping
 	public String listQueue(Model model) {
-		List<SchedulingRequest> queued = this.schedulingRequests.findAll()
+		List<SchedulingRequest> queued = this.schedulingRequests.findByStateWithOwnerAndPet(RequestState.STAFF_QUEUED)
 			.stream()
-			.filter(r -> r.getState() == RequestState.STAFF_QUEUED)
 			.sorted((a, b) -> {
 				boolean aEmerg = a.getQueueReason() == QueueReason.EMERGENCY;
 				boolean bEmerg = b.getQueueReason() == QueueReason.EMERGENCY;
@@ -82,7 +81,7 @@ public class StaffQueueController {
 
 	@GetMapping("/{requestId}")
 	public String showQueueDetails(@PathVariable("requestId") Integer requestId, Model model) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		Collection<Vet> vetList = this.vets.findAll();
 		model.addAttribute("request", request);
@@ -109,7 +108,7 @@ public class StaffQueueController {
 			return "redirect:/staff/appointments/" + appt.getId();
 		}
 		catch (Exception ex) {
-			SchedulingRequest request = this.schedulingRequests.findById(requestId)
+			SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 			model.addAttribute("request", request);
 			model.addAttribute("vets", this.vets.findAll());
