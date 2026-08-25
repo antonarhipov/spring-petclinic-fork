@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+<body>
+
+  <div th:replace="~{scheduling/urgentCareBanner :: urgentCareBanner}"></div>
+
+  <h2 th:text="'Schedule an Appointment'">Schedule an Appointment</h2>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title" th:text="'Patient Details'">Patient Details</h5>
+      <p class="card-text">
+        <strong th:text="'Pet:'">Pet:</strong> <span th:text="${pet.name}">Leo</span> (<span th:text="${pet.type}">dog</span>)<br/>
+        <strong th:text="'Owner:'">Owner:</strong> <span th:text="${owner.firstName + ' ' + owner.lastName}">George Franklin</span>
+      </p>
+    </div>
+  </div>
+
+  <form th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/schedule/new}" method="post" class="form-horizontal">
+    <div class="form-group mb-3">
+      <label for="rawText" class="form-label"><strong th:text="'Describe the reason for your visit and preferred timing:'">Describe the reason for your visit and preferred timing:</strong></label>
+      <textarea id="rawText" name="rawText" class="form-control" rows="4" required
+        placeholder="e.g. Bella has been scratching her ears for two days. We prefer next Tuesday or Wednesday morning." th:text="${rawText}"></textarea>
+      <div class="form-text" th:text="'Please describe the symptoms, preferred days/times, and any veterinarian preferences.'">Please describe the symptoms, preferred days/times, and any veterinarian preferences.</div>
+    </div>
+
+    <div class="form-check mb-4 p-3 bg-light border rounded">
+      <input class="form-check-input" type="checkbox" id="aiConsent" name="aiConsent" value="true" th:checked="${aiConsent}" style="margin-top: 0.3rem;">
+      <label class="form-check-label ms-2" for="aiConsent">
+        <strong th:text="'Consent to AI-assisted scheduling analysis'">Consent to AI-assisted scheduling analysis</strong><br/>
+        <small class="text-muted" th:text="'I consent to having our AI assistant interpret this description to automatically extract appointment details and match with our veterinary calendar. If you opt out, your request will be routed directly to our clinic staff for manual scheduling.'">
+          Consent explanation
+        </small>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <button class="btn btn-primary btn-lg" type="submit" th:text="'Submit Request'">Submit Request</button>
+      <a th:href="@{/owners/__${owner.id}__}" class="btn btn-secondary btn-lg" th:text="'Cancel'">Cancel</a>
+    </div>
+  </form>
+
+</body>
+</html>

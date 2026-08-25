@@ -5,6 +5,29 @@
 <body>
 
   <h2 th:text="#{welcome}">Welcome</h2>
+
+  <div th:if="${currentUserIsOwner}" class="row mb-3">
+    <div class="col-md-12">
+      <a class="btn btn-primary" th:href="@{/my-profile}" th:text="#{scheduleAppointment}">Schedule appointment</a>
+      <a class="btn btn-primary" th:href="@{/my-appointments}" th:text="#{myAppointments}">My Appointments</a>
+    </div>
+  </div>
+
+  <div th:if="${currentUserIsStaff}" class="row mb-3">
+    <div class="col-md-12">
+      <a class="btn btn-primary" th:href="@{/staff/queue}" th:text="#{staffQueue}">Queue</a>
+      <a class="btn btn-primary" th:href="@{/staff/appointments}" th:text="#{staffAppointments}">Appointments</a>
+      <a class="btn btn-primary" th:href="@{/staff/clinic/settings}" th:text="#{clinicSetup}">Clinic Setup</a>
+      <a class="btn btn-primary" th:href="@{/staff/accounts}" th:text="#{accounts}">Accounts</a>
+    </div>
+  </div>
+
+  <div th:unless="${currentUserAuthenticated}" class="row mb-3">
+    <div class="col-md-12">
+      <a class="btn btn-primary" th:href="@{/login}" th:text="#{login}">Login</a>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-md-12">
       <img class="img-responsive" src="../static/resources/images/pets.png" th:src="@{/resources/images/pets.png}" />

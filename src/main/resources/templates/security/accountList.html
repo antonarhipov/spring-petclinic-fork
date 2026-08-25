@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'accounts')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'User Accounts'">User Accounts</h2>
+
+  <div class="mb-3">
+    <a th:href="@{/staff/accounts/owner/new}" class="btn btn-primary" th:text="'Create Owner Account'">Create Owner Account</a>
+    <a th:href="@{/staff/accounts/staff/new}" class="btn btn-secondary" th:text="'Create Staff Account'">Create Staff Account</a>
+  </div>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="'Username'">Username</th>
+        <th th:text="'Role'">Role</th>
+        <th th:text="'Must Change Password'">Must Change Password</th>
+        <th th:text="'Linked Owner'">Linked Owner</th>
+        <th th:text="'Actions'">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="account : ${accounts}">
+        <td th:text="${account.username}">username</td>
+        <td th:text="${account.role}">ROLE</td>
+        <td th:text="${account.mustChangePassword ? 'Yes' : 'No'}">No</td>
+        <td th:text="${account.owner != null ? account.owner.firstName + ' ' + account.owner.lastName : 'None'}">Owner</td>
+        <td>
+          <a th:href="@{/staff/accounts/{id}/reset-password(id=${account.id})}" class="btn btn-sm btn-warning" th:text="'Reset Password'">Reset Password</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

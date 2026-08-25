@@ -2,6 +2,8 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.util.LinkedMultiValueMap;
@@ -50,7 +53,16 @@ public class PetClinicConcurrencyTests {
 		// Ensure duplicate pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
 
-		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
+		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port)
+			.basicAuthentication("admin", "admin123")
+			.requestFactory(() -> new SimpleClientHttpRequestFactory() {
+				@Override
+				protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
+					super.prepareConnection(connection, httpMethod);
+					connection.setInstanceFollowRedirects(false);
+				}
+			})
+			.build();
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -83,8 +95,9 @@ public class PetClinicConcurrencyTests {
 					String body = response.getBody();
 					// If the response page contains the duplicate validation error, it
 					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					if ((response.getStatusCode().is2xxSuccessful() || response.getStatusCode().is3xxRedirection())
+							&& (body == null
+									|| (!body.contains("is already in use") && !body.contains("already exists")))) {
 						successCount.incrementAndGet();
 					}
 					else {

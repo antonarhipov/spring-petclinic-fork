@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+  <h2 th:text="'Appointment Details'">Appointment Details</h2>
+
+  <div th:if="${message}" class="alert alert-success">
+    <span th:text="${message}"></span>
+  </div>
+
+  <div th:if="${error}" class="alert alert-danger">
+    <span th:text="${error}"></span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>
+        <span th:text="'Appointment #' + ${appointment.id}">Appointment #1</span>
+      </span>
+      <span th:class="'badge ' + (${appointment.status.name() == 'BOOKED'} ? 'bg-primary' : (${appointment.status.name() == 'COMPLETED'} ? 'bg-success' : (${appointment.status.name() == 'CANCELLED'} ? 'bg-danger' : 'bg-secondary')))"
+            th:text="${appointment.status}">BOOKED</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong th:text="'Owner:'">Owner:</strong> <span th:text="${appointment.owner.firstName + ' ' + appointment.owner.lastName}">George Franklin</span></p>
+          <p><strong th:text="'Pet:'">Pet:</strong> <span th:text="${appointment.pet.name}">Leo</span> (<span th:text="${appointment.pet.type}">dog</span>)</p>
+          <p><strong th:text="'Veterinarian:'">Veterinarian:</strong> <span th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}">James Carter</span></p>
+        </div>
+        <div class="col-md-6">
+          <p><strong th:text="'Date:'">Date:</strong> <span th:text="${#temporals.format(appointment.startTime, 'yyyy-MM-dd')}">2026-08-26</span></p>
+          <p><strong th:text="'Time:'">Time:</strong> <span th:text="${#temporals.format(appointment.startTime, 'HH:mm') + ' - ' + #temporals.format(appointment.endTime, 'HH:mm')}">09:00 - 09:30</span></p>
+          <p><strong th:text="'Reason:'">Reason:</strong> <span th:text="${appointment.reason}">Checkup</span></p>
+          <p th:if="${appointment.changeReason != null}"><strong th:text="'Change Reason:'">Change Reason:</strong> <span th:text="${appointment.changeReason}">Rescheduled</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Action Buttons -->
+  <div th:if="${appointment.status.name() == 'BOOKED'}" class="card mb-4">
+    <div class="card-header">
+      <h5 th:text="'Staff Actions'">Staff Actions</h5>
+    </div>
+    <div class="card-body">
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <a th:href="@{/staff/appointments/__${appointment.id}__/reschedule}" class="btn btn-warning" th:text="'Reschedule Appointment'">Reschedule Appointment</a>
+
+        <form th:action="@{/staff/appointments/__${appointment.id}__/complete}" method="post" style="display:inline;">
+          <button type="submit" class="btn btn-success" th:text="'Complete Appointment (Creates Visit)'">Complete Appointment (Creates Visit)</button>
+        </form>
+
+        <form th:action="@{/staff/appointments/__${appointment.id}__/no-show}" method="post" style="display:inline;">
+          <button type="submit" class="btn btn-dark" th:text="'Mark No-Show'">Mark No-Show</button>
+        </form>
+      </div>
+
+      <hr/>
+
+      <h6 th:text="'Cancel Appointment'">Cancel Appointment</h6>
+      <form th:action="@{/staff/appointments/__${appointment.id}__/cancel}" method="post" class="row g-3 align-items-center">
+        <div class="col-auto">
+          <label for="changeReason" class="visually-hidden" th:text="'Cancellation Reason'">Cancellation Reason</label>
+          <input type="text" class="form-control" id="changeReason" name="changeReason" placeholder="Required cancellation reason..." required />
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-danger" th:text="'Cancel Appointment'">Cancel Appointment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <a th:href="@{/staff/appointments}" class="btn btn-secondary" th:text="'Back to Appointments List'">Back to Appointments List</a>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'clinic')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Parts of Day'">Parts of Day</h2>
+
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/settings}" th:text="'Settings'">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" th:href="@{/staff/clinic/parts-of-day}" th:text="'Parts of Day'">Parts of Day</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/shifts}" th:text="'Vet Shifts'">Vet Shifts</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/exceptions}" th:text="'Vet Exceptions'">Vet Exceptions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/closures}" th:text="'Clinic Closures'">Clinic Closures</a>
+    </li>
+  </ul>
+
+  <table class="table table-striped mb-4">
+    <thead>
+      <tr>
+        <th th:text="'Name'">Name</th>
+        <th th:text="'Start Time'">Start Time</th>
+        <th th:text="'End Time'">End Time</th>
+        <th th:text="'Actions'">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="pod : ${partsOfDay}">
+        <td th:text="${pod.name}">MORNING</td>
+        <td th:text="${pod.startTime}">08:00</td>
+        <td th:text="${pod.endTime}">12:00</td>
+        <td>
+          <form th:action="@{/staff/clinic/parts-of-day/{id}/delete(id=${pod.id})}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger" th:text="'Delete'">Delete</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 th:text="'Add Part of Day'">Add Part of Day</h4>
+  <form th:action="@{/staff/clinic/parts-of-day/new}" method="post" class="form-inline row g-3 align-items-center">
+    <div class="col-auto">
+      <label for="name" class="visually-hidden" th:text="'Name'">Name</label>
+      <input type="text" class="form-control" id="name" name="name" placeholder="Name (e.g. MORNING)" required />
+    </div>
+    <div class="col-auto">
+      <label for="startTime" class="visually-hidden" th:text="'Start Time'">Start Time</label>
+      <input type="time" class="form-control" id="startTime" name="startTime" required />
+    </div>
+    <div class="col-auto">
+      <label for="endTime" class="visually-hidden" th:text="'End Time'">End Time</label>
+      <input type="time" class="form-control" id="endTime" name="endTime" required />
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary" th:text="'Add Part of Day'">Add Part of Day</button>
+    </div>
+  </form>
+</body>
+</html>

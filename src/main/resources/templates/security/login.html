@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'home')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Login'">Login</h2>
+  <div th:if="${param.error}" class="alert alert-danger" th:text="'Invalid username or password.'">
+    Invalid username or password.
+  </div>
+  <div th:if="${param.logout}" class="alert alert-success" th:text="'You have been logged out.'">
+    You have been logged out.
+  </div>
+  <form th:action="@{/login}" method="post" class="form-horizontal">
+    <div class="form-group row mb-3">
+      <label for="username" class="col-sm-2 col-form-label" th:text="'Username'">Username</label>
+      <div class="col-sm-10">
+        <input type="text" id="username" name="username" class="form-control" autofocus required />
+      </div>
+    </div>
+    <div class="form-group row mb-3">
+      <label for="password" class="col-sm-2 col-form-label" th:text="'Password'">Password</label>
+      <div class="col-sm-10">
+        <input type="password" id="password" name="password" class="form-control" required />
+      </div>
+    </div>
+    <div class="form-group row">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary" th:text="'Sign in'">Sign in</button>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

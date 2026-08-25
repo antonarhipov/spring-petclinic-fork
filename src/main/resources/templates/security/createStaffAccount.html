@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'accounts')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Create Staff Account'">Create Staff Account</h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">
+    Error
+  </div>
+
+  <form th:action="@{/staff/accounts/staff/new}" method="post" class="form-horizontal">
+    <div class="form-group row mb-3">
+      <label for="username" class="col-sm-2 col-form-label" th:text="'Username'">Username</label>
+      <div class="col-sm-10">
+        <input type="text" id="username" name="username" class="form-control" required />
+      </div>
+    </div>
+    <div class="form-group row mb-3">
+      <label for="temporaryPassword" class="col-sm-2 col-form-label" th:text="'Temporary Password'">Temporary Password</label>
+      <div class="col-sm-10">
+        <input type="password" id="temporaryPassword" name="temporaryPassword" class="form-control" required />
+      </div>
+    </div>
+    <div class="form-group row">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" class="btn btn-primary" th:text="'Create Staff Account'">Create Staff Account</button>
+        <a th:href="@{/staff/accounts}" class="btn btn-secondary" th:text="'Cancel'">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'clinic')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Clinic Configuration'">Clinic Configuration</h2>
+
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link active" th:href="@{/staff/clinic/settings}" th:text="'Settings'">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/parts-of-day}" th:text="'Parts of Day'">Parts of Day</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/shifts}" th:text="'Vet Shifts'">Vet Shifts</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/exceptions}" th:text="'Vet Exceptions'">Vet Exceptions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/closures}" th:text="'Clinic Closures'">Clinic Closures</a>
+    </li>
+  </ul>
+
+  <div th:if="${param.success}" class="alert alert-success" th:text="'Clinic settings updated successfully.'">
+    Clinic settings updated successfully.
+  </div>
+
+  <form th:action="@{/staff/clinic/settings}" method="post" class="form-horizontal">
+    <div class="form-group mb-3">
+      <label for="timeZone" class="form-label" th:text="'Time Zone'">Time Zone</label>
+      <input type="text" class="form-control" id="timeZone" name="timeZone" th:value="${settings.timeZone}" required />
+      <small class="form-text text-muted" th:text="'e.g. America/New_York, America/Chicago, UTC'">e.g. America/New_York, America/Chicago, UTC</small>
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="minVisitMinutes" class="form-label" th:text="'Min Visit Minutes'">Min Visit Minutes</label>
+      <input type="number" class="form-control" id="minVisitMinutes" name="minVisitMinutes" th:value="${settings.minVisitMinutes}" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="maxVisitMinutes" class="form-label" th:text="'Max Visit Minutes'">Max Visit Minutes</label>
+      <input type="number" class="form-control" id="maxVisitMinutes" name="maxVisitMinutes" th:value="${settings.maxVisitMinutes}" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="defaultVisitMinutes" class="form-label" th:text="'Default Visit Minutes'">Default Visit Minutes</label>
+      <input type="number" class="form-control" id="defaultVisitMinutes" name="defaultVisitMinutes" th:value="${settings.defaultVisitMinutes}" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="bookingHorizonDays" class="form-label" th:text="'Booking Horizon (Days)'">Booking Horizon (Days)</label>
+      <input type="number" class="form-control" id="bookingHorizonDays" name="bookingHorizonDays" th:value="${settings.bookingHorizonDays}" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="holdDurationMinutes" class="form-label" th:text="'Hold Duration (Minutes)'">Hold Duration (Minutes)</label>
+      <input type="number" class="form-control" id="holdDurationMinutes" name="holdDurationMinutes" th:value="${settings.holdDurationMinutes}" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="gridMinutes" class="form-label" th:text="'Grid Alignment (Minutes)'">Grid Alignment (Minutes)</label>
+      <input type="number" class="form-control" id="gridMinutes" name="gridMinutes" th:value="${settings.gridMinutes}" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary" th:text="'Save Settings'">Save Settings</button>
+  </form>
+</body>
+</html>

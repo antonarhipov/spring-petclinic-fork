@@ -59,6 +59,60 @@
             <span th:text="#{error}">Error</span>
           </li>
 
+          <th:block th:if="${currentUserIsOwner}">
+            <li
+              th:replace="~{::menuItem ('/my-profile','myprofile','my profile and pets','user',#{myProfile})}">
+              <span class="fa fa-user" aria-hidden="true"></span>
+              <span th:text="#{myProfile}">My Profile</span>
+            </li>
+            <li
+              th:replace="~{::menuItem ('/my-appointments','myappointments','my upcoming appointments','calendar',#{myAppointments})}">
+              <span class="fa fa-calendar" aria-hidden="true"></span>
+              <span th:text="#{myAppointments}">My Appointments</span>
+            </li>
+          </th:block>
+
+          <th:block th:if="${currentUserIsStaff}">
+            <li
+              th:replace="~{::menuItem ('/staff/queue','staffqueue','staff scheduling queue','inbox',#{staffQueue})}">
+              <span class="fa fa-inbox" aria-hidden="true"></span>
+              <span th:text="#{staffQueue}">Queue</span>
+            </li>
+            <li
+              th:replace="~{::menuItem ('/staff/appointments','staffappointments','manage appointments','calendar',#{staffAppointments})}">
+              <span class="fa fa-calendar" aria-hidden="true"></span>
+              <span th:text="#{staffAppointments}">Appointments</span>
+            </li>
+            <li
+              th:replace="~{::menuItem ('/staff/clinic/settings','clinic','clinic configuration','cog',#{clinicSetup})}">
+              <span class="fa fa-cog" aria-hidden="true"></span>
+              <span th:text="#{clinicSetup}">Clinic Setup</span>
+            </li>
+            <li
+              th:replace="~{::menuItem ('/staff/accounts','accounts','user accounts','users',#{accounts})}">
+              <span class="fa fa-users" aria-hidden="true"></span>
+              <span th:text="#{accounts}">Accounts</span>
+            </li>
+          </th:block>
+
+        </ul>
+
+        <ul class="nav navbar-nav ms-auto">
+
+          <li class="nav-item" th:if="${currentUserAuthenticated}">
+            <span class="nav-link disabled" th:text="#{loggedInAs} + ' ' + ${currentUsername}">Signed in</span>
+          </li>
+
+          <li class="nav-item" th:if="${currentUserAuthenticated}">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+              <button type="submit" class="nav-link btn btn-link" th:text="#{logout}">Logout</button>
+            </form>
+          </li>
+
+          <li class="nav-item" th:unless="${currentUserAuthenticated}">
+            <a class="nav-link" th:href="@{/login}" th:text="#{login}">Login</a>
+          </li>
+
         </ul>
       </div>
     </div>

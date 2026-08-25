@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'clinic')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Vet Date Exceptions'">Vet Date Exceptions</h2>
+
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/settings}" th:text="'Settings'">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/parts-of-day}" th:text="'Parts of Day'">Parts of Day</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/shifts}" th:text="'Vet Shifts'">Vet Shifts</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" th:href="@{/staff/clinic/vets/1/exceptions}" th:text="'Vet Exceptions'">Vet Exceptions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/closures}" th:text="'Clinic Closures'">Clinic Closures</a>
+    </li>
+  </ul>
+
+  <div class="mb-3">
+    <label for="vetSelector" class="form-label" th:text="'Select Veterinarian:'">Select Veterinarian:</label>
+    <select id="vetSelector" class="form-select" onchange="location = this.value;">
+      <option th:each="v : ${vets}"
+              th:value="@{/staff/clinic/vets/{id}/exceptions(id=${v.id})}"
+              th:text="${v.firstName + ' ' + v.lastName}"
+              th:selected="${v.id == vet.id}">
+        James Carter
+      </option>
+    </select>
+  </div>
+
+  <h3 th:text="${'Date Exceptions for ' + vet.firstName + ' ' + vet.lastName}">Date Exceptions</h3>
+
+  <table class="table table-striped mb-4">
+    <thead>
+      <tr>
+        <th th:text="'Start Date'">Start Date</th>
+        <th th:text="'End Date'">End Date</th>
+        <th th:text="'Type'">Type</th>
+        <th th:text="'Hours'">Hours</th>
+        <th th:text="'Reason'">Reason</th>
+        <th th:text="'Actions'">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="ex : ${exceptions}">
+        <td th:text="${ex.startDate}">2026-09-01</td>
+        <td th:text="${ex.endDate}">2026-09-01</td>
+        <td th:text="${ex.type}">LEAVE</td>
+        <td th:text="${ex.isFullDay() ? 'All Day' : ex.startTime + ' - ' + ex.endTime}">All Day</td>
+        <td th:text="${ex.reason}">Vacation</td>
+        <td>
+          <form th:action="@{/staff/clinic/vets/{vetId}/exceptions/{exceptionId}/delete(vetId=${vet.id},exceptionId=${ex.id})}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger" th:text="'Delete'">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(exceptions)}">
+        <td colspan="6" th:text="'No date exceptions configured for this vet.'">No date exceptions configured for this vet.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 th:text="'Add Date Exception'">Add Date Exception</h4>
+  <form th:action="@{/staff/clinic/vets/{vetId}/exceptions/new(vetId=${vet.id})}" method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label" th:text="'Start Date'">Start Date</label>
+      <input type="date" class="form-control" name="startDate" required />
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" th:text="'End Date'">End Date</label>
+      <input type="date" class="form-control" name="endDate" required />
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" th:text="'Type'">Type</label>
+      <select class="form-select" name="type" required>
+        <option th:each="t : ${exceptionTypes}" th:value="${t}" th:text="${t}">LEAVE</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" th:text="'Start Time (optional)'">Start Time (optional)</label>
+      <input type="time" class="form-control" name="startTime" />
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" th:text="'End Time (optional)'">End Time (optional)</label>
+      <input type="time" class="form-control" name="endTime" />
+    </div>
+    <div class="col-md-10">
+      <label class="form-label" th:text="'Reason'">Reason</label>
+      <input type="text" class="form-control" name="reason" placeholder="e.g. Vacation, Training" />
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100" th:text="'Add Exception'">Add Exception</button>
+    </div>
+  </form>
+</body>
+</html>

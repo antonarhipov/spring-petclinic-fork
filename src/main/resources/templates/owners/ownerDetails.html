@@ -72,6 +72,16 @@
             <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/edit}" th:text="#{editPet}">Edit Pet</a></td>
             <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" th:text="#{addVisit}">Add Visit</a></td>
           </tr>
+          <tr>
+            <td colspan="2">
+              <a th:if="${currentUserIsStaff}"
+                th:href="@{/owners/{ownerId}/pets/{petId}/schedule/new(ownerId=${owner.id},petId=${pet.id})}"
+                th:text="#{scheduleAppointment}">Schedule appointment</a>
+              <a th:unless="${currentUserIsStaff}"
+                th:href="@{/my-pets/{petId}/schedule/new(petId=${pet.id})}"
+                th:text="#{scheduleAppointment}">Schedule appointment</a>
+            </td>
+          </tr>
         </table>
       </td>
     </tr>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+  <h2 th:text="'Staff Fallback Queue'">Staff Fallback Queue</h2>
+  <p class="text-muted" th:text="'Requests requiring manual staff intervention (e.g., emergencies, consent declined, unavailable solver, specialty vet required, or suggestions exhausted).'">Requests requiring manual staff intervention (e.g., emergencies, consent declined, unavailable solver, specialty vet required, or suggestions exhausted).</p>
+
+  <div th:if="${message}" class="alert alert-success">
+    <span th:text="${message}"></span>
+  </div>
+
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th th:text="'ID'">ID</th>
+        <th th:text="'Priority'">Priority</th>
+        <th th:text="'Queued At'">Queued At</th>
+        <th th:text="'Queue Reason'">Queue Reason</th>
+        <th th:text="'Owner'">Owner</th>
+        <th th:text="'Pet'">Pet</th>
+        <th th:text="'Original Request Description'">Original Request Description</th>
+        <th th:text="'Action'">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="req : ${requests}" th:classappend="${req.queueReason?.name() == 'EMERGENCY'} ? 'table-danger' : ''">
+        <td th:text="${req.id}">1</td>
+        <td>
+          <span th:if="${req.queueReason?.name() == 'EMERGENCY'}" class="badge bg-danger" th:text="'HIGH PRIORITY (EMERGENCY)'">HIGH PRIORITY (EMERGENCY)</span>
+          <span th:if="${req.queueReason?.name() != 'EMERGENCY'}" class="badge bg-secondary" th:text="'Standard (FIFO)'">Standard (FIFO)</span>
+        </td>
+        <td th:text="${req.queuedAt != null ? req.queuedAt.toString() : '-'}">2026-08-26 10:00</td>
+        <td>
+          <span class="badge bg-warning text-dark" th:text="${req.queueReason}">EMERGENCY</span>
+        </td>
+        <td th:text="${req.owner != null ? (req.owner.firstName + ' ' + req.owner.lastName) : '-'}">George Franklin</td>
+        <td th:text="${req.pet != null ? req.pet.name : '-'}">Leo</td>
+        <td th:text="${req.rawText}">Bella has severe ear irritation.</td>
+        <td>
+          <a th:href="@{/staff/queue/__${req.id}__}" class="btn btn-sm btn-primary" th:text="'Process &amp; Book'">Process &amp; Book</a>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(requests)}">
+        <td colspan="8" class="text-center text-muted" th:text="'The fallback queue is currently empty.'">The fallback queue is currently empty.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <a th:href="@{/staff/appointments}" class="btn btn-secondary" th:text="'Back to Appointments'">Back to Appointments</a>
+
+</body>
+</html>

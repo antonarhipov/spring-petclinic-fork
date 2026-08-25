@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+  <h2><span th:text="'Process Queued Request #' + ${request.id}">Process Queued Request #1</span></h2>
+
+  <div th:if="${error}" class="alert alert-danger">
+    <span th:text="${error}"></span>
+  </div>
+
+  <div class="card mb-4" th:classappend="${request.queueReason?.name() == 'EMERGENCY'} ? 'border-danger' : ''">
+    <div class="card-header d-flex justify-content-between align-items-center" th:classappend="${request.queueReason?.name() == 'EMERGENCY'} ? 'bg-danger text-white' : ''">
+      <span>
+        <strong th:text="'Queue Reason:'">Queue Reason:</strong> <span th:text="${request.queueReason}">EMERGENCY</span>
+      </span>
+      <span th:text="${request.queuedAt != null ? request.queuedAt.toString() : ''}">2026-08-26 10:00</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong th:text="'Owner:'">Owner:</strong> <span th:text="${request.owner.firstName + ' ' + request.owner.lastName}">George Franklin</span></p>
+          <p><strong th:text="'Pet:'">Pet:</strong> <span th:text="${request.pet.name}">Leo</span> (<span th:text="${request.pet.type}">dog</span>)</p>
+          <p><strong th:text="'Original Request Text:'">Original Request Text:</strong></p>
+          <blockquote class="blockquote bg-light p-3 border rounded">
+            <p class="mb-0" th:text="${request.rawText}">Bella has severe ear irritation.</p>
+          </blockquote>
+        </div>
+        <div class="col-md-6" th:if="${request.interpretation != null}">
+          <h6 th:text="'AI Interpretation Details:'">AI Interpretation Details:</h6>
+          <p><strong th:text="'Urgency:'">Urgency:</strong> <span th:text="${request.interpretation.urgency}">HIGH</span></p>
+          <p><strong th:text="'Care Type:'">Care Type:</strong> <span th:text="${request.interpretation.careType}">GENERAL</span></p>
+          <p><strong th:text="'Duration Needed:'">Duration Needed:</strong> <span th:text="${request.interpretation.visitDurationMinutes} + ' min'">30 min</span></p>
+          <p><strong th:text="'Reason Summary:'">Reason Summary:</strong> <span th:text="${request.interpretation.summary}">Ear irritation</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 th:text="'Book Appointment on Owner\'s Behalf'">Book Appointment on Owner's Behalf</h5>
+    </div>
+    <div class="card-body">
+      <form th:action="@{/staff/queue/__${request.id}__/book}" method="post" class="form-horizontal">
+        <div class="mb-3">
+          <label for="vetSelect" class="form-label" th:text="'Select Veterinarian:'">Select Veterinarian:</label>
+          <select id="vetSelect" name="vetId" class="form-select" required>
+            <option value="" disabled selected th:text="'-- Select Veterinarian --'">-- Select Veterinarian --</option>
+            <option th:each="vet : ${vets}" th:value="${vet.id}"
+                    th:text="${vet.firstName + ' ' + vet.lastName}">James Carter</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label for="date" class="form-label" th:text="'Date:'">Date:</label>
+            <input type="date" id="date" name="date" class="form-control"
+                   th:value="${defaultDate}" required />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="startTime" class="form-label" th:text="'Start Time:'">Start Time:</label>
+            <input type="time" id="startTime" name="startTime" class="form-control"
+                   th:value="${defaultTime}" required />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label for="durationMinutes" class="form-label" th:text="'Duration (minutes):'">Duration (minutes):</label>
+            <select id="durationMinutes" name="durationMinutes" class="form-select">
+              <option value="15" th:text="'15 minutes'">15 minutes</option>
+              <option value="30" selected th:text="'30 minutes'">30 minutes</option>
+              <option value="45" th:text="'45 minutes'">45 minutes</option>
+              <option value="60" th:text="'60 minutes'">60 minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="reason" class="form-label" th:text="'Appointment Notes / Reason:'">Appointment Notes / Reason:</label>
+          <textarea id="reason" name="reason" class="form-control" rows="2" th:text="${request.rawText}"></textarea>
+        </div>
+
+        <div class="mt-4">
+          <button type="submit" class="btn btn-primary" th:text="'Book on Behalf'">Book on Behalf</button>
+          <a th:href="@{/staff/queue}" class="btn btn-secondary" th:text="'Cancel'">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

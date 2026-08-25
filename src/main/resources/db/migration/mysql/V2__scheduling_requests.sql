@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS scheduling_requests (
+  id                   INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  version              INT NOT NULL DEFAULT 0,
+  owner_id             INT(4) UNSIGNED NOT NULL,
+  pet_id               INT(4) UNSIGNED NOT NULL,
+  state                VARCHAR(30) NOT NULL,
+  queue_reason         VARCHAR(50),
+  raw_text             TEXT,
+  interpretation_json  TEXT,
+  ai_consent           BOOLEAN NOT NULL DEFAULT FALSE,
+  preferred_date_start DATE,
+  preferred_date_end   DATE,
+  active_pet_key       INT(4) UNSIGNED,
+  created_at           TIMESTAMP NULL,
+  updated_at           TIMESTAMP NULL,
+  queued_at            TIMESTAMP NULL,
+  INDEX(state),
+  INDEX(owner_id),
+  INDEX(pet_id),
+  UNIQUE (active_pet_key),
+  FOREIGN KEY (owner_id) REFERENCES owners (id),
+  FOREIGN KEY (pet_id) REFERENCES pets (id)
+) engine=InnoDB;

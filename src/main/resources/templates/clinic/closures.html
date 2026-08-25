@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html th:replace="~{fragments/layout :: layout (~{::body},'clinic')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="'Clinic Closures'">Clinic Closures</h2>
+
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/settings}" th:text="'Settings'">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/parts-of-day}" th:text="'Parts of Day'">Parts of Day</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/shifts}" th:text="'Vet Shifts'">Vet Shifts</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" th:href="@{/staff/clinic/vets/1/exceptions}" th:text="'Vet Exceptions'">Vet Exceptions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" th:href="@{/staff/clinic/closures}" th:text="'Clinic Closures'">Clinic Closures</a>
+    </li>
+  </ul>
+
+  <table class="table table-striped mb-4">
+    <thead>
+      <tr>
+        <th th:text="'Start Date'">Start Date</th>
+        <th th:text="'End Date'">End Date</th>
+        <th th:text="'Reason'">Reason</th>
+        <th th:text="'Hours'">Hours</th>
+        <th th:text="'Actions'">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="closure : ${closures}">
+        <td th:text="${closure.startDate}">2026-12-25</td>
+        <td th:text="${closure.endDate}">2026-12-25</td>
+        <td th:text="${closure.reason}">Holiday</td>
+        <td th:text="${closure.isFullDay() ? 'All Day' : closure.startTime + ' - ' + closure.endTime}">All Day</td>
+        <td>
+          <form th:action="@{/staff/clinic/closures/{id}/delete(id=${closure.id})}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger" th:text="'Delete'">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(closures)}">
+        <td colspan="5" th:text="'No clinic closures configured.'">No clinic closures configured.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 th:text="'Add Clinic Closure'">Add Clinic Closure</h4>
+  <form th:action="@{/staff/clinic/closures/new}" method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label" th:text="'Start Date'">Start Date</label>
+      <input type="date" class="form-control" name="startDate" required />
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" th:text="'End Date'">End Date</label>
+      <input type="date" class="form-control" name="endDate" required />
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" th:text="'Start Time (optional)'">Start Time (optional)</label>
+      <input type="time" class="form-control" name="startTime" />
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" th:text="'End Time (optional)'">End Time (optional)</label>
+      <input type="time" class="form-control" name="endTime" />
+    </div>
+    <div class="col-md-10">
+      <label class="form-label" th:text="'Reason'">Reason</label>
+      <input type="text" class="form-control" name="reason" placeholder="e.g. Christmas Day, Renovation" />
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100" th:text="'Add Closure'">Add Closure</button>
+    </div>
+  </form>
+</body>
+</html>

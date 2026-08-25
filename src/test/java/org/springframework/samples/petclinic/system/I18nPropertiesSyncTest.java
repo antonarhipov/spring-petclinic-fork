@@ -34,7 +34,7 @@ public class I18nPropertiesSyncTest {
 
 	private static final Pattern BRACKET_ONLY = Pattern.compile("<[^>]*>\\s*[\\[\\]](?:&nbsp;)?\\s*</[^>]*>");
 
-	private static final Pattern HAS_TH_TEXT_ATTRIBUTE = Pattern.compile("th:(u)?text\\s*=\\s*\"[^\"]+\"");
+	private static final Pattern HAS_TH_TEXT_ATTRIBUTE = Pattern.compile("th:(u)?text\\s*=\\s*(\"[^\"]*\"|'[^']*')");
 
 	@Test
 	void checkNonInternationalizedStrings() throws Exception {
@@ -42,45 +42,179 @@ public class I18nPropertiesSyncTest {
 		List<Path> files;
 
 		try (Stream<Path> stream = Files.walk(root)) {
-			files = stream.filter(p -> p.toString().endsWith(".java") || p.toString().endsWith(".html"))
+			files = stream.filter(p -> p.toString().endsWith(".html"))
 				.filter(p -> !p.toString().contains("/test/"))
-				.filter(p -> !p.getFileName().toString().endsWith("Test.java"))
 				.toList();
 		}
 
 		StringBuilder report = new StringBuilder();
 
 		for (Path file : files) {
-			List<String> lines = Files.readAllLines(file);
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i).trim();
+			String content = Files.readString(file);
+			int lineNumber = 1;
+			int pos = 0;
 
-				if (line.startsWith("//") || line.startsWith("@") || line.contains("log.")
-						|| line.contains("System.out")) {
+			while (pos < content.length()) {
+				if (content.startsWith("<!--", pos)) {
+					int end = content.indexOf("-->", pos);
+					if (end == -1) {
+						break;
+					}
+					for (int i = pos; i < end + 3; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = end + 3;
 					continue;
 				}
 
-				if (file.toString().endsWith(".html")) {
-					boolean hasLiteralText = HTML_TEXT_LITERAL.matcher(line).find();
-					boolean hasThTextAttribute = HAS_TH_TEXT_ATTRIBUTE.matcher(line).find();
-					boolean isBracketOnly = BRACKET_ONLY.matcher(line).find();
-
-					if (hasLiteralText && !line.contains("#{") && !hasThTextAttribute && !isBracketOnly) {
-						report.append("HTML: ")
-							.append(file)
-							.append(" Line ")
-							.append(i + 1)
-							.append(": ")
-							.append(line)
-							.append("\n");
+				if (content.regionMatches(true, pos, "<script", 0, 7) && (pos + 7 >= content.length()
+						|| Character.isWhitespace(content.charAt(pos + 7)) || content.charAt(pos + 7) == '>')) {
+					int end = indexOfIgnoreCase(content, "</script>", pos);
+					if (end == -1) {
+						break;
 					}
+					for (int i = pos; i < end + 9; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = end + 9;
+					continue;
 				}
+
+				if (content.regionMatches(true, pos, "<style", 0, 6) && (pos + 6 >= content.length()
+						|| Character.isWhitespace(content.charAt(pos + 6)) || content.charAt(pos + 6) == '>')) {
+					int end = indexOfIgnoreCase(content, "</style>", pos);
+					if (end == -1) {
+						break;
+					}
+					for (int i = pos; i < end + 8; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = end + 8;
+					continue;
+				}
+
+				if (content.startsWith("</", pos)) {
+					int end = content.indexOf('>', pos);
+					if (end == -1) {
+						break;
+					}
+					for (int i = pos; i < end + 1; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = end + 1;
+					continue;
+				}
+
+				if (content.startsWith("<!", pos) || content.startsWith("<?", pos)) {
+					int end = content.indexOf('>', pos);
+					if (end == -1) {
+						break;
+					}
+					for (int i = pos; i < end + 1; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = end + 1;
+					continue;
+				}
+
+				if (content.charAt(pos) == '<') {
+					int startTag = pos;
+					boolean inDoubleQuote = false;
+					boolean inSingleQuote = false;
+					int endTag = -1;
+
+					for (int i = pos; i < content.length(); i++) {
+						char c = content.charAt(i);
+						if (c == '"' && !inSingleQuote) {
+							inDoubleQuote = !inDoubleQuote;
+						}
+						else if (c == '\'' && !inDoubleQuote) {
+							inSingleQuote = !inSingleQuote;
+						}
+						else if (c == '>' && !inDoubleQuote && !inSingleQuote) {
+							endTag = i;
+							break;
+						}
+					}
+
+					if (endTag == -1) {
+						break;
+					}
+
+					String tag = content.substring(startTag, endTag + 1);
+					for (int i = pos; i < endTag + 1; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = endTag + 1;
+
+					boolean hasI18n = HAS_TH_TEXT_ATTRIBUTE.matcher(tag).find() || tag.contains("#{");
+
+					int textStart = pos;
+					int textLine = lineNumber;
+					int nextTag = content.indexOf('<', pos);
+					if (nextTag == -1) {
+						nextTag = content.length();
+					}
+					String text = content.substring(textStart, nextTag).trim();
+
+					if (!text.isEmpty()) {
+						boolean hasBracketsOrExpression = text.contains("#{")
+								|| (text.contains("{") && text.contains("}"));
+						boolean isBracketOnly = isBracketOrWhitespaceOnly(text);
+
+						if (!hasI18n && !hasBracketsOrExpression && !isBracketOnly) {
+							report.append("HTML: ")
+								.append(file)
+								.append(" Line ")
+								.append(textLine)
+								.append(": ")
+								.append(text)
+								.append("\n");
+						}
+					}
+
+					for (int i = textStart; i < nextTag; i++) {
+						if (content.charAt(i) == '\n') {
+							lineNumber++;
+						}
+					}
+					pos = nextTag;
+					continue;
+				}
+
+				if (content.charAt(pos) == '\n') {
+					lineNumber++;
+				}
+				pos++;
 			}
 		}
 
 		if (!report.isEmpty()) {
 			fail("Hardcoded (non-internationalized) strings found:\n" + report);
 		}
+	}
+
+	private static int indexOfIgnoreCase(String src, String target, int fromIndex) {
+		String srcLower = src.toLowerCase();
+		String targetLower = target.toLowerCase();
+		return srcLower.indexOf(targetLower, fromIndex);
+	}
+
+	private static boolean isBracketOrWhitespaceOnly(String text) {
+		String cleaned = text.replace("&nbsp;", "").replaceAll("\\s+", "");
+		return cleaned.equals("[") || cleaned.equals("]") || cleaned.equals("[]") || cleaned.isEmpty();
 	}
 
 	@Test

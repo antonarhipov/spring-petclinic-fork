@@ -1,7 +1,9 @@
 package org.springframework.samples.petclinic.system;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.samples.petclinic.security.PasswordChangeInterceptor;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -23,6 +25,12 @@ import java.util.Locale;
 @Configuration
 @SuppressWarnings("unused")
 public class WebConfiguration implements WebMvcConfigurer {
+
+	private final ObjectProvider<PasswordChangeInterceptor> passwordChangeInterceptorProvider;
+
+	public WebConfiguration(ObjectProvider<PasswordChangeInterceptor> passwordChangeInterceptorProvider) {
+		this.passwordChangeInterceptorProvider = passwordChangeInterceptorProvider;
+	}
 
 	/**
 	 * Uses session storage to remember the user’s language setting across requests.
@@ -55,6 +63,10 @@ public class WebConfiguration implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		registry.addInterceptor(localeChangeInterceptor());
+		PasswordChangeInterceptor interceptor = this.passwordChangeInterceptorProvider.getIfAvailable();
+		if (interceptor != null) {
+			registry.addInterceptor(interceptor);
+		}
 	}
 
 }

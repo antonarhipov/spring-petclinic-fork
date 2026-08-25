@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+  <h2 th:text="'Staff Appointments Management'">Staff Appointments Management</h2>
+
+  <div th:if="${message}" class="alert alert-success">
+    <span th:text="${message}"></span>
+  </div>
+
+  <div th:if="${error}" class="alert alert-danger">
+    <span th:text="${error}"></span>
+  </div>
+
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <div>
+      <a th:href="@{/staff/appointments/new}" class="btn btn-primary" th:text="'Book New Appointment'">Book New Appointment</a>
+      <a th:href="@{/staff/queue}" class="btn btn-warning ms-2" th:text="'Staff Fallback Queue'">Staff Fallback Queue</a>
+    </div>
+    <div>
+      <span class="me-2" th:text="'Filter by Status:'">Filter by Status:</span>
+      <a th:href="@{/staff/appointments}" class="btn btn-sm btn-outline-secondary" th:classappend="${selectedStatus == null ? 'active' : ''}" th:text="'All'">All</a>
+      <a th:href="@{/staff/appointments(status='BOOKED')}" class="btn btn-sm btn-outline-primary" th:classappend="${selectedStatus?.name() == 'BOOKED' ? 'active' : ''}" th:text="'Booked'">Booked</a>
+      <a th:href="@{/staff/appointments(status='COMPLETED')}" class="btn btn-sm btn-outline-success" th:classappend="${selectedStatus?.name() == 'COMPLETED' ? 'active' : ''}" th:text="'Completed'">Completed</a>
+      <a th:href="@{/staff/appointments(status='CANCELLED')}" class="btn btn-sm btn-outline-danger" th:classappend="${selectedStatus?.name() == 'CANCELLED' ? 'active' : ''}" th:text="'Cancelled'">Cancelled</a>
+      <a th:href="@{/staff/appointments(status='NO_SHOW')}" class="btn btn-sm btn-outline-dark" th:classappend="${selectedStatus?.name() == 'NO_SHOW' ? 'active' : ''}" th:text="'No-Show'">No-Show</a>
+    </div>
+  </div>
+
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th th:text="'ID'">ID</th>
+        <th th:text="'Date &amp; Time'">Date &amp; Time</th>
+        <th th:text="'Owner'">Owner</th>
+        <th th:text="'Pet'">Pet</th>
+        <th th:text="'Veterinarian'">Veterinarian</th>
+        <th th:text="'Status'">Status</th>
+        <th th:text="'Reason / Notes'">Reason / Notes</th>
+        <th th:text="'Actions'">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="appt : ${appointments}">
+        <td th:text="${appt.id}">1</td>
+        <td th:text="${#temporals.format(appt.startTime, 'yyyy-MM-dd HH:mm') + ' - ' + #temporals.format(appt.endTime, 'HH:mm')}">2026-08-26 09:00 - 09:30</td>
+        <td th:text="${appt.owner != null ? (appt.owner.firstName + ' ' + appt.owner.lastName) : '-'}">George Franklin</td>
+        <td th:text="${appt.pet != null ? appt.pet.name : '-'}">Leo</td>
+        <td th:text="${appt.vet != null ? (appt.vet.firstName + ' ' + appt.vet.lastName) : '-'}">James Carter</td>
+        <td>
+          <span th:class="'badge ' + (${appt.status.name() == 'BOOKED'} ? 'bg-primary' : (${appt.status.name() == 'COMPLETED'} ? 'bg-success' : (${appt.status.name() == 'CANCELLED'} ? 'bg-danger' : 'bg-secondary')))"
+                th:text="${appt.status}">BOOKED</span>
+        </td>
+        <td>
+          <span th:text="${appt.reason}">Annual Checkup</span>
+          <div th:if="${appt.changeReason != null}" class="text-muted small">
+            <em th:text="'Change Reason:'">Change Reason:</em> <span th:text="${appt.changeReason}"></span>
+          </div>
+        </td>
+        <td>
+          <a th:href="@{/staff/appointments/__${appt.id}__}" class="btn btn-sm btn-info" th:text="'View'">View</a>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(appointments)}">
+        <td colspan="8" class="text-center text-muted" th:text="'No appointments found.'">No appointments found.</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>

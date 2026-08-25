@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+  <h2 th:text="'Direct Appointment Booking (Staff)'">Direct Appointment Booking (Staff)</h2>
+
+  <div th:if="${error}" class="alert alert-danger">
+    <span th:text="${error}"></span>
+  </div>
+
+  <form th:action="@{/staff/appointments/new}" method="post" class="form-horizontal">
+    <div class="mb-3">
+      <label for="ownerSelect" class="form-label" th:text="'Owner:'">Owner:</label>
+      <select id="ownerSelect" name="ownerId" class="form-select" required onchange="updatePets()">
+        <option value="" disabled th:selected="${selectedOwnerId == null}" th:text="'-- Select Owner --'">-- Select Owner --</option>
+        <option th:each="owner : ${owners}" th:value="${owner.id}"
+                th:selected="${selectedOwnerId == owner.id}"
+                th:text="${owner.firstName + ' ' + owner.lastName + ' (' + owner.city + ')'}"
+                th:data-pets="${owner.pets}">George Franklin</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="petSelect" class="form-label" th:text="'Pet:'">Pet:</label>
+      <select id="petSelect" name="petId" class="form-select" required>
+        <option value="" disabled th:selected="${selectedPetId == null}" th:text="'-- Select Pet --'">-- Select Pet --</option>
+        <th:block th:each="owner : ${owners}">
+          <option th:each="pet : ${owner.pets}" th:value="${pet.id}"
+                  th:class="'owner-pet owner-pet-' + ${owner.id}"
+                  th:selected="${selectedPetId == pet.id}"
+                  th:text="${pet.name + ' (' + pet.type + ')'}">Leo (dog)</option>
+        </th:block>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="vetSelect" class="form-label" th:text="'Veterinarian:'">Veterinarian:</label>
+      <select id="vetSelect" name="vetId" class="form-select" required>
+        <option value="" disabled th:selected="${selectedVetId == null}" th:text="'-- Select Veterinarian --'">-- Select Veterinarian --</option>
+        <option th:each="vet : ${vets}" th:value="${vet.id}"
+                th:selected="${selectedVetId == vet.id}"
+                th:text="${vet.firstName + ' ' + vet.lastName}">James Carter</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label for="date" class="form-label" th:text="'Date:'">Date:</label>
+        <input type="date" id="date" name="date" class="form-control"
+               th:value="${date != null ? date : defaultDate}" required />
+      </div>
+      <div class="col-md-4 mb-3">
+        <label for="startTime" class="form-label" th:text="'Start Time:'">Start Time:</label>
+        <input type="time" id="startTime" name="startTime" class="form-control"
+               th:value="${startTime != null ? startTime : defaultTime}" required />
+      </div>
+      <div class="col-md-4 mb-3">
+        <label for="durationMinutes" class="form-label" th:text="'Duration (minutes):'">Duration (minutes):</label>
+        <select id="durationMinutes" name="durationMinutes" class="form-select">
+          <option value="15" th:selected="${durationMinutes == 15}" th:text="'15 minutes'">15 minutes</option>
+          <option value="30" th:selected="${durationMinutes == null || durationMinutes == 30}" th:text="'30 minutes'">30 minutes</option>
+          <option value="45" th:selected="${durationMinutes == 45}" th:text="'45 minutes'">45 minutes</option>
+          <option value="60" th:selected="${durationMinutes == 60}" th:text="'60 minutes'">60 minutes</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="reason" class="form-label" th:text="'Reason / Notes:'">Reason / Notes:</label>
+      <textarea id="reason" name="reason" class="form-control" rows="3" th:text="${reason}"
+                placeholder="Routine checkup, vaccinations, surgery consult, etc."></textarea>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary" th:text="'Book Appointment'">Book Appointment</button>
+      <a th:href="@{/staff/appointments}" class="btn btn-secondary" th:text="'Cancel'">Cancel</a>
+    </div>
+  </form>
+
+</body>
+</html>

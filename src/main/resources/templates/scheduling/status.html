@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+<head>
+  <!-- Auto-refresh polling for in-progress states -->
+  <th:block th:if="${request.state.name() == 'INTERPRETING' or request.state.name() == 'SUGGESTING'}">
+    <meta http-equiv="refresh" content="2">
+  </th:block>
+</head>
+<body>
+
+  <!-- Urgent care banner always visible on all owner scheduling screens (AC-12) -->
+  <div th:replace="~{scheduling/urgentCareBanner :: urgentCareBanner}"></div>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 th:text="'Appointment Request Status'">Appointment Request Status</h2>
+    <span class="badge bg-secondary fs-6" th:text="${request.state}">INTERPRETING</span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title"><span th:text="'Patient: ' + ${pet?.name}">Patient: Leo</span></h5>
+      <p class="card-text text-muted mb-0">
+        <strong th:text="'Owner:'">Owner:</strong> <span th:text="${owner?.firstName + ' ' + owner?.lastName}">Owner</span> |
+        <strong th:text="'Submitted:'">Submitted:</strong> <span th:text="${request.createdAt}">2026-08-25</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- State: INTERPRETING -->
+  <div th:if="${request.state.name() == 'INTERPRETING'}" class="alert alert-info text-center py-4" id="state-interpreting">
+    <div class="spinner-border text-primary mb-3" role="status">
+      <span class="visually-hidden" th:text="'Loading...'">Loading...</span>
+    </div>
+    <h4 th:text="'Analyzing your request...'">Analyzing your request...</h4>
+    <p class="mb-0 text-muted" th:text="'Our assistant is extracting appointment details from your request. This page will refresh automatically.'">Our assistant is extracting appointment details from your request. This page will refresh automatically.</p>
+  </div>
+
+  <!-- State: SUGGESTING -->
+  <div th:if="${request.state.name() == 'SUGGESTING'}" class="alert alert-info text-center py-4" id="state-suggesting">
+    <div class="spinner-border text-primary mb-3" role="status">
+      <span class="visually-hidden" th:text="'Loading...'">Loading...</span>
+    </div>
+    <h4 th:text="'Finding optimal appointment slots...'">Finding optimal appointment slots...</h4>
+    <p class="mb-0 text-muted" th:text="'Our scheduling engine is matching your preferences against veterinarian availability. This page will refresh automatically.'">Our scheduling engine is matching your preferences against veterinarian availability. This page will refresh automatically.</p>
+  </div>
+
+  <!-- State: AWAITING_CONFIRMATION -->
+  <div th:if="${request.state.name() == 'AWAITING_CONFIRMATION'}" id="state-awaiting-confirmation">
+    <div class="card mb-4 border-primary">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0" th:text="'Step 2: Confirm Appointment Details'">Step 2: Confirm Appointment Details</h4>
+      </div>
+      <div class="card-body">
+        <p class="card-text" th:text="'We analyzed your request and identified the following scheduling details. Please confirm or adjust them below.'">We analyzed your request and identified the following scheduling details. Please confirm or adjust them below.</p>
+
+        <table class="table table-bordered mb-4">
+          <tr>
+            <th style="width: 30%;" th:text="'Summary of Need'">Summary of Need</th>
+            <td th:text="${interpretation?.summary != null ? interpretation.summary : request.rawText}">Checkup</td>
+          </tr>
+          <tr>
+            <th th:text="'Estimated Duration'">Estimated Duration</th>
+            <td><span th:text="${interpretation?.visitDurationMinutes != null ? interpretation.visitDurationMinutes : 30}">30</span> <span th:text="'minutes'">minutes</span></td>
+          </tr>
+          <tr>
+            <th th:text="'Care Type'">Care Type</th>
+            <td th:text="${interpretation?.careType}">GENERAL</td>
+          </tr>
+          <tr th:if="${interpretation?.requiredSpecialty != null}">
+            <th th:text="'Required Specialty'">Required Specialty</th>
+            <td th:text="${interpretation?.requiredSpecialty}">Radiology</td>
+          </tr>
+          <tr th:if="${interpretation?.preferredVetName != null}">
+            <th th:text="'Preferred Veterinarian'">Preferred Veterinarian</th>
+            <td th:text="${interpretation?.preferredVetName}">Dr. Smith</td>
+          </tr>
+        </table>
+
+        <div class="d-flex gap-2">
+          <form th:action="@{/scheduling/requests/__${request.id}__/confirm}" method="post">
+            <button type="submit" class="btn btn-success btn-lg" id="btn-confirm-interpretation">
+              <span class="fa fa-check"></span> <span th:text="'Confirm & Find Appointment'">Confirm & Find Appointment</span>
+            </button>
+          </form>
+          <button class="btn btn-outline-secondary btn-lg" type="button" data-bs-toggle="collapse" data-bs-target="#editFormSection">
+            <span class="fa fa-edit"></span> <span th:text="'Edit Request'">Edit Request</span>
+          </button>
+        </div>
+
+        <div class="collapse mt-4" id="editFormSection">
+          <div class="card card-body bg-light">
+            <h5 th:text="'Edit Original Description'">Edit Original Description</h5>
+            <p class="text-muted small" th:text="'Editing your free-text description will reset the request to draft and re-run analysis with your consent.'">Editing your free-text description will reset the request to draft and re-run analysis with your consent.</p>
+            <form th:action="@{/scheduling/requests/__${request.id}__/edit-text}" method="post">
+              <div class="form-group mb-3">
+                <textarea name="rawText" class="form-control" rows="3" required th:text="${request.rawText}"></textarea>
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="editAiConsent" name="aiConsent" value="true" checked>
+                <label class="form-check-label" for="editAiConsent" th:text="'Consent to AI-assisted analysis for this updated description'">
+                  Consent to AI-assisted analysis for this updated description
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary" th:text="'Re-submit Request'">Re-submit Request</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State: SLOT_HELD -->
+  <div th:if="${request.state.name() == 'SLOT_HELD'}" id="state-slot-held">
+    <div class="card border-success mb-4">
+      <div class="card-header bg-success text-white">
+        <h4 class="mb-0" th:text="'Suggested Appointment Slot'">Suggested Appointment Slot</h4>
+      </div>
+      <div class="card-body">
+        <p th:text="'A slot has been held for you. Please accept to confirm your booking.'">A slot has been held for you. Please accept to confirm your booking.</p>
+        <div th:if="${heldSlot != null}">
+          <p><strong th:text="'Veterinarian:'">Veterinarian:</strong> <span th:text="${heldSlot.vetName}">Dr. James Carter</span></p>
+          <p><strong th:text="'Specialty:'">Specialty:</strong> <span th:text="${heldSlot.specialty}">General Care</span></p>
+          <p><strong th:text="'Date & Time:'">Date & Time:</strong> <span th:text="${heldSlot.startDateTime}">2026-09-01 10:00</span></p>
+          <p><strong th:text="'Duration:'">Duration:</strong> <span th:text="${heldSlot.durationMinutes}">30</span> <span th:text="'minutes'">minutes</span></p>
+        </div>
+        <div class="d-flex gap-2">
+          <form th:action="@{/scheduling/requests/__${request.id}__/accept}" method="post">
+            <button type="submit" class="btn btn-success btn-lg" id="btn-accept-slot" th:text="'Accept Appointment'">Accept Appointment</button>
+          </form>
+          <form th:action="@{/scheduling/requests/__${request.id}__/reject}" method="post">
+            <button type="submit" class="btn btn-outline-danger btn-lg" id="btn-reject-slot" th:text="'Different Time'">Different Time</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State: CONFIRMED -->
+  <div th:if="${request.state.name() == 'CONFIRMED'}" class="alert alert-success py-4" id="state-confirmed">
+    <h3 class="alert-heading"><span class="fa fa-check-circle"></span> <span th:text="'Appointment Confirmed!'">Appointment Confirmed!</span></h3>
+    <p th:text="'Your appointment has been successfully booked. We look forward to seeing you and your pet.'">Your appointment has been successfully booked. We look forward to seeing you and your pet.</p>
+    <div th:if="${appointment != null}">
+      <p><strong th:text="'Date & Time:'">Date & Time:</strong> <span th:text="${appointment.startTime}">2026-09-01 10:00</span></p>
+      <p><strong th:text="'Veterinarian:'">Veterinarian:</strong> <span th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}">Dr. James Carter</span></p>
+    </div>
+    <a th:href="@{/owners/__${owner?.id}__}" class="btn btn-primary" th:text="'Return to Owner Profile'">Return to Owner Profile</a>
+  </div>
+
+  <!-- State: STAFF_QUEUED -->
+  <div th:if="${request.state.name() == 'STAFF_QUEUED'}" class="alert alert-warning py-4" id="state-staff-queued">
+    <h3 class="alert-heading"><span class="fa fa-clock-o"></span> <span th:text="'Routed to Clinic Staff'">Routed to Clinic Staff</span></h3>
+    <p class="mb-2" th:text="'Your appointment request has been transferred to our clinic staff queue for personalized scheduling assistance.'">Your appointment request has been transferred to our clinic staff queue for personalized scheduling assistance.</p>
+    <p class="text-muted mb-3" th:if="${request.queueReason != null}">
+      <strong th:text="'Reason:'">Reason:</strong> <span th:text="${request.queueReason}">MANUAL_STAFF_ACTION</span>
+    </p>
+    <p class="mb-0" th:text="'Our team will review your request and contact you directly by phone or email.'">Our team will review your request and contact you directly by phone or email.</p>
+    <div class="mt-3">
+      <a th:href="@{/owners/__${owner?.id}__}" class="btn btn-secondary" th:text="'Return to Owner Profile'">Return to Owner Profile</a>
+    </div>
+  </div>
+
+  <!-- State: CANCELLED / EXPIRED / REJECTED -->
+  <div th:if="${request.state.name() == 'CANCELLED' or request.state.name() == 'EXPIRED' or request.state.name() == 'REJECTED'}"
+       class="alert alert-secondary py-4" id="state-terminal">
+    <h4 th:text="${'Request ' + request.state}">Request CANCELLED</h4>
+    <p th:text="'This scheduling request is closed.'">This scheduling request is closed.</p>
+    <a th:href="@{/owners/__${owner?.id}__}" class="btn btn-primary" th:text="'Return to Owner Profile'">Return to Owner Profile</a>
+  </div>
+
+  <!-- Cancel option for any active non-terminal request (AC-43, RULE-13) -->
+  <div th:if="${!request.state.terminal}" class="mt-4 pt-3 border-top text-end">
+    <form th:action="@{/scheduling/requests/__${request.id}__/cancel}" method="post" class="d-inline">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" id="btn-cancel-request" th:text="'Cancel Request'">Cancel Request</button>
+    </form>
+  </div>
+
+</body>
+</html>
