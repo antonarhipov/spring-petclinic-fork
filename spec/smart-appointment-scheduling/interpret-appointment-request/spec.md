@@ -8,7 +8,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 
 ### Request intake
 
-- The form accepts 1–2,000 characters of normalized plain text and a request-language selection that defaults to the current UI locale.
+- The form accepts 1–2,000 characters of normalized plain text and a request-language selection that defaults to the current UI locale. Normalization applies Unicode NFC, converts CRLF and CR line endings to LF, and trims outer whitespace while preserving internal whitespace and line breaks.
 - English enters the consent and AI flow. Any other selected language creates `STAFF_QUEUED(UNSUPPORTED_LANGUAGE)` without sending text to AI.
 - Localized, application-authored urgent-care guidance and staff-configured clinic contact details are always visible. AI never authors medical guidance.
 - A pet may have only one nonterminal scheduling request. An owner may have one nonterminal request for each of several pets.
@@ -24,16 +24,17 @@ An authenticated owner submits an English free-text request for one owned pet, k
 ### Interpretation execution and schema
 
 - The request is persisted as `INTERPRETING`; a status page polls without starting additional work.
+- Immediately before AI dispatch, the request captures the current duration bounds and default, named-period definitions, owner-horizon length, and guided-hold duration as its interpretation settings. A later staff settings edit does not change the interpretation the owner reviews.
 - AI execution is one attempt with a 60-second hard timeout. Missing configuration, connection failure, timeout, or execution failure creates `STAFF_QUEUED(AI_UNAVAILABLE)`.
-- Output binds to a versioned closed schema containing: factual summary, duration, care type (`GENERAL` or `SPECIALTY`), optional specialty, preferred/allowed/excluded symbolic windows, optional preferred veterinarian, and urgency indication.
-- The server resolves veterinarian and specialty names against the live active catalog and resolves symbolic windows against the confirmed settings snapshot.
-- A weekday without a concrete date represents every matching weekday in the request's owner-horizon snapshot. Named periods resolve using their snapshot definitions.
+- Output binds to a versioned closed schema containing: factual summary, duration, care type (`GENERAL` or `SPECIALTY`), optional specialty, preferred/allowed/excluded symbolic windows, optional preferred veterinarian, urgency indication, and zero or more issue codes from the fixed set `INCOMPLETE_AVAILABILITY`, `CONTRADICTORY_CLINICAL_ROUTING`, and `UNSAFE_CONTENT`.
+- The server resolves veterinarian and specialty names against the live active catalog and resolves named periods against the interpretation settings captured at dispatch.
+- A weekday without a concrete date represents every matching weekday in the concrete owner horizon materialized at confirmation. Named periods retain the definitions captured at dispatch.
 - Missing duration uses the snapshot default. A supplied duration is clamped to the snapshot minimum/maximum and rounded upward to the next valid 15-minute increment without exceeding the maximum.
 
 ### Clarification, review, and confirmation
 
-- Unknown preferred veterinarians and incomplete factual availability create `CLARIFICATION_REQUIRED` so the owner can correct them.
-- Unknown specialty, contradictory clinical routing, malformed schema, or unsafe output creates staff fallback without an automatic AI retry.
+- Unknown preferred veterinarians and `INCOMPLETE_AVAILABILITY` create `CLARIFICATION_REQUIRED` so the owner can correct them.
+- Unknown specialty, `CONTRADICTORY_CLINICAL_ROUTING`, `UNSAFE_CONTENT`, an unknown issue code, or malformed schema creates staff fallback without an automatic AI retry.
 - Excluded windows override allowed and preferred windows. Preferred windows rank within the allowed space.
 - No positive windows means the entire owner horizon is allowed only after the owner explicitly confirms having no time restriction.
 - When exclusions remove every possible owner window, clarification is required before solving.
@@ -42,7 +43,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - Duration, care type, specialty, and urgency are read-only to owners. Reporting one of those fields as wrong creates staff fallback.
 - Changing the original free text requires fresh consent and a new AI interpretation.
 - Editing confirmed factual structured fields releases any hold, clears all prior suggestions and rejections, and returns to `AWAITING_CONFIRMATION`.
-- Confirmation captures duration rules, named-period resolution, owner horizon, and hold duration, then moves the request to `MATCHING`.
+- Confirmation preserves the duration rules, named-period resolution, owner-horizon length, and hold duration captured at AI dispatch; computes the absolute owner-horizon boundaries from the confirmation instant; freezes the resulting request settings snapshot; and moves the request to `MATCHING`.
 
 ## Explicit assumptions
 
@@ -85,7 +86,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - UC3-B20: The system creates `STAFF_QUEUED(AI_UNAVAILABLE)` when Ollama is unconfigured, unreachable, timed out, or fails.
 - UC3-B21: The system accepts AI output only when it conforms to the current closed interpretation schema version.
 - UC3-B22: The system resolves a returned veterinarian or specialty only against the active database catalog.
-- UC3-B23: The system resolves an undated weekday to every matching weekday inside the owner horizon.
+- UC3-B23: The system resolves an undated weekday to every matching weekday inside the concrete owner horizon materialized at confirmation.
 - UC3-B24: The system resolves a named period using the definitions captured for the request.
 - UC3-B25: The system applies the snapshot default when AI omits duration.
 - UC3-B26: The system normalizes a supplied duration to a permitted 15-minute value within the snapshot bounds.
@@ -103,7 +104,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - UC3-B38: The system releases an active hold after the owner edits confirmed factual structured fields.
 - UC3-B39: The system clears prior suggestions and exact rejections after the owner edits confirmed factual structured fields.
 - UC3-B40: The system returns an edited request to `AWAITING_CONFIRMATION` before further matching.
-- UC3-B41: The system captures the request settings snapshot when the owner confirms the interpretation.
+- UC3-B41: The system freezes the captured interpretation settings and materializes the absolute owner horizon when the owner confirms the interpretation.
 - UC3-B42: The system moves a confirmed interpretation to `MATCHING`.
 - UC3-B43: The system permits an owner to move any owned nonterminal request to `CANCELLED`.
 - UC3-B44: The system ignores a late AI result after its request has become terminal.

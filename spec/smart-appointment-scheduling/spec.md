@@ -93,12 +93,12 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 
 1. UC1 establishes an authenticated owner or staff identity and limits every later use case to the actor's authorized data.
 2. UC2 supplies the live veterinarian catalog, clinic rules, and availability consumed by UC3 through UC6.
-3. UC3 creates and confirms a scheduling request. Confirmation snapshots request-level settings and moves the request to `MATCHING`.
+3. UC3 captures interpretation settings immediately before AI dispatch. Confirmation preserves those values, materializes the absolute owner horizon from the confirmation instant, freezes the request snapshot, and moves the request to `MATCHING`.
 4. UC4 solves and holds one automated suggestion. Acceptance creates an appointment and terminates the request as `CONFIRMED`; rejection or expiry returns it to `MATCHING`.
 5. Any defined automation dead end moves the request to UC5 as `STAFF_QUEUED`. Staff may issue one owner-approved offer or book directly after offline coordination.
 6. UC6 owns the resulting appointment independently of the terminal request. Cancelling an appointment never reopens its request; rebooking starts a new request.
 7. UC7 records and communicates state changes from all other use cases, purges sensitive data, and restores safe states after deadlines or interrupted work.
-8. Editing confirmed structured request fields releases any hold, clears suggestions and rejections, returns the request to `AWAITING_CONFIRMATION`, and creates a new settings snapshot after reconfirmation.
+8. Editing confirmed structured request fields releases any hold, clears suggestions and rejections, returns the request to `AWAITING_CONFIRMATION`, and materializes a new absolute owner horizon from the reconfirmation instant while retaining the settings captured for that interpretation.
 
 ## Out of scope
 

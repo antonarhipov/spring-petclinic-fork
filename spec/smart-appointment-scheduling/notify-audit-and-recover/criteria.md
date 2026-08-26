@@ -260,6 +260,12 @@ When the system renders diagnostics, the system shall omit prompts, request text
 
 When Ollama is unavailable, the system shall report that status in staff diagnostics without failing application startup.
 
+### UC7-AC45: Preserve the first linked purge deadline
+
+**Covers:** UC7-B37
+
+When an appointment that already fixed its linked request's purge deadline as `NO_SHOW` is corrected to `COMPLETED`, the system shall preserve the existing purge deadline without extending it.
+
 ## Non-functional
 
 ### UC7-AC44: Couple notifications to state changes transactionally

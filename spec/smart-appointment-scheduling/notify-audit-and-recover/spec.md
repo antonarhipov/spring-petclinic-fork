@@ -25,6 +25,7 @@ The system gives owners durable in-app notice of scheduling changes, records pri
 ### Sensitive-data retention
 
 - A request linked to an appointment retains raw free text and full AI output until 30 days after the appointment becomes `COMPLETED`, `NO_SHOW`, or `CANCELLED`.
+- The first transition of a linked appointment to `COMPLETED`, `NO_SHOW`, or `CANCELLED` fixes that purge deadline. Correcting `NO_SHOW` to `COMPLETED` does not extend it.
 - A request without an appointment retains those fields until 30 days after the request becomes `CANCELLED` or `EXPIRED`.
 - Purge removes raw free text, full AI input/output, and owner-facing factual AI summary.
 - Purge preserves care type, specialty, duration, consent metadata, state history, appointment linkage, and audit metadata. The staff-authored Visit description remains on the Visit.
@@ -101,6 +102,7 @@ The system gives owners durable in-app notice of scheduling changes, records pri
 - UC7-B34: The system shows dependency, configured-model, lifecycle-worker, and migration diagnostics only to staff.
 - UC7-B35: The system omits prompts, request text, and sensitive dependency details from diagnostics.
 - UC7-B36: The system reports Ollama unavailability in staff diagnostics without failing application startup.
+- UC7-B37: The system preserves the original sensitive-data purge deadline when `NO_SHOW` is corrected to `COMPLETED`.
 
 ## Out of scope
 

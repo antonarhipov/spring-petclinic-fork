@@ -28,7 +28,7 @@ A candidate is feasible only when all of these are true:
 
 ### Ranking and disclosure
 
-- Feasible candidates are ordered lexicographically by preferred window, preferred veterinarian, earliest start, and then lighter veterinarian workload.
+- Feasible candidates are ordered lexicographically by preferred window, preferred veterinarian, earliest start, and then lighter veterinarian workload. Workload is the total intersecting minutes of non-cancelled appointments inside the request's owner horizon; temporary holds affect feasibility but not workload.
 - Remaining ties use start instant and veterinarian identifier for stable results.
 - Urgent requests never reach automated ranking.
 - The owner sees only the current suggestion's veterinarian name, specialties, date, start, duration, and hold countdown.

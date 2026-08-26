@@ -260,6 +260,12 @@ When staff cancels a nonterminal request, the system shall remove its active wor
 
 When the claimant revokes a current staff offer, the system shall release its held interval.
 
+### UC5-AC45: Refresh only on successful claim activity
+
+**Covers:** UC5-B35
+
+When a claim is created or reclaimed, or its current claimant commits a successful request mutation, the system shall set claim activity to that commit time; viewing, polling, failed validation, and rejected or unauthorized commands shall leave claim activity unchanged.
+
 ## Non-functional
 
 ### UC5-AC44: Serialize competing claims

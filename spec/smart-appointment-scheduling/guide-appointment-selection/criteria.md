@@ -162,7 +162,7 @@ When candidates are tied on window and veterinarian preference, the system shall
 
 **Covers:** UC4-B21
 
-When candidates are tied on window preference, veterinarian preference, and start ordering, the system shall rank the veterinarian with the lighter workload first.
+When candidates are tied on window preference, veterinarian preference, and start ordering, the system shall rank first the veterinarian with fewer total minutes from non-cancelled appointments intersecting the request's owner horizon; temporary holds shall not contribute to that total.
 
 ### UC4-AC28: Apply stable final tie-breakers
 

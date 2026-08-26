@@ -28,6 +28,7 @@ Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never p
 - `URGENCY` requests appear before all other reasons. Remaining queue entries are FIFO by initial queued time.
 - Staff must atomically claim a request before editing or offering it. Claims are visible to all staff.
 - The claimant may release a claim. A claim with no activity for 30 minutes becomes reclaimable by another staff member.
+- Claiming, reclaiming, and each successful claimant mutation refresh claim activity. Viewing or polling, failed validation, and rejected or unauthorized commands do not refresh it.
 - An active non-stale claim prevents another staff member from modifying the request.
 
 ### Staff completion and owner-approved offers
@@ -101,6 +102,7 @@ Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never p
 - UC5-B32: The system releases an active offer when the overall fallback deadline expires.
 - UC5-B33: The system treats an expired request as non-reopenable.
 - UC5-B34: The system leaves the request queued when a concurrent conflict prevents the submitted staff offer or booking.
+- UC5-B35: The system refreshes claim activity only for claiming, reclaiming, or a successful mutation by the current claimant.
 
 ## Out of scope
 

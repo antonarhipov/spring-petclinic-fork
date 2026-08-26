@@ -36,19 +36,19 @@ When an owner submits a selected request language other than English, the system
 
 **Covers:** UC3-B5
 
-When normalized request text contains between 2 and 1,999 characters, the system shall accept its length when all other intake validation succeeds.
+When request text contains between 2 and 1,999 characters after Unicode NFC normalization, CRLF/CR-to-LF conversion, and outer trimming, the system shall accept its length when all other intake validation succeeds.
 
 ### UC3-AC7: Accept text at the length boundaries
 
 **Covers:** UC3-B5
 
-When normalized request text contains exactly 1 or 2,000 characters, the system shall accept its length when all other intake validation succeeds.
+When request text contains exactly 1 or 2,000 characters after Unicode NFC normalization, CRLF/CR-to-LF conversion, and outer trimming, the system shall accept its length when all other intake validation succeeds.
 
 ### UC3-AC8: Reject text outside the length range
 
 **Covers:** UC3-B5
 
-If normalized request text is empty or exceeds 2,000 characters, then the system shall reject intake and shall not create or dispatch an interpretation.
+If request text is empty or exceeds 2,000 characters after Unicode NFC normalization, CRLF/CR-to-LF conversion, and outer trimming, then the system shall reject intake and shall not create or dispatch an interpretation.
 
 ### UC3-AC9: Block a duplicate active pet request
 
@@ -132,7 +132,7 @@ When the system constructs an AI request, the system shall omit owner contact da
 
 **Covers:** UC3-B17
 
-When a consented English request is ready for AI interpretation, the system shall persist it in `INTERPRETING` before dispatching AI work.
+When a consented English request is ready for AI interpretation, the system shall persist it in `INTERPRETING` with the current duration rules, named-period definitions, owner-horizon length, and hold duration captured before dispatching AI work.
 
 ### UC3-AC23: Poll without duplicate work
 
@@ -162,7 +162,7 @@ If Ollama is unconfigured, unreachable, or returns an execution failure, then th
 
 **Covers:** UC3-B21
 
-If AI output does not conform to the current versioned closed interpretation schema, then the system shall reject the output and shall not use it as a structured interpretation.
+If AI output does not conform to the current versioned closed interpretation schema or contains an issue code outside its fixed catalog, then the system shall reject the output and shall not use it as a structured interpretation.
 
 ### UC3-AC28: Resolve names against active catalog entries
 
@@ -174,7 +174,7 @@ When AI output names a veterinarian or specialty, the system shall resolve the n
 
 **Covers:** UC3-B23
 
-When the interpretation contains a weekday without a concrete date, the system shall resolve it to every matching weekday inside the request's owner-horizon snapshot.
+When the owner confirms an interpretation containing a weekday without a concrete date, the system shall resolve it to every matching weekday inside the concrete owner horizon materialized from the confirmation instant.
 
 ### UC3-AC30: Resolve captured named periods
 
@@ -222,13 +222,13 @@ When AI output names a preferred veterinarian that cannot be resolved to the act
 
 **Covers:** UC3-B28
 
-When the interpreted factual availability is incomplete, the system shall move the request to `CLARIFICATION_REQUIRED`.
+When valid AI output contains `INCOMPLETE_AVAILABILITY`, the system shall move the request to `CLARIFICATION_REQUIRED`.
 
 ### UC3-AC38: Route unsafe interpretation outcomes to staff
 
 **Covers:** UC3-B29
 
-If AI output contains an unknown specialty, contradictory clinical routing, a malformed schema, or unsafe content, then the system shall create `STAFF_QUEUED(INVALID_AI_OUTPUT)` without an automatic AI retry.
+If AI output contains an unknown specialty, `CONTRADICTORY_CLINICAL_ROUTING`, `UNSAFE_CONTENT`, an unknown issue code, or a malformed schema, then the system shall create `STAFF_QUEUED(INVALID_AI_OUTPUT)` without an automatic AI retry.
 
 ### UC3-AC39: Apply excluded windows first
 
@@ -296,11 +296,11 @@ When an owner edits a confirmed factual structured field, the system shall clear
 
 When an owner edits a confirmed factual structured field, the system shall move the request to `AWAITING_CONFIRMATION` before further matching.
 
-### UC3-AC50: Capture settings at confirmation
+### UC3-AC50: Finalize settings at confirmation
 
 **Covers:** UC3-B41
 
-When the owner confirms the structured interpretation, the system shall capture the applicable duration rules, named-period resolution, owner horizon, and hold duration as the request settings snapshot.
+When the owner confirms the structured interpretation, the system shall preserve the interpretation settings captured at AI dispatch, compute the absolute owner-horizon boundaries from the confirmation instant, and freeze the resulting request settings snapshot.
 
 ### UC3-AC51: Enter matching after confirmation
 
