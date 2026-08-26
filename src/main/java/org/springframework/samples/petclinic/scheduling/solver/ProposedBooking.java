@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling.solver;
 
+import java.util.List;
 import ai.timefold.solver.core.api.domain.entity.PlanningEntity;
 import ai.timefold.solver.core.api.domain.variable.PlanningVariable;
 import org.springframework.samples.petclinic.scheduling.ai.UrgencyLevel;
@@ -29,6 +30,8 @@ public class ProposedBooking {
 
 	private UrgencyLevel urgency = UrgencyLevel.ROUTINE;
 
+	private List<PreferredWindow> preferredWindows = List.of();
+
 	@PlanningVariable(valueRangeProviderRefs = "slotRange")
 	private CandidateSlot selectedSlot;
 
@@ -40,9 +43,15 @@ public class ProposedBooking {
 	}
 
 	public ProposedBooking(Integer requestId, int durationMinutes, UrgencyLevel urgency) {
+		this(requestId, durationMinutes, urgency, List.of());
+	}
+
+	public ProposedBooking(Integer requestId, int durationMinutes, UrgencyLevel urgency,
+			List<PreferredWindow> preferredWindows) {
 		this.requestId = requestId;
 		this.durationMinutes = durationMinutes;
 		this.urgency = urgency != null ? urgency : UrgencyLevel.ROUTINE;
+		this.preferredWindows = preferredWindows != null ? preferredWindows : List.of();
 	}
 
 	public Integer getRequestId() {
@@ -67,6 +76,14 @@ public class ProposedBooking {
 
 	public void setUrgency(UrgencyLevel urgency) {
 		this.urgency = urgency != null ? urgency : UrgencyLevel.ROUTINE;
+	}
+
+	public List<PreferredWindow> getPreferredWindows() {
+		return this.preferredWindows;
+	}
+
+	public void setPreferredWindows(List<PreferredWindow> preferredWindows) {
+		this.preferredWindows = preferredWindows != null ? preferredWindows : List.of();
 	}
 
 	public CandidateSlot getSelectedSlot() {

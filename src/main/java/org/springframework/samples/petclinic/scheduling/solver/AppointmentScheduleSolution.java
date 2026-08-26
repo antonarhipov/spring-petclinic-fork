@@ -22,13 +22,13 @@ import ai.timefold.solver.core.api.domain.solution.PlanningScore;
 import ai.timefold.solver.core.api.domain.solution.PlanningSolution;
 import ai.timefold.solver.core.api.domain.solution.ProblemFactCollectionProperty;
 import ai.timefold.solver.core.api.domain.valuerange.ValueRangeProvider;
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.timefold.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
 
 @PlanningSolution
 public class AppointmentScheduleSolution {
 
 	@PlanningScore
-	private HardSoftScore score;
+	private HardMediumSoftScore score;
 
 	@ProblemFactCollectionProperty
 	private List<BookedSlot> bookedSlots;
@@ -63,11 +63,11 @@ public class AppointmentScheduleSolution {
 		this.proposedBooking = proposedBooking;
 	}
 
-	public HardSoftScore getScore() {
+	public HardMediumSoftScore getScore() {
 		return this.score;
 	}
 
-	public void setScore(HardSoftScore score) {
+	public void setScore(HardMediumSoftScore score) {
 		this.score = score;
 	}
 

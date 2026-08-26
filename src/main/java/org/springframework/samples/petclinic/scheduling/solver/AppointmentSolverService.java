@@ -16,9 +16,12 @@
 
 package org.springframework.samples.petclinic.scheduling.solver;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.clinic.AvailabilityService;
 import org.springframework.samples.petclinic.clinic.ClinicSettings;
 import org.springframework.samples.petclinic.scheduling.ai.Interpretation;
+import org.springframework.samples.petclinic.scheduling.ai.SymbolicWindow;
 import org.springframework.samples.petclinic.scheduling.model.RequestExclusion;
 import org.springframework.samples.petclinic.scheduling.model.RequestExclusionRepository;
 import org.springframework.samples.petclinic.scheduling.model.SchedulingRequest;
@@ -113,7 +117,12 @@ public class AppointmentSolverService {
 
 		UrgencyLevel urgency = (interpretation != null && interpretation.urgency() != null) ? interpretation.urgency()
 				: UrgencyLevel.ROUTINE;
-		ProposedBooking proposedBooking = new ProposedBooking(request.getId(), duration, urgency);
+		List<PreferredWindow> preferredWindows = toPreferredWindows(interpretation);
+		if (!preferredWindows.isEmpty()) {
+			log.info("Applying {} preferred window(s) from interpretation for request {}: {}", preferredWindows.size(),
+					request.getId(), preferredWindows);
+		}
+		ProposedBooking proposedBooking = new ProposedBooking(request.getId(), duration, urgency, preferredWindows);
 		AppointmentScheduleSolution problem = new AppointmentScheduleSolution(bookedSlots, availabilities,
 				excludedSlots, candidateSlots, proposedBooking);
 
@@ -136,6 +145,76 @@ public class AppointmentSolverService {
 			log.error("Error solving scheduling for request {}: {}", request.getId(), e.getMessage(), e);
 			throw new IllegalStateException("Solver execution failed", e);
 		}
+	}
+
+	/**
+	 * Translates the AI-extracted preferred {@link SymbolicWindow}s into solver-friendly
+	 * {@link PreferredWindow}s, mapping the coarse part-of-day label onto concrete time
+	 * ranges. Windows that carry no usable constraint are dropped.
+	 */
+	private List<PreferredWindow> toPreferredWindows(Interpretation interpretation) {
+		if (interpretation == null || interpretation.preferredWindows() == null) {
+			return List.of();
+		}
+		LocalDate today = this.availabilityService.getToday();
+		List<PreferredWindow> windows = new ArrayList<>();
+		for (SymbolicWindow window : interpretation.preferredWindows()) {
+			if (window == null) {
+				continue;
+			}
+			LocalDate resolvedDate = resolveDate(window.dayOfWeek(), window.date(), today);
+			LocalTime[] range = partOfDayRange(window.partOfDay());
+			PreferredWindow preferred = new PreferredWindow(window.dayOfWeek(), resolvedDate,
+					range != null ? range[0] : null, range != null ? range[1] : null);
+			if (!preferred.isEmpty()) {
+				windows.add(preferred);
+			}
+		}
+		return windows;
+	}
+
+	/**
+	 * Resolves the concrete calendar date for a requested window. LLMs are unreliable at
+	 * date arithmetic, so the explicitly named day of week is treated as the source of
+	 * truth: when it is present, the concrete date is (re)computed as the next occurrence
+	 * of that weekday on/after today, overriding any inconsistent date the LLM produced
+	 * (e.g. it labelled the request THURSDAY but returned a date that falls on a
+	 * Wednesday). When only a date is given it is trusted as-is; when neither is given
+	 * the result is {@code null}.
+	 */
+	static LocalDate resolveDate(DayOfWeek dayOfWeek, LocalDate date, LocalDate today) {
+		if (dayOfWeek == null) {
+			return date;
+		}
+		// Trust the interpreted date only when it agrees with the named weekday and is
+		// not in the past; otherwise recompute from the weekday.
+		if (date != null && date.getDayOfWeek() == dayOfWeek && !date.isBefore(today)) {
+			return date;
+		}
+		LocalDate resolved = today.with(TemporalAdjusters.nextOrSame(dayOfWeek));
+		if (date != null && !date.equals(resolved)) {
+			log.info("Interpreted date {} ({}) is inconsistent with requested day {}; using next occurrence {}", date,
+					date.getDayOfWeek(), dayOfWeek, resolved);
+		}
+		return resolved;
+	}
+
+	/**
+	 * Maps a part-of-day label onto a concrete {@code [startInclusive, endExclusive)}
+	 * time range using common-sense boundaries. "Afternoon" (e.g. "after lunch") means
+	 * midday onwards but before the evening. Returns {@code null} when the label is
+	 * unknown.
+	 */
+	private LocalTime[] partOfDayRange(String partOfDay) {
+		if (partOfDay == null) {
+			return null;
+		}
+		return switch (partOfDay.trim().toUpperCase()) {
+			case "MORNING" -> new LocalTime[] { LocalTime.MIN, LocalTime.NOON };
+			case "AFTERNOON" -> new LocalTime[] { LocalTime.NOON, LocalTime.of(17, 0) };
+			case "EVENING" -> new LocalTime[] { LocalTime.of(17, 0), LocalTime.MAX };
+			default -> null;
+		};
 	}
 
 	private List<Vet> filterVetsBySpecialty(List<Vet> vets, Interpretation interpretation) {

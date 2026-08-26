@@ -90,6 +90,18 @@ public class AppointmentInterpreter {
 				.call()
 				.entity(Interpretation.class);
 
+			// Log the full structured interpretation returned by the LLM so it is
+			// possible
+			// to tell whether a wrong slot originates from a bad LLM extraction or from
+			// later processing. Enable via:
+			// logging.level.org.springframework.samples.petclinic.scheduling.ai.AppointmentInterpreter=DEBUG
+			if (interpretation != null) {
+				log.debug("LLM interpretation for request text [{}]: {}", rawText, interpretation);
+				log.debug("LLM interpreted time windows - preferred={}, allowed={}, excluded={}",
+						interpretation.preferredWindows(), interpretation.allowedWindows(),
+						interpretation.excludedWindows());
+			}
+
 			return Optional.ofNullable(interpretation);
 		}
 		catch (Exception ex) {

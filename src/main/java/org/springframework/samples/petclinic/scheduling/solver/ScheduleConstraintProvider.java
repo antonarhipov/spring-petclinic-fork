@@ -16,7 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling.solver;
 
-import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
+import ai.timefold.solver.core.api.score.buildin.hardmediumsoft.HardMediumSoftScore;
 import ai.timefold.solver.core.api.score.stream.Constraint;
 import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
 import ai.timefold.solver.core.api.score.stream.ConstraintProvider;
@@ -28,7 +28,8 @@ public class ScheduleConstraintProvider implements ConstraintProvider {
 	@Override
 	public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
 		return new Constraint[] { noOverlapWithBookedSlots(constraintFactory), withinVetAvailability(constraintFactory),
-				noExcludedSlots(constraintFactory), earlierIsBetter(constraintFactory) };
+				noExcludedSlots(constraintFactory), preferRequestedTimeWindow(constraintFactory),
+				earlierIsBetter(constraintFactory) };
 	}
 
 	Constraint noOverlapWithBookedSlots(ConstraintFactory constraintFactory) {
@@ -36,7 +37,7 @@ public class ScheduleConstraintProvider implements ConstraintProvider {
 			.filter(booking -> booking.getSelectedSlot() != null)
 			.join(BookedSlot.class, Joiners.equal(booking -> booking.getSelectedSlot().getVetId(), BookedSlot::vetId))
 			.filter((booking, booked) -> booked.overlapsWith(booking.getSelectedSlot()))
-			.penalize(HardSoftScore.ONE_HARD)
+			.penalize(HardMediumSoftScore.ONE_HARD)
 			.asConstraint("No overlap with booked slots");
 	}
 
@@ -46,7 +47,7 @@ public class ScheduleConstraintProvider implements ConstraintProvider {
 			.ifNotExists(VetAvailability.class,
 					Joiners.equal(booking -> booking.getSelectedSlot().getVetId(), VetAvailability::vetId),
 					Joiners.filtering((booking, avail) -> avail.covers(booking.getSelectedSlot())))
-			.penalize(HardSoftScore.ONE_HARD)
+			.penalize(HardMediumSoftScore.ONE_HARD)
 			.asConstraint("Within vet availability");
 	}
 
@@ -56,14 +57,31 @@ public class ScheduleConstraintProvider implements ConstraintProvider {
 			.join(ExcludedSlot.class,
 					Joiners.equal(booking -> booking.getSelectedSlot().getVetId(), ExcludedSlot::vetId),
 					Joiners.equal(booking -> booking.getSelectedSlot().getStartTime(), ExcludedSlot::startTime))
-			.penalize(HardSoftScore.ONE_HARD)
+			.penalize(HardMediumSoftScore.ONE_HARD)
 			.asConstraint("No excluded slots");
+	}
+
+	/**
+	 * Prefers slots that fall inside one of the owner's requested windows (e.g. a
+	 * specific date, day of week, or part of day such as "after lunch" = afternoon). This
+	 * is a medium-level penalty so it outranks the "earlier is better" soft tie-breaker:
+	 * a matching afternoon slot is chosen over an earlier morning slot. When the owner
+	 * did not express any preference the constraint never fires.
+	 */
+	Constraint preferRequestedTimeWindow(ConstraintFactory constraintFactory) {
+		return constraintFactory.forEach(ProposedBooking.class)
+			.filter(booking -> booking.getSelectedSlot() != null && !booking.getPreferredWindows().isEmpty()
+					&& booking.getPreferredWindows()
+						.stream()
+						.noneMatch(window -> window.matches(booking.getSelectedSlot())))
+			.penalize(HardMediumSoftScore.ONE_MEDIUM)
+			.asConstraint("Prefer requested time window");
 	}
 
 	Constraint earlierIsBetter(ConstraintFactory constraintFactory) {
 		return constraintFactory.forEach(ProposedBooking.class)
 			.filter(booking -> booking.getSelectedSlot() != null)
-			.penalize(HardSoftScore.ONE_SOFT, booking -> {
+			.penalize(HardMediumSoftScore.ONE_SOFT, booking -> {
 				int baseScore = booking.getSelectedSlot().getStartTime().getDayOfYear() * 24
 						+ booking.getSelectedSlot().getStartTime().getHour();
 				int weight = (booking.getUrgency() == UrgencyLevel.URGENT) ? 100 : 1;
