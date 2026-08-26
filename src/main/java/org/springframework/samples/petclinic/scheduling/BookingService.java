@@ -350,7 +350,7 @@ public class BookingService {
 
 	@Transactional(readOnly = true)
 	public Optional<Appointment> getAppointment(Integer appointmentId) {
-		return this.appointments.findById(appointmentId);
+		return this.appointments.findByIdWithDetails(appointmentId);
 	}
 
 	@Transactional(readOnly = true)

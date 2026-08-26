@@ -19,13 +19,22 @@ package org.springframework.samples.petclinic.scheduling.model;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "owner", "pet", "pet.type", "vet" })
 	Optional<Appointment> findBySchedulingRequestId(Integer requestId);
+
+	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "owner", "pet", "pet.type", "vet" })
+	@Query("SELECT a FROM Appointment a WHERE a.id = :id")
+	Optional<Appointment> findByIdWithDetails(@Param("id") Integer id);
 
 	@Transactional(readOnly = true)
 	List<Appointment> findByOwnerId(Integer ownerId);
@@ -34,6 +43,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	List<Appointment> findByPetId(Integer petId);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "owner", "pet", "pet.type", "vet" })
 	List<Appointment> findByOwnerIdAndStatusAndStartTimeAfterOrderByStartTimeAsc(Integer ownerId,
 			AppointmentStatus status, LocalDateTime startTime);
 
@@ -47,9 +57,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	List<Appointment> findByStartTimeBetweenOrderByStartTimeAsc(LocalDateTime start, LocalDateTime end);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "owner", "pet", "pet.type", "vet" })
 	List<Appointment> findByStatusOrderByStartTimeAsc(AppointmentStatus status);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "owner", "pet", "pet.type", "vet" })
 	List<Appointment> findAllByOrderByStartTimeAsc();
 
 }

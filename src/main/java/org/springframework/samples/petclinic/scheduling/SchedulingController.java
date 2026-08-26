@@ -207,7 +207,7 @@ public class SchedulingController {
 
 	@PostMapping("/scheduling/requests/{requestId}/accept")
 	public String acceptSlot(@PathVariable("requestId") int requestId, Authentication authentication) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 
@@ -223,7 +223,7 @@ public class SchedulingController {
 
 	@PostMapping("/scheduling/requests/{requestId}/reject")
 	public String rejectSlot(@PathVariable("requestId") int requestId, Authentication authentication) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 
@@ -245,7 +245,7 @@ public class SchedulingController {
 
 	@PostMapping("/scheduling/requests/{requestId}/cancel")
 	public String cancelRequest(@PathVariable("requestId") int requestId, Authentication authentication) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 
@@ -264,7 +264,7 @@ public class SchedulingController {
 
 	@PostMapping("/scheduling/requests/{requestId}/confirm")
 	public String confirmInterpretation(@PathVariable("requestId") int requestId, Authentication authentication) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 
@@ -281,7 +281,7 @@ public class SchedulingController {
 	public String editText(@PathVariable("requestId") int requestId, @RequestParam("rawText") String rawText,
 			@RequestParam(value = "aiConsent", defaultValue = "false") boolean aiConsent,
 			Authentication authentication) {
-		SchedulingRequest request = this.schedulingRequests.findById(requestId)
+		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
 

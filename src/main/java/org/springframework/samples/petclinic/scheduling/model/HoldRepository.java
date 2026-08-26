@@ -19,12 +19,14 @@ package org.springframework.samples.petclinic.scheduling.model;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface HoldRepository extends JpaRepository<Hold, Integer> {
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "vet", "vet.specialties" })
 	Optional<Hold> findBySchedulingRequestIdAndStatus(Integer requestId, HoldStatus status);
 
 	@Transactional(readOnly = true)

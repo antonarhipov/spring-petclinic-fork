@@ -246,7 +246,7 @@ class SchedulingControllerTests {
 		SchedulingRequest request = new SchedulingRequest();
 		request.setId(TEST_REQUEST_ID);
 		request.setState(RequestState.AWAITING_CONFIRMATION);
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(post("/scheduling/requests/{requestId}/confirm", TEST_REQUEST_ID).with(csrf()))
 			.andExpect(status().is3xxRedirection())
@@ -263,7 +263,7 @@ class SchedulingControllerTests {
 		request.setId(TEST_REQUEST_ID);
 		request.setState(RequestState.AWAITING_CONFIRMATION);
 		request.setRawText("Original description");
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc
 			.perform(post("/scheduling/requests/{requestId}/edit-text", TEST_REQUEST_ID).with(csrf())
@@ -299,7 +299,7 @@ class SchedulingControllerTests {
 	void shouldAcceptSlotAndRedirect() throws Exception {
 		SchedulingRequest request = new SchedulingRequest();
 		request.setId(TEST_REQUEST_ID);
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(post("/scheduling/requests/{requestId}/accept", TEST_REQUEST_ID).with(csrf()))
 			.andExpect(status().is3xxRedirection())
@@ -320,6 +320,7 @@ class SchedulingControllerTests {
 		SchedulingRequest request = new SchedulingRequest();
 		request.setId(TEST_REQUEST_ID);
 		request.setState(RequestState.SLOT_HELD);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(post("/scheduling/requests/{requestId}/reject", TEST_REQUEST_ID).with(csrf()))
@@ -342,7 +343,7 @@ class SchedulingControllerTests {
 		request.setOwner(this.owner);
 		request.setPet(this.pet);
 		request.setState(RequestState.SLOT_HELD);
-		when(this.schedulingRequests.findById(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
 
 		this.mockMvc.perform(post("/scheduling/requests/{requestId}/cancel", TEST_REQUEST_ID).with(csrf()))
 			.andExpect(status().is3xxRedirection())
