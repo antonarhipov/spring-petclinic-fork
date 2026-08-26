@@ -26,7 +26,7 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 
 ### Scheduling and time boundary
 
-- A new `Appointment` represents a future booking. A legacy `Visit` remains a historical clinical record and is created only when an appointment is completed.
+- A new `Appointment` represents a future booking and preserves its care type and optional required specialty. A legacy `Visit` remains a historical clinical record and is created only when an appointment is completed.
 - Veterinarian time is the only solved resource. Rooms, equipment, and assistants are not modeled.
 - Appointment starts and durations use 15-minute increments. The staff-configurable owner horizon defaults to 56 clinic-local calendar days; staff scheduling has a separate 365-day default horizon with a hard maximum of 730 days.
 - Timestamps are stored as absolute instants. A single application property supplies the clinic time zone, defaults to UTC, and causes startup to fail when invalid. Staff cannot edit the time zone.
@@ -39,6 +39,7 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 
 | State | Meaning |
 | --- | --- |
+| `AWAITING_CONSENT` | Valid English text and captured interpretation settings await version-specific AI consent and dispatch. |
 | `INTERPRETING` | A consented English request is awaiting or undergoing AI interpretation. |
 | `CLARIFICATION_REQUIRED` | The owner must resolve an incomplete or ambiguous factual interpretation. |
 | `AWAITING_CONFIRMATION` | The owner must review and confirm structured fields. |
@@ -72,7 +73,7 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 
 ### Privacy, persistence, and compatibility boundary
 
-- Raw text and full AI output are retained until 30 days after a linked appointment becomes terminal, or 30 days after a request without an appointment becomes terminal. Purging preserves only the minimal structured scheduling record and privacy-safe audit metadata.
+- Raw text and full AI output are retained until 30 days after a linked appointment first becomes `COMPLETED`, `NO_SHOW`, or `CANCELLED`, or 30 days after a request without an appointment becomes terminal. Purging preserves only the minimal structured scheduling record and privacy-safe audit metadata.
 - Audit metadata is append-only and retained indefinitely. It never contains passwords, purged AI text, or clinical descriptions.
 - Flyway is the sole schema owner. Fresh databases build the legacy baseline at V1 and add scheduling at V2 or later. Existing databases require an explicit one-time baseline at V1; unknown schemas are never baselined automatically.
 - Authentication and authorization use Spring Security form login. AI integration uses Spring AI 2.0.1 with Ollama. Scheduling uses Timefold 2.5.0 in the single-request boundary defined by UC4.
@@ -93,12 +94,15 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 
 1. UC1 establishes an authenticated owner or staff identity and limits every later use case to the actor's authorized data.
 2. UC2 supplies the live veterinarian catalog, clinic rules, and availability consumed by UC3 through UC6.
-3. UC3 captures interpretation settings immediately before AI dispatch. Confirmation preserves those values, materializes the absolute owner horizon from the confirmation instant, freezes the request snapshot, and moves the request to `MATCHING`.
+3. UC3 captures interpretation settings when valid intake or replacement text is persisted, before language and consent routing. Valid English text enters `AWAITING_CONSENT`; consented dispatch enters `INTERPRETING`; a valid result or fully resolved clarification enters `AWAITING_CONFIRMATION`. Confirmation preserves the captured values, materializes the absolute owner horizon from the confirmation instant, freezes the request snapshot, and moves the request to `MATCHING`.
 4. UC4 solves and holds one automated suggestion. Acceptance creates an appointment and terminates the request as `CONFIRMED`; rejection or expiry returns it to `MATCHING`.
 5. Any defined automation dead end moves the request to UC5 as `STAFF_QUEUED`. Staff may issue one owner-approved offer or book directly after offline coordination.
 6. UC6 owns the resulting appointment independently of the terminal request. Cancelling an appointment never reopens its request; rebooking starts a new request.
 7. UC7 records and communicates state changes from all other use cases, purges sensitive data, and restores safe states after deadlines or interrupted work.
 8. Editing confirmed structured request fields releases any hold, clears suggestions and rejections, returns the request to `AWAITING_CONFIRMATION`, and materializes a new absolute owner horizon from the reconfirmation instant while retaining the settings captured for that interpretation.
+9. Replacing original text in an automated nonterminal state invalidates any active AI or solver operation, releases its guided hold, clears the old structured interpretation, suggestion and rejection history, and materialized horizon, captures current interpretation settings, and returns the request to `AWAITING_CONSENT`. Text replacement is unavailable after staff fallback begins or the request becomes terminal.
+10. When a request first enters `STAFF_QUEUED` without a materialized owner horizon, UC5 materializes that horizon from `first_queued_at` using the settings captured by UC3. A horizon already materialized by owner confirmation is preserved.
+11. Owner cancellation of any owned nonterminal request releases every active reservation and removes any staff claim in the same state transition.
 
 ## Out of scope
 

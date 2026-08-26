@@ -28,8 +28,8 @@ Clinic configuration consists of one versioned settings row, active/deactivated 
 
 ### UC2-RULE5
 **Covers:** UC2-AC43, UC2-AC44
-**MUST** copy duration bounds/default, named-period definitions, owner-horizon length, and guided-hold duration into interpretation settings immediately before AI dispatch. Confirmation MUST preserve those values, calculate absolute horizon boundaries from its own instant, and freeze the request snapshot; later solves MUST combine that snapshot with a newly loaded live calendar and active catalog.
-**Reason:** This records the resolved timing decision and separates stable owner-visible meaning from live capacity.
+**MUST** copy duration bounds/default, named-period definitions, owner-horizon length, and guided-hold duration into request interpretation settings when valid intake or replacement text is persisted, before language and consent routing. Confirmation MUST preserve those values, calculate absolute horizon boundaries from its own instant, and freeze the request snapshot; initial fallback MUST preserve or materialize that horizon as specified by UC5; later solves MUST combine the stable request values with a newly loaded live calendar and active catalog.
+**Reason:** Capturing before routing gives unsupported-language and declined-consent fallback the same stable scheduling meaning as AI-assisted requests while keeping live capacity current.
 
 ### UC2-RULE6
 **Covers:** UC2-AC21–UC2-AC25, UC2-AC46, UC2-AC47

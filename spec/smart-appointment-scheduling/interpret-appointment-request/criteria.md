@@ -132,7 +132,7 @@ When the system constructs an AI request, the system shall omit owner contact da
 
 **Covers:** UC3-B17
 
-When a consented English request is ready for AI interpretation, the system shall persist it in `INTERPRETING` with the current duration rules, named-period definitions, owner-horizon length, and hold duration captured before dispatching AI work.
+When a consented English request is ready for AI interpretation, the system shall persist it in `INTERPRETING` before dispatching AI work.
 
 ### UC3-AC23: Poll without duplicate work
 
@@ -276,7 +276,7 @@ When an owner reports interpreted duration, care type, specialty, or urgency as 
 
 **Covers:** UC3-B37
 
-When an owner changes the original free text, the system shall return the changed version to unconsented interpretation intake.
+While a request is in `AWAITING_CONSENT`, `INTERPRETING`, `CLARIFICATION_REQUIRED`, `AWAITING_CONFIRMATION`, `MATCHING`, or `SLOT_HELD`, when its owner replaces the original free text with a valid new version, the system shall move the request to `AWAITING_CONSENT`.
 
 ### UC3-AC47: Release a hold after confirmed-fact editing
 
@@ -300,7 +300,7 @@ When an owner edits a confirmed factual structured field, the system shall move 
 
 **Covers:** UC3-B41
 
-When the owner confirms the structured interpretation, the system shall preserve the interpretation settings captured at AI dispatch, compute the absolute owner-horizon boundaries from the confirmation instant, and freeze the resulting request settings snapshot.
+When the owner confirms the structured interpretation, the system shall preserve the interpretation settings captured for the current text version, compute the absolute owner-horizon boundaries from the confirmation instant, and freeze the resulting request settings snapshot.
 
 ### UC3-AC51: Enter matching after confirmation
 
@@ -319,6 +319,84 @@ While an owned scheduling request is nonterminal, when its owner cancels it, the
 **Covers:** UC3-B44
 
 If an AI result arrives after its request has become terminal, then the system shall ignore the result and shall preserve the terminal request state.
+
+### UC3-AC54: Capture settings before intake routing
+
+**Covers:** UC3-B45
+
+When valid normalized request intake is accepted, the system shall capture the current duration bounds and default, named-period definitions, owner-horizon length, and guided-hold duration before routing the request by language or consent.
+
+### UC3-AC55: Await consent for valid English intake
+
+**Covers:** UC3-B46
+
+When an owner submits valid English request intake, the system shall persist the request in `AWAITING_CONSENT` before asking for version-specific AI consent.
+
+### UC3-AC56: Send a valid interpretation to owner review
+
+**Covers:** UC3-B47
+
+While a request is `INTERPRETING`, when its valid AI result requires neither clarification nor staff fallback, the system shall move the request to `AWAITING_CONFIRMATION`.
+
+### UC3-AC57: Finish a resolved clarification
+
+**Covers:** UC3-B48
+
+While a request is `CLARIFICATION_REQUIRED`, when an owner edit passes deterministic validation with every clarification issue resolved, the system shall move the request to `AWAITING_CONFIRMATION`.
+
+### UC3-AC58: Retain unresolved clarification
+
+**Covers:** UC3-B49
+
+While a request is `CLARIFICATION_REQUIRED`, when deterministic validation finds a remaining clarification issue after an owner edit, the system shall keep the request in `CLARIFICATION_REQUIRED` with the remaining issues.
+
+### UC3-AC59: Preserve consent state after rate limiting
+
+**Covers:** UC3-B55
+
+While a request is `AWAITING_CONSENT`, when its owner consents but the account has no AI dispatch available in the rolling hour, the system shall keep the request in `AWAITING_CONSENT`.
+
+### UC3-AC60: Invalidate automated work after text replacement
+
+**Covers:** UC3-B50
+
+While a request has active AI or solver work, when its owner replaces the original text, the system shall prevent that work from updating the request.
+
+### UC3-AC61: Clear prior-version derived state
+
+**Covers:** UC3-B51
+
+When an owner replaces permitted original text, the system shall clear the prior structured interpretation, issues, suggestions, exact rejections, and materialized horizon.
+
+### UC3-AC62: Capture settings for replacement text
+
+**Covers:** UC3-B52
+
+When an owner replaces permitted original text, the system shall capture the current duration bounds and default, named-period definitions, owner-horizon length, and guided-hold duration for the new text version.
+
+### UC3-AC63: Reject text replacement after automation
+
+**Covers:** UC3-B53
+
+If an owner attempts to replace original text after the request has entered `STAFF_QUEUED`, `STAFF_OFFERED`, or a terminal state, then the system shall reject the replacement and shall preserve the request.
+
+### UC3-AC64: Clear request resources on owner cancellation
+
+**Covers:** UC3-B54
+
+When an owner cancels a nonterminal request, the system shall release every active request reservation in the cancellation transaction.
+
+### UC3-AC65: Release a guided hold after text replacement
+
+**Covers:** UC3-B56
+
+While a request has an active guided hold, when its owner replaces the original text, the system shall release the hold.
+
+### UC3-AC66: Remove a request claim on owner cancellation
+
+**Covers:** UC3-B57
+
+When an owner cancels a nonterminal request, the system shall remove its staff claim in the cancellation transaction.
 
 ## Coverage exclusions
 

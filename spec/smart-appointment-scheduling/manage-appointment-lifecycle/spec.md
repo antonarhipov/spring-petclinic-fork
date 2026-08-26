@@ -8,7 +8,7 @@ Owners view and cancel their own upcoming bookings. Staff book against the full 
 
 ### Appointment model and visibility
 
-- `Appointment` is separate from legacy `Visit` and records owner, pet, veterinarian, start instant, duration, status, booking source, optional scheduling request, and staff change reason.
+- `Appointment` is separate from legacy `Visit` and records owner, pet, veterinarian, start instant, duration, care type, optional required specialty, status, booking source, optional scheduling request, and staff change reason.
 - Appointment statuses are `BOOKED`, `COMPLETED`, `NO_SHOW`, and `CANCELLED`.
 - Owners may view their own `BOOKED` upcoming appointments. Staff may view all appointments and the full clinic calendar.
 - Multiple future appointments for one owner or pet are permitted only when their intervals do not overlap.
@@ -22,11 +22,14 @@ Owners view and cancel their own upcoming bookings. Staff book against the full 
 ### Staff direct booking, rescheduling, and cancellation
 
 - Staff may directly book without a scheduling request after offline coordination. A nonblank reason is required.
+- Staff must classify an unlinked direct booking as `GENERAL` with no required specialty or `SPECIALTY` with one active required specialty. The care type and optional specialty are stored on the Appointment and cannot be changed by rescheduling.
 - Staff direct booking uses the live calendar, must start in the future, and may be no farther than the configured staff horizon.
 - Staff direct booking, rescheduling, and cancellation apply the same veterinarian, owner, pet, specialty, availability, closure, leave, 15-minute, and DST rules as guided booking.
 - A staff member must resolve or cancel a pet's existing nonterminal scheduling request before creating an unrelated direct booking for that pet.
 - Staff may reschedule only a `BOOKED` appointment to another future feasible interval. The same appointment identity and history are retained, and a nonblank reason is required.
+- Rescheduling reuses the Appointment's stored care type and required specialty when checking veterinarian eligibility. Changing clinical routing requires cancellation and a new direct booking.
 - Staff may cancel a `BOOKED` appointment before its scheduled end with a nonblank reason. Once the end has passed, staff records completion or no-show instead.
+- Successful rescheduling marks every unresolved calendar-conflict record for that appointment resolved as `RESCHEDULED`; successful cancellation marks it resolved as `CANCELLED`. Resolution records the resolving event and instant while retaining the original conflict history.
 
 ### Completion, no-show, and Visit creation
 
@@ -47,14 +50,14 @@ Owners view and cancel their own upcoming bookings. Staff book against the full 
 - Appointment intervals are half-open `[start, end)`.
 - Staff cancellation before scheduled end covers clinic-initiated cancellation after start; after end the record must become completed or no-show.
 - A direct appointment without a request uses booking source `STAFF_DIRECT`.
-- Conflict flags caused by later calendar edits are resolved manually through staff reschedule or cancellation.
+- Conflict flags caused by later calendar edits remain visible until a successful staff reschedule or cancellation records their resolution.
 
 ## Handled edge cases
 
 - A second completion submission resolves to the existing Visit rather than creating another one.
 - An owner cancellation racing with staff reschedule or another cancellation commits at most one valid transition.
 - A deactivated veterinarian cannot receive a new or rescheduled appointment but remains attached to existing appointments.
-- A staff booking beyond the configured owner horizon is valid only within the staff horizon.
+- An unlinked direct booking uses the staff horizon and may therefore be valid beyond the configured owner horizon.
 - A late-arriving pet may be corrected from no-show to completed; a completed Visit is never silently removed.
 - A direct booking attempt while the pet has a nonterminal request requires staff to resolve that request first.
 
@@ -92,6 +95,11 @@ Owners view and cancel their own upcoming bookings. Staff book against the full 
 - UC6-B30: The system excludes legacy Visits from timed overlap calculations.
 - UC6-B31: The system removes the legacy “new visit” route as a booking mechanism.
 - UC6-B32: The system returns the current appointment state after a stale or concurrent lifecycle action instead of applying a second transition.
+- UC6-B33: The system rejects an unlinked direct booking unless its clinical routing is `GENERAL` without a specialty or `SPECIALTY` with one active required specialty.
+- UC6-B34: The system persists the care type and optional required specialty on every Appointment.
+- UC6-B35: The system reuses an Appointment's stored care type and required specialty during rescheduling.
+- UC6-B36: The system marks an appointment's unresolved calendar-conflict records resolved as `RESCHEDULED` after successful rescheduling.
+- UC6-B37: The system marks an appointment's unresolved calendar-conflict records resolved as `CANCELLED` after successful cancellation.
 
 ## Out of scope
 
@@ -99,4 +107,5 @@ Owners view and cancel their own upcoming bookings. Staff book against the full 
 - Automatic reopening of a scheduling request
 - Automatic reversal or deletion of completed Visits
 - Manual standalone historical-Visit entry
+- Changing an Appointment's care type or required specialty through rescheduling
 - Recurring, group, or waitlisted appointments

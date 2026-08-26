@@ -62,7 +62,7 @@ The system gives owners durable in-app notice of scheduling changes, records pri
 - A restart after an AI call was dispatched but before its result was persisted creates recovery fallback rather than another call.
 - A restart during an unexpired hold preserves the remaining time rather than granting a fresh duration.
 - A purge rerun over an already-purged request is harmless.
-- A request confirmed long before its appointment keeps staff-needed context until the appointment is terminal plus 30 days.
+- A request confirmed long before its appointment keeps staff-needed context until 30 days after the appointment first becomes `COMPLETED`, `NO_SHOW`, or `CANCELLED`.
 
 ## Behaviors to verify
 
@@ -81,7 +81,7 @@ The system gives owners durable in-app notice of scheduling changes, records pri
 - UC7-B13: The system retains privacy-safe audit metadata indefinitely.
 - UC7-B14: The system permits staff to view the complete audit history.
 - UC7-B15: The system permits an owner to view only that owner's request and appointment timelines.
-- UC7-B16: The system retains raw text and full AI output for a linked request until 30 days after the linked appointment becomes terminal.
+- UC7-B16: The system retains raw text and full AI output for a linked request until 30 days after the linked appointment first becomes `COMPLETED`, `NO_SHOW`, or `CANCELLED`.
 - UC7-B17: The system retains raw text and full AI output for an unlinked request until 30 days after that request becomes terminal.
 - UC7-B18: The system purges raw free text, full AI input/output, and AI factual summary when the applicable retention deadline passes.
 - UC7-B19: The system preserves care type, specialty, duration, consent metadata, state history, appointment linkage, and audit metadata after purge.

@@ -10,7 +10,7 @@ Components: MVC controllers and form models; explicit transactional application 
 
 Boundaries: Web code performs binding and presentation only. Application services own authorization-sensitive lookup, state transitions, transactions, audit, and notification creation. Ollama and Timefold execute through adapters outside database transactions. Database state remains authoritative when an asynchronous result is committed.
 
-Flow: Intake persists a versioned operation before dispatching AI. Confirmation produces an immutable request snapshot. Matching builds an immutable planning snapshot, asks Timefold for one assignment, then revalidates and reserves that assignment under database locks. Acceptance converts the reservation into an Appointment. Staff fallback and direct lifecycle actions use the same live constraint and reservation services.
+Flow: Valid intake persists a versioned request with captured interpretation settings before language and consent routing. Consent persists an AI operation before dispatch. Confirmation produces an immutable request snapshot, while pre-confirmation fallback materializes the same owner horizon from the initial staff-queue instant. Matching builds an immutable planning snapshot, asks Timefold for one assignment, then revalidates and reserves that assignment under database locks. Acceptance converts the reservation into an Appointment. Staff fallback and direct lifecycle actions use the same live constraint and reservation services.
 
 Key dependencies: reuse Spring MVC, Thymeleaf, Validation, Data JPA, message bundles, and Testcontainers; add Spring Security, Flyway, Spring AI 2.0.1 with Ollama, and Timefold 2.5.0. Do not add Spring Statemachine, Quartz, a message broker, an outbox framework, or Spring Session JDBC.
 
@@ -21,37 +21,37 @@ The existing package-by-domain style, constructor injection, MVC form handling, 
 ## Rules
 
 ### RULE-1
-**Covers:** UC3-AC47–UC3-AC53, UC4-AC33–UC4-AC45, UC5-AC20–UC5-AC43, UC6-AC7–UC6-AC47, UC7-AC12, UC7-AC44
+**Covers:** UC3-AC47–UC3-AC66, UC4-AC33–UC4-AC45, UC5-AC20–UC5-AC48, UC6-AC7–UC6-AC52, UC7-AC12, UC7-AC44
 **MUST** implement request, reservation, appointment, account, and configuration mutations as explicit application-service operations with centralized enum transition policies; controllers, repositories, scheduled workers, and JPA callbacks MUST NOT perform independent workflow transitions.
 **Reason:** The chosen explicit-policy design keeps every permitted transition, transaction boundary, and side effect inspectable without adding Spring Statemachine or hiding behavior in persistence callbacks.
 
 ### RULE-2
-**Covers:** UC2-AC1–UC2-AC5, UC2-AC39, UC2-AC43, UC4-AC6–UC4-AC14, UC4-AC31, UC4-AC39–UC4-AC41, UC5-AC10–UC5-AC18, UC5-AC36–UC5-AC39, UC6-AC15–UC6-AC18, UC6-AC27–UC6-AC39, UC7-AC17–UC7-AC39
+**Covers:** UC2-AC1–UC2-AC5, UC2-AC39, UC2-AC43, UC4-AC6–UC4-AC14, UC4-AC31, UC4-AC39–UC4-AC41, UC5-AC10–UC5-AC18, UC5-AC36–UC5-AC39, UC5-AC46–UC5-AC48, UC6-AC15–UC6-AC18, UC6-AC27–UC6-AC39, UC6-AC51–UC6-AC52, UC7-AC17–UC7-AC39
 **MUST** persist appointments, reservations, operations, locks, and deadlines as `Instant` values; represent recurring clinic rules with `LocalDate`, `LocalTime`, and `DayOfWeek`; and derive all current time and clinic-local conversions from injected `Clock` and validated `ZoneId` beans. A local candidate is bookable only when `ZoneRules.getValidOffsets(localDateTime)` returns exactly one offset.
 **Reason:** One time model is required for deterministic deadlines, exclusive local-date horizons, DST rejection, restart recovery, and tests across three databases.
 
 ### RULE-3
-**Covers:** UC2-AC44, UC2-AC45, UC4-AC15–UC4-AC18, UC4-AC31–UC4-AC48, UC5-AC14–UC5-AC27, UC5-AC35, UC5-AC39, UC5-AC41, UC5-AC43, UC6-AC4–UC6-AC10, UC6-AC19, UC7-AC21, UC7-AC26–UC7-AC36
+**Covers:** UC2-AC44, UC2-AC45, UC3-AC64–UC3-AC65, UC4-AC15–UC4-AC18, UC4-AC31–UC4-AC48, UC5-AC14–UC5-AC27, UC5-AC35, UC5-AC39, UC5-AC41, UC5-AC43, UC6-AC4–UC6-AC10, UC6-AC19, UC7-AC21, UC7-AC26–UC7-AC36
 **MUST** persist guided holds and staff offers in one reservation table containing reservation type, lifecycle status, request, owner, pet, veterinarian, half-open start/end instants, and absolute deadline. Confirmed bookings MUST remain separate Appointment rows, and temporary reservations MUST NOT be represented as provisional appointments or request columns.
 **Reason:** One reservation model gives matching, staff calendar rendering, overlap checks, expiry, cancellation, and recovery a single authoritative source without conflating temporary and confirmed state.
 
 ### RULE-4
-**Covers:** UC3-AC9–UC3-AC11, UC3-AC47–UC3-AC53, UC4-AC31–UC4-AC48, UC5-AC6–UC5-AC11, UC5-AC20–UC5-AC44, UC6-AC4–UC6-AC10, UC6-AC13–UC6-AC27, UC6-AC32–UC6-AC47
+**Covers:** UC3-AC9–UC3-AC11, UC3-AC47–UC3-AC66, UC4-AC31–UC4-AC48, UC5-AC6–UC5-AC11, UC5-AC20–UC5-AC48, UC6-AC4–UC6-AC10, UC6-AC13–UC6-AC27, UC6-AC32–UC6-AC52
 **MUST** protect reservation-changing transactions with JPA pessimistic write locks and live revalidation. When several resource types are involved, locks MUST be acquired in this global order, with identifiers ascending within a type: Owner, Pet, Vet, SchedulingRequest, Appointment, Reservation. External AI or solver work MUST NOT run while a database transaction or pessimistic lock is open.
 **Reason:** Stable row locking is portable across H2, MySQL, and PostgreSQL and serializes races on existing resource rows without relying on vendor-specific interval constraints or serializable-isolation retries.
 
 ### RULE-5
-**Covers:** UC2-AC24–UC2-AC44, UC4-AC1–UC4-AC28, UC4-AC31–UC4-AC32, UC4-AC46–UC4-AC48, UC5-AC13–UC5-AC18, UC5-AC28–UC5-AC32, UC5-AC41, UC6-AC4–UC6-AC6, UC6-AC13–UC6-AC24, UC6-AC42
+**Covers:** UC2-AC24–UC2-AC44, UC4-AC1–UC4-AC28, UC4-AC31–UC4-AC32, UC4-AC46–UC4-AC48, UC5-AC13–UC5-AC18, UC5-AC28–UC5-AC32, UC5-AC41, UC5-AC48, UC6-AC4–UC6-AC6, UC6-AC13–UC6-AC24, UC6-AC42, UC6-AC48–UC6-AC50
 **MUST** define hard scheduling feasibility once as a pure policy over an immutable scheduling snapshot. Timefold MUST own automated feasibility and lexicographic ranking through that policy; after solving, the reservation service MUST rebuild a live snapshot under RULE-4 locks and apply the same policy to the winning assignment before insert. Staff offers, direct bookings, and reschedules MUST call the same policy without invoking Timefold ranking.
 **Reason:** The selected design makes Timefold substantive while preventing constraint drift between automated suggestions and transactional booking paths.
 
 ### RULE-6
-**Covers:** UC3-AC22–UC3-AC26, UC3-AC53, UC4-AC1–UC4-AC5, UC4-AC38, UC7-AC27–UC7-AC36, UC7-AC39
+**Covers:** UC3-AC22–UC3-AC26, UC3-AC53, UC3-AC60, UC4-AC1–UC4-AC5, UC4-AC38, UC7-AC27–UC7-AC36, UC7-AC39
 **MUST** identify every AI or solver execution with a persisted opaque operation token, operation kind, dispatch time, absolute deadline, and attempt count before dispatch. After commit, separate bounded Spring executors MAY run AI and solver tasks once; completion MUST use a conditional state-and-token update, executor rejection MUST enter the specified fallback, and polling or recovery MUST NOT dispatch work.
 **Reason:** Persisted operation identity makes in-process asynchronous execution restart-safe and idempotent without a durable job queue or automatic retries.
 
 ### RULE-7
-**Covers:** UC5-AC20–UC5-AC43, UC6-AC7–UC6-AC47, UC7-AC1–UC7-AC16, UC7-AC44
+**Covers:** UC5-AC20–UC5-AC43, UC6-AC7–UC6-AC52, UC7-AC1–UC7-AC16, UC7-AC44
 **MUST** write the domain mutation, append-only audit metadata, and every required in-app notification explicitly in the same application-service transaction. A rollback MUST remove all three effects, and no asynchronous listener or outbox projection MAY be the source of an owner-visible notification.
 **Reason:** Notifications and audit are local database effects whose required consistency is clearest when controlled by the service committing the state change.
 
@@ -76,7 +76,7 @@ The existing package-by-domain style, constructor injection, MVC form handling, 
 **Reason:** The specification requires two equivalent builds but only one database integration matrix; Maven already owns the project's richer verification lifecycle.
 
 ### RULE-12
-**Covers:** UC3-AC23–UC3-AC26, UC3-AC53, UC4-AC3–UC4-AC5, UC4-AC36–UC4-AC45, UC5-AC6, UC5-AC20–UC5-AC27, UC5-AC37–UC5-AC44, UC6-AC32–UC6-AC47, UC7-AC27–UC7-AC39
+**Covers:** UC3-AC23–UC3-AC26, UC3-AC53, UC3-AC56–UC3-AC66, UC4-AC3–UC4-AC5, UC4-AC36–UC4-AC45, UC5-AC6, UC5-AC20–UC5-AC27, UC5-AC37–UC5-AC48, UC6-AC32–UC6-AC52, UC7-AC27–UC7-AC39
 **MUST** make commands idempotent by checking the locked aggregate's current state, version, operation token, and current reservation before applying effects. Expected stale, conflict, exhausted, clarification, fallback, and not-found outcomes MUST be returned as typed application outcomes rather than converted to unhandled exceptions.
 **Reason:** Polling, browser retries, deadline processing, and concurrent staff/owner actions are normal workflow inputs, not exceptional infrastructure failures.
 

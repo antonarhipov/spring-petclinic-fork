@@ -258,7 +258,7 @@ If a calendar edit conflicts with a confirmed appointment and no reason is suppl
 
 **Covers:** UC2-B31
 
-When staff changes scheduling settings after a request is confirmed, the system shall preserve that request's captured duration rules, named periods, owner horizon, and guided-hold duration.
+When staff changes scheduling settings after a request has captured interpretation settings or materialized its horizon, the system shall preserve that request's captured duration rules, named periods, owner-horizon length, guided-hold duration, and materialized horizon boundaries.
 
 ### UC2-AC44: Use live calendar inputs
 

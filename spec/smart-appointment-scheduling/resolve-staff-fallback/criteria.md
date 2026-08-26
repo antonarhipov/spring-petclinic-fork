@@ -266,6 +266,24 @@ When the claimant revokes a current staff offer, the system shall release its he
 
 When a claim is created or reclaimed, or its current claimant commits a successful request mutation, the system shall set claim activity to that commit time; viewing, polling, failed validation, and rejected or unauthorized commands shall leave claim activity unchanged.
 
+### UC5-AC46: Materialize a missing fallback horizon
+
+**Covers:** UC5-B36
+
+When a request first enters `STAFF_QUEUED` without a materialized owner horizon, the system shall materialize its absolute owner-horizon boundaries from `first_queued_at` using the request's captured settings.
+
+### UC5-AC47: Preserve a confirmed owner horizon
+
+**Covers:** UC5-B37
+
+When a request with an owner horizon already materialized by confirmation enters `STAFF_QUEUED`, the system shall preserve the existing horizon boundaries.
+
+### UC5-AC48: Apply the owner horizon to linked staff slots
+
+**Covers:** UC5-B38
+
+When staff validates an offer or request-linked direct booking, the system shall require its start to fall within the request's materialized owner horizon.
+
 ## Non-functional
 
 ### UC5-AC44: Serialize competing claims

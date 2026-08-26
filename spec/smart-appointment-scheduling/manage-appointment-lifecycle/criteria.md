@@ -278,6 +278,36 @@ If a user requests the legacy “new visit” form or route as a booking mechani
 
 If a stale or concurrent lifecycle action loses to an already committed transition, then the system shall return the current appointment state without applying another transition.
 
+### UC6-AC48: Validate unlinked clinical routing
+
+**Covers:** UC6-B33
+
+If staff submits an unlinked direct booking as `GENERAL` with a required specialty or as `SPECIALTY` without one active required specialty, then the system shall reject the booking and shall not create an Appointment.
+
+### UC6-AC49: Persist appointment clinical routing
+
+**Covers:** UC6-B34
+
+When an Appointment is created, the system shall persist its care type and optional required specialty.
+
+### UC6-AC50: Reuse clinical routing during rescheduling
+
+**Covers:** UC6-B35
+
+When staff reschedules an Appointment, the system shall evaluate veterinarian eligibility using the Appointment's stored care type and required specialty.
+
+### UC6-AC51: Resolve conflicts through rescheduling
+
+**Covers:** UC6-B36
+
+When staff successfully reschedules an Appointment, the system shall mark every unresolved calendar-conflict record for that Appointment resolved as `RESCHEDULED` while retaining its conflict history.
+
+### UC6-AC52: Resolve conflicts through cancellation
+
+**Covers:** UC6-B37
+
+When an Appointment is successfully cancelled, the system shall mark every unresolved calendar-conflict record for that Appointment resolved as `CANCELLED` while retaining its conflict history.
+
 ## Non-functional
 
 ### UC6-AC47: Commit one concurrent lifecycle transition

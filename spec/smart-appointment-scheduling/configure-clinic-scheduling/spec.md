@@ -15,7 +15,7 @@ Staff maintain the clinic rules, veterinarian catalog, recurring availability, d
 - Visit duration defaults to 30 minutes and is staff-configurable in 15-minute increments within the hard range 15–120 minutes.
 - Staff booking horizon defaults to 365 days, is staff-configurable, and cannot exceed 730 days.
 - Named periods default to morning `08:00–12:00`, afternoon `12:00–17:00`, and evening `17:00–20:00`.
-- The owner horizon starts at the next future grid boundary and ends exclusively at the start of the clinic-local date the configured number of days after the confirmation date. The configured staff horizon uses the same local-date boundary rule.
+- The owner horizon starts at the next future grid boundary after its materialization instant and ends exclusively at the start of the clinic-local date the configured number of days after that instant's clinic-local date. Owner confirmation or initial staff fallback supplies the materialization instant. The configured staff horizon uses the same local-date boundary rule.
 
 ### Veterinarian and specialty catalog
 
@@ -39,9 +39,9 @@ Staff maintain the clinic rules, veterinarian catalog, recurring availability, d
 
 - Confirmed appointments stay pinned when a new closure, leave period, or reduced schedule conflicts with them. The system flags each conflict for staff resolution.
 - A configuration change that conflicts with a pinned appointment requires a reason. Other configuration changes record their before/after values without mandatory prose.
-- Active requests retain the duration rules, named-period resolution, owner horizon, and hold duration captured at owner confirmation.
+- Every valid request captures duration rules, named-period definitions, owner-horizon length, and guided-hold duration before language and consent routing. Later setting changes do not alter those captured values or a horizon materialized at owner confirmation or initial staff fallback.
 - Every new solve uses the live veterinarian catalog, appointments, holds, leave, exceptions, and closures.
-- The full staff calendar distinguishes confirmed appointments, five-minute guided holds, and 24-hour staff offers.
+- The full staff calendar distinguishes confirmed appointments, guided holds using their captured duration, and 24-hour staff offers.
 - The `demo-data` profile supplies Monday–Friday `09:00–17:00` weekly schedules for seeded veterinarians.
 
 ## Explicit assumptions
@@ -92,7 +92,7 @@ Staff maintain the clinic rules, veterinarian catalog, recurring availability, d
 - UC2-B28: The system preserves a confirmed appointment when a later calendar edit conflicts with it.
 - UC2-B29: The system flags a confirmed appointment affected by a later calendar edit for staff resolution.
 - UC2-B30: The system requires a reason before saving a calendar edit that conflicts with a confirmed appointment.
-- UC2-B31: The system preserves a request's confirmed settings snapshot after later staff setting changes.
+- UC2-B31: The system preserves a request's captured settings and materialized horizon after later staff setting changes.
 - UC2-B32: The system uses the live effective calendar for every new matching or booking attempt.
 - UC2-B33: The system renders guided holds and staff offers as distinct temporary entries on the staff calendar.
 - UC2-B34: The system seeds weekday `09:00–17:00` schedules for seeded veterinarians when `demo-data` is enabled.

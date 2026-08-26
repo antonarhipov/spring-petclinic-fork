@@ -7,18 +7,18 @@ The SchedulingRequest itself remains the fallback queue item. A single current c
 ## Rules
 
 ### UC5-RULE1
-**Covers:** UC5-AC1–UC5-AC5, UC5-AC36–UC5-AC40
-**MUST** persist fallback reason, immutable `first_queued_at`, and absolute `fallback_deadline` on the request when it first enters `STAFF_QUEUED`. Re-entry after offer rejection or expiry MUST retain those original values. Queue queries MUST order by an explicit urgency sort key and then `first_queued_at`, followed by request identifier for stable pagination.
-**Reason:** The request is the queue item, and durable original timestamps are required for FIFO order and a seven-day lifetime that cannot be reset by later offers.
+**Covers:** UC5-AC1–UC5-AC5, UC5-AC36–UC5-AC40, UC5-AC46–UC5-AC47
+**MUST** persist fallback reason, immutable `first_queued_at`, and absolute `fallback_deadline` on the request when it first enters `STAFF_QUEUED`. If the request has no materialized owner horizon, that transition MUST calculate its absolute boundaries from `first_queued_at` using the captured owner-horizon settings; if boundaries already exist, it MUST preserve them. Re-entry after offer rejection or expiry MUST retain all original values. Queue queries MUST order by an explicit urgency sort key and then `first_queued_at`, followed by request identifier for stable pagination.
+**Reason:** The request is the queue item, and durable original timestamps and horizons are required for stable feasibility, FIFO order, and a seven-day lifetime that later offers cannot reset.
 
 ### UC5-RULE2
 **Covers:** UC5-AC6–UC5-AC11, UC5-AC44, UC5-AC45
-**MUST** represent the current staff claim as one row unique by request with claimant, claimed instant, last-activity instant, and optimistic version. Claim, reclaim, and release MUST lock the SchedulingRequest and claim row; reclaim is valid when `now >= last_activity_at + 30 minutes`. Claiming/reclaiming and a successful claimant mutation MUST set activity to the commit instant, while reads, polling, failed validation, and rejected commands MUST NOT update it.
-**Reason:** One locked current-claim row serializes competing staff and records the resolved definition of activity without letting passive browser traffic hoard work.
+**MUST** represent the current staff claim as one row unique by request with claimant, claimed instant, last-activity instant, absolute `claim_reclaimable_at`, and optimistic version. Claim, reclaim, and release MUST lock the SchedulingRequest and claim row; reclaim is valid when `now >= claim_reclaimable_at`. Claiming, reclaiming, and each successful claimant mutation MUST set last activity to the commit instant and persist `claim_reclaimable_at` as that instant plus 30 minutes, while reads, polling, failed validation, and rejected commands MUST NOT update either value.
+**Reason:** One locked current-claim row serializes competing staff, while an absolute deadline makes inactivity recovery consistent with the shared deadline contract across restarts.
 
 ### UC5-RULE3
-**Covers:** UC5-AC12–UC5-AC14, UC5-AC32
-**MUST** bind staff interpretation edits to the same versioned structured DTO used after AI validation and validate it through the shared catalog, duration, window, and feasibility policies. Staff slot selection MAY use a full calendar projection but MUST submit one veterinarian/start/duration value to the reservation service; it MUST NOT invoke AI or Timefold.
+**Covers:** UC5-AC12–UC5-AC14, UC5-AC32, UC5-AC48
+**MUST** bind staff interpretation edits to the same versioned structured DTO used after AI validation and validate it through the shared catalog, duration, window, and feasibility policies. Staff slot selection MAY use a full calendar projection but MUST submit one veterinarian/start/duration value to the reservation service and MUST use the request's materialized owner horizon; it MUST NOT invoke AI or Timefold.
 **Reason:** Staff can replace the interpretation but cannot bypass the bounded scheduling model or create a second implementation of hard constraints.
 
 ### UC5-RULE4
@@ -27,8 +27,8 @@ The SchedulingRequest itself remains the fallback queue item. A single current c
 **Reason:** The shared reservation model enforces one visible offer and makes the 24-hour/fallback bound and replacement history explicit.
 
 ### UC5-RULE5
-**Covers:** UC5-AC20–UC5-AC32, UC5-AC41
-**MUST** route offer acceptance and fallback direct booking through the common locked Appointment creation service. Direct booking MUST require a normalized nonblank reason, record booking source `STAFF_DIRECT`, and skip AI, Timefold, and owner consent while still applying the live hard-constraint policy. A conflict MUST roll back Appointment and Reservation changes and preserve `STAFF_QUEUED`.
+**Covers:** UC5-AC20–UC5-AC32, UC5-AC41, UC5-AC48
+**MUST** route offer acceptance and fallback direct booking through the common locked Appointment creation service. Direct booking MUST require a normalized nonblank reason, record booking source `STAFF_DIRECT`, use the request's materialized owner horizon, and skip AI, Timefold, and owner consent while still applying the live hard-constraint policy. A conflict MUST roll back Appointment and Reservation changes and preserve `STAFF_QUEUED`.
 **Reason:** Direct completion differs in approval source, not in calendar correctness or transactional guarantees.
 
 ### UC5-RULE6
@@ -85,6 +85,9 @@ The SchedulingRequest itself remains the fallback queue item. A single current c
 | UC5-AC43 | RULE-3, UC5-RULE4, UC5-RULE6 |
 | UC5-AC44 | RULE-4, UC5-RULE2 |
 | UC5-AC45 | UC5-RULE2 |
+| UC5-AC46 | RULE-2, UC5-RULE1 |
+| UC5-AC47 | RULE-2, UC5-RULE1 |
+| UC5-AC48 | RULE-2, RULE-5, UC5-RULE3, UC5-RULE5 |
 
 ## Design Exclusions
 

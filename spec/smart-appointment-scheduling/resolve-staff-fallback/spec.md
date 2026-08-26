@@ -23,6 +23,8 @@ The request moves to `STAFF_QUEUED` for these observable reasons:
 
 Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never presented as a bare no-availability response. A missing required specialty is never downgraded to general care.
 
+Every request reaches fallback with interpretation settings captured by UC3. When owner confirmation has not already materialized an absolute owner horizon, the first `STAFF_QUEUED` transition materializes it from `first_queued_at` using those captured settings. A horizon already materialized by confirmation is preserved. Staff offers and request-linked direct bookings use that owner horizon; unrelated direct bookings without a request use UC6's staff horizon.
+
 ### Queue ordering and claims
 
 - `URGENCY` requests appear before all other reasons. Remaining queue entries are FIFO by initial queued time.
@@ -34,7 +36,7 @@ Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never p
 ### Staff completion and owner-approved offers
 
 - The claimant may replace every structured interpretation field without AI or owner AI consent.
-- Staff edits still use active veterinarians, active specialties, valid durations, and the request's factual owner availability where provided.
+- Staff edits still use active veterinarians, active specialties, the request's captured duration rules and owner horizon, and the request's factual owner availability where provided.
 - Staff may choose one feasible veterinarian and time against the full live calendar. The complete interval is held atomically for up to 24 hours, bounded by the request's seven-day fallback deadline.
 - The owner sees one offer through the request status page and in-app notification, never the calendar.
 - Acceptance creates a `BOOKED` appointment and terminal `CONFIRMED` request.
@@ -56,6 +58,7 @@ Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never p
 - The fallback request itself is the queue item; no second independent work item changes its lifecycle.
 - Staff direct booking from a fallback remains linked to the request for traceability.
 - Staff can view an active claim they do not own but cannot modify its request until the claim is released or stale.
+- Request-linked fallback booking remains within the captured owner horizon; staff can cancel the request and use UC6 direct booking when offline coordination requires a later slot within the staff horizon.
 
 ## Handled edge cases
 
@@ -103,6 +106,9 @@ Ordinary lack of feasible availability is `SUGGESTIONS_EXHAUSTED`; it is never p
 - UC5-B33: The system treats an expired request as non-reopenable.
 - UC5-B34: The system leaves the request queued when a concurrent conflict prevents the submitted staff offer or booking.
 - UC5-B35: The system refreshes claim activity only for claiming, reclaiming, or a successful mutation by the current claimant.
+- UC5-B36: The system materializes a missing owner horizon from the initial staff-queue instant using the request's captured settings.
+- UC5-B37: The system preserves an owner horizon already materialized by confirmation when the request enters fallback.
+- UC5-B38: The system applies the request's materialized owner horizon to staff offers and request-linked direct bookings.
 
 ## Out of scope
 

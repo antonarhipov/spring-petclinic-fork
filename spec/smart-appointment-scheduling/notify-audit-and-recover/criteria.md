@@ -102,13 +102,13 @@ When an owner requests timeline history, the system shall show only request and 
 
 **Covers:** UC7-B16
 
-While fewer than 30 days have elapsed since a linked appointment became `COMPLETED`, `NO_SHOW`, or `CANCELLED`, the system shall retain the request's raw text and full AI output.
+While fewer than 30 days have elapsed since a linked appointment first became `COMPLETED`, `NO_SHOW`, or `CANCELLED`, the system shall retain the request's raw text and full AI output.
 
 ### UC7-AC18: End linked retention at 30 days
 
 **Covers:** UC7-B16, UC7-B18
 
-When 30 days have elapsed since a linked appointment became `COMPLETED`, `NO_SHOW`, or `CANCELLED`, the system shall purge the linked request's sensitive AI data.
+When 30 days have elapsed since a linked appointment first became `COMPLETED`, `NO_SHOW`, or `CANCELLED`, the system shall purge the linked request's sensitive AI data.
 
 ### UC7-AC19: Keep linked sensitive data purged after its deadline
 

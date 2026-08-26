@@ -12,24 +12,27 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - English enters the consent and AI flow. Any other selected language creates `STAFF_QUEUED(UNSUPPORTED_LANGUAGE)` without sending text to AI.
 - Localized, application-authored urgent-care guidance and staff-configured clinic contact details are always visible. AI never authors medical guidance.
 - A pet may have only one nonterminal scheduling request. An owner may have one nonterminal request for each of several pets.
+- Valid intake captures the current duration bounds and default, named-period definitions, owner-horizon length, and guided-hold duration before language and consent routing. English intake is persisted as `AWAITING_CONSENT`; unsupported language uses the same captured settings before entering fallback.
 - Each owner account may dispatch at most ten AI calls in a rolling hour. Every dispatched call counts, including timeout or failure; pre-dispatch validation and non-AI edits do not. Exceeding the limit returns a retry time and does not create fallback work.
+- The hourly allowance is checked before consent is recorded. When no dispatch is currently available, the request remains `AWAITING_CONSENT`; the owner may consent after the displayed retry time without re-entering text.
 
 ### Consent and outbound data
 
 - Consent applies to the exact free-text version displayed to the owner and is recorded before dispatch.
 - The consent screen identifies the data sent to Ollama: free text, pet type without its name, clinic date and time zone, named periods, and veterinarian/specialty names.
 - Owner contact data, account data, pet name, full calendar, existing appointments, and unrelated clinical history are never sent.
-- Declining consent creates `STAFF_QUEUED(CONSENT_DECLINED)` and does not call AI.
+- Declining consent creates `STAFF_QUEUED(CONSENT_DECLINED)`, materializes any missing owner horizon from the initial queue instant, and does not call AI.
 
 ### Interpretation execution and schema
 
 - The request is persisted as `INTERPRETING`; a status page polls without starting additional work.
-- Immediately before AI dispatch, the request captures the current duration bounds and default, named-period definitions, owner-horizon length, and guided-hold duration as its interpretation settings. A later staff settings edit does not change the interpretation the owner reviews.
+- AI dispatch uses the interpretation settings captured for the current text version at intake or replacement. A later staff settings edit does not change the interpretation the owner reviews.
 - AI execution is one attempt with a 60-second hard timeout. Missing configuration, connection failure, timeout, or execution failure creates `STAFF_QUEUED(AI_UNAVAILABLE)`.
 - Output binds to a versioned closed schema containing: factual summary, duration, care type (`GENERAL` or `SPECIALTY`), optional specialty, preferred/allowed/excluded symbolic windows, optional preferred veterinarian, urgency indication, and zero or more issue codes from the fixed set `INCOMPLETE_AVAILABILITY`, `CONTRADICTORY_CLINICAL_ROUTING`, and `UNSAFE_CONTENT`.
-- The server resolves veterinarian and specialty names against the live active catalog and resolves named periods against the interpretation settings captured at dispatch.
-- A weekday without a concrete date represents every matching weekday in the concrete owner horizon materialized at confirmation. Named periods retain the definitions captured at dispatch.
+- The server resolves veterinarian and specialty names against the live active catalog and resolves named periods against the interpretation settings captured for the current text version.
+- A weekday without a concrete date represents every matching weekday in the concrete owner horizon materialized at confirmation. Named periods retain the definitions captured for the current text version.
 - Missing duration uses the snapshot default. A supplied duration is clamped to the snapshot minimum/maximum and rounded upward to the next valid 15-minute increment without exceeding the maximum.
+- A valid result that requires neither clarification nor fallback moves the request from `INTERPRETING` to `AWAITING_CONFIRMATION`.
 
 ### Clarification, review, and confirmation
 
@@ -40,15 +43,17 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - When exclusions remove every possible owner window, clarification is required before solving.
 - Urgency stops automation and creates `STAFF_QUEUED(URGENCY)` at emergency priority.
 - The owner reviews the complete structured interpretation before matching. The owner may edit availability windows, preferred veterinarian, and factual summary without AI.
+- After a clarification edit, deterministic validation moves the request to `AWAITING_CONFIRMATION` only when every clarification issue is resolved; otherwise it remains `CLARIFICATION_REQUIRED` with the remaining issues.
 - Duration, care type, specialty, and urgency are read-only to owners. Reporting one of those fields as wrong creates staff fallback.
-- Changing the original free text requires fresh consent and a new AI interpretation.
+- Changing the original free text in `AWAITING_CONSENT`, `INTERPRETING`, `CLARIFICATION_REQUIRED`, `AWAITING_CONFIRMATION`, `MATCHING`, or `SLOT_HELD` requires fresh consent and a new AI interpretation. The change invalidates any active AI or solver operation, releases a guided hold, clears the prior structured interpretation, issues, suggestions, exact rejections, and materialized horizon, captures current interpretation settings, and moves the request to `AWAITING_CONSENT`.
+- Original-text replacement is rejected without changing the request after it enters `STAFF_QUEUED`, `STAFF_OFFERED`, or a terminal state. The owner may cancel staff work and begin a new request instead.
 - Editing confirmed factual structured fields releases any hold, clears all prior suggestions and rejections, and returns to `AWAITING_CONFIRMATION`.
-- Confirmation preserves the duration rules, named-period resolution, owner-horizon length, and hold duration captured at AI dispatch; computes the absolute owner-horizon boundaries from the confirmation instant; freezes the resulting request settings snapshot; and moves the request to `MATCHING`.
+- Confirmation preserves the duration rules, named-period resolution, owner-horizon length, and hold duration captured for the current text version; computes the absolute owner-horizon boundaries from the confirmation instant; freezes the resulting request settings snapshot; and moves the request to `MATCHING`.
 
 ## Explicit assumptions
 
 - The request language selector is authoritative; the system does not promise automatic language detection.
-- The owner can cancel any nonterminal request. Cancellation does not delete its audit trail immediately.
+- The owner can cancel any nonterminal request. Cancellation releases every request reservation, removes any staff claim, and does not delete its audit trail immediately.
 - Rate limiting is per authenticated account, not per IP, owner record, or pet.
 - AI is a parser into bounded scheduling concepts, not a source of clinic catalogs or medical decisions.
 
@@ -61,6 +66,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - Polling or a repeated form submission never dispatches the same interpretation twice.
 - Editing structured facts after a slot was offered invalidates that offer and its rejection history.
 - A late AI result cannot move a request forward after the owner has cancelled it.
+- A late AI or solver result for a replaced text version cannot move the request out of `AWAITING_CONSENT`.
 
 ## Behaviors to verify
 
@@ -100,7 +106,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - UC3-B34: The system presents the structured interpretation for owner review before matching.
 - UC3-B35: The system permits an owner to edit interpreted availability, preferred veterinarian, and factual summary without calling AI.
 - UC3-B36: The system creates staff fallback when an owner disputes interpreted duration, care type, specialty, or urgency.
-- UC3-B37: The system returns changed original text to unconsented interpretation intake.
+- UC3-B37: The system moves a permitted changed-original-text request to `AWAITING_CONSENT`.
 - UC3-B38: The system releases an active hold after the owner edits confirmed factual structured fields.
 - UC3-B39: The system clears prior suggestions and exact rejections after the owner edits confirmed factual structured fields.
 - UC3-B40: The system returns an edited request to `AWAITING_CONFIRMATION` before further matching.
@@ -108,6 +114,19 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - UC3-B42: The system moves a confirmed interpretation to `MATCHING`.
 - UC3-B43: The system permits an owner to move any owned nonterminal request to `CANCELLED`.
 - UC3-B44: The system ignores a late AI result after its request has become terminal.
+- UC3-B45: The system captures the current interpretation settings before routing every valid intake by language and consent.
+- UC3-B46: The system persists valid English intake as `AWAITING_CONSENT` before requesting consent.
+- UC3-B47: The system moves a valid AI result with no clarification or fallback outcome to `AWAITING_CONFIRMATION`.
+- UC3-B48: The system moves a clarification to `AWAITING_CONFIRMATION` after deterministic validation confirms that every clarification issue is resolved.
+- UC3-B49: The system keeps a request in `CLARIFICATION_REQUIRED` while a clarification issue remains.
+- UC3-B50: The system invalidates active automated work when permitted original text is replaced.
+- UC3-B51: The system clears the prior structured interpretation, issues, suggestions, exact rejections, and materialized horizon when original text is replaced.
+- UC3-B52: The system captures current interpretation settings for a replacement text version.
+- UC3-B53: The system rejects original-text replacement after staff fallback begins or the request becomes terminal.
+- UC3-B54: The system releases every active reservation when an owner cancels a nonterminal request.
+- UC3-B55: The system keeps a rate-limited request in `AWAITING_CONSENT`.
+- UC3-B56: The system releases a guided hold when permitted original text is replaced.
+- UC3-B57: The system removes any staff claim when an owner cancels a nonterminal request.
 
 ## Out of scope
 

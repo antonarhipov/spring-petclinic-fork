@@ -2,13 +2,13 @@
 
 ## Design
 
-Appointment is a new JPA aggregate independent of legacy Visit. It stores timed booking state and an optional unique SchedulingRequest link. Application services own owner cancellation, staff direct booking, rescheduling, cancellation, completion, and no-show commands through the shared lock and feasibility policies. Completion alone creates one legacy Visit through a unique database link.
+Appointment is a new JPA aggregate independent of legacy Visit. It stores timed booking state, durable clinical routing, and an optional unique SchedulingRequest link. Application services own owner cancellation, staff direct booking, rescheduling, cancellation, completion, and no-show commands through the shared lock and feasibility policies. Durable calendar-conflict records are resolved by successful movement or cancellation, and completion alone creates one legacy Visit through a unique database link.
 
 ## Rules
 
 ### UC6-RULE1
-**Covers:** UC6-AC1–UC6-AC6, UC6-AC41–UC6-AC44
-**MUST** persist Appointment with owner, pet, veterinarian, start instant, end instant, duration minutes, status, booking source, optional unique request foreign key, optimistic version, and created/updated instants. Foreign keys MUST retain referenced history, intervals MUST be half-open, and legacy Visit rows MUST NOT be read by any timed-overlap query.
+**Covers:** UC6-AC1–UC6-AC6, UC6-AC41–UC6-AC44, UC6-AC49
+**MUST** persist Appointment with owner, pet, veterinarian, start instant, end instant, duration minutes, care type, optional required-specialty foreign key, status, booking source, optional unique request foreign key, optimistic version, and created/updated instants. Foreign keys MUST retain referenced history, intervals MUST be half-open, and legacy Visit rows MUST NOT be read by any timed-overlap query.
 **Reason:** A distinct timed aggregate preserves legacy clinical history while supporting indexed overlap and concurrency checks.
 
 ### UC6-RULE2
@@ -17,9 +17,9 @@ Appointment is a new JPA aggregate independent of legacy Visit. It stores timed 
 **Reason:** Owner visibility and rebooking semantics differ from staff calendar access and must not reopen the completed request workflow.
 
 ### UC6-RULE3
-**Covers:** UC6-AC13–UC6-AC24, UC6-AC41–UC6-AC42
-**MUST** run staff direct booking and rescheduling through the shared live feasibility policy under RULE-4 locks. Direct booking MUST first lock the Pet and reject any nonterminal request; rescheduling MUST retain the Appointment identifier, require a normalized nonblank reason, append audit before/after metadata, and update the existing row rather than cancel-and-recreate it.
-**Reason:** One command boundary preserves identity/history and makes direct/rescheduled bookings obey the same capacity rules as guided bookings.
+**Covers:** UC6-AC13–UC6-AC24, UC6-AC41–UC6-AC42, UC6-AC48–UC6-AC50
+**MUST** run staff direct booking and rescheduling through the shared live feasibility policy after acquiring every applicable Owner, Pet, Vet, SchedulingRequest, Appointment, and Reservation lock in RULE-4 order. Under those locks, unlinked direct booking MUST reject a nonterminal request for the pet and MUST accept only `GENERAL` with no required specialty or `SPECIALTY` with one active required specialty. Rescheduling MUST retain the Appointment identifier and stored clinical routing, require a normalized nonblank reason, append audit before/after metadata, and update the existing row rather than cancel-and-recreate it.
+**Reason:** One globally ordered command boundary prevents deadlocks, preserves identity and clinical routing, and makes direct or rescheduled bookings obey the same capacity rules as guided bookings.
 
 ### UC6-RULE4
 **Covers:** UC6-AC7–UC6-AC10, UC6-AC21–UC6-AC27, UC6-AC40, UC6-AC46, UC6-AC47
@@ -35,6 +35,11 @@ Appointment is a new JPA aggregate independent of legacy Visit. It stores timed 
 **Covers:** UC6-AC45
 **MUST** remove the legacy new-Visit navigation, GET handler, POST handler, and booking form from the runnable application. Historical Visit rendering MAY remain, but no service or route MAY persist a standalone Visit except UC6-RULE5.
 **Reason:** Merely hiding the old link would leave a second direct URL booking path that bypasses timed scheduling constraints.
+
+### UC6-RULE7
+**Covers:** UC6-AC51–UC6-AC52
+**MUST** resolve every unresolved calendar-conflict record linked to an Appointment in the same transaction as its successful reschedule or cancellation. Resolution MUST persist `RESCHEDULED` or `CANCELLED`, the resolving audit-event identifier, and the injected-clock instant while retaining the original conflict and configuration-event data.
+**Reason:** Atomic durable resolution removes stale staff work without erasing why the conflict existed or how it was resolved.
 
 ## Cross-Reference
 
@@ -87,6 +92,11 @@ Appointment is a new JPA aggregate independent of legacy Visit. It stores timed 
 | UC6-AC45 | UC6-RULE6 |
 | UC6-AC46 | RULE-12, UC6-RULE4 |
 | UC6-AC47 | RULE-4, RULE-12, UC6-RULE4 |
+| UC6-AC48 | RULE-4, RULE-5, UC6-RULE3 |
+| UC6-AC49 | UC6-RULE1, UC6-RULE3 |
+| UC6-AC50 | RULE-5, UC6-RULE3 |
+| UC6-AC51 | RULE-2, RULE-4, RULE-7, UC6-RULE4, UC6-RULE7 |
+| UC6-AC52 | RULE-2, RULE-4, RULE-7, UC6-RULE2, UC6-RULE4, UC6-RULE7 |
 
 ## Design Exclusions
 
