@@ -1,0 +1,862 @@
+tasks:
+  feature: "smart-appointment-scheduling"
+  review_verdict: "PASS"
+  organizing_principle: "risk_first then feature_slice"
+
+  assumptions:
+    - "The validated review reports PASS with no unresolved findings; all five review risk hotspots are attached to implementation tasks."
+    - "New code follows the existing package-by-domain style under org.springframework.samples.petclinic, with scheduling, security, and system support packages introduced where the current codebase has no suitable boundary."
+    - "Each implementation task includes focused automated tests for its acceptance criteria; phase checkpoints run the accumulated suite rather than deferring testing to the final phase."
+    - "Docker is required for the MySQL and PostgreSQL migration/concurrency matrix; H2 and focused MVC/unit tests remain runnable without Docker."
+    - "No acceptance criterion is deferred."
+
+  decisions:
+    - id: dec-1
+      decision: "Establish the load-bearing migration, time, locking, security, and privacy boundaries before completing use-case slices."
+      reason: "The review identifies five cross-cutting hotspots that would otherwise force rework across every scheduling flow."
+      alternatives: ["Start with owner intake as a walking skeleton", "Implement one phase per use case"]
+    - id: dec-2
+      decision: "Use vendor-specific Flyway V1 legacy baselines and V2 scheduling migrations before adding JPA mappings that require the new schema."
+      reason: "Flyway must become the sole schema owner while preserving fresh-database sample semantics and requiring an explicit V1 baseline for verified legacy databases."
+      alternatives: ["Retain schema.sql for legacy tables", "Enable automatic Flyway baselining"]
+    - id: dec-3
+      decision: "Centralize state transitions, global lock acquisition, operation tokens, hard feasibility, reservations, audit, and notifications as shared application-service primitives."
+      reason: "Guided matching, staff fallback, appointment lifecycle, recovery, and concurrent cleanup must use identical transactional rules."
+      alternatives: ["Implement workflow logic independently in each controller", "Use database-vendor-specific interval locking"]
+    - id: dec-4
+      decision: "Let Maven own the H2, MySQL, and PostgreSQL migration/concurrency matrix while Gradle runs the equivalent unit and MVC security suite."
+      reason: "This preserves build equivalence without duplicating the expensive database matrix."
+      alternatives: ["Duplicate the database matrix in both builds", "Run database verification only against H2"]
+    - id: dec-5
+      decision: "Hand off from risk-first foundations to feature slices after phase-1 security and persistence checks pass."
+      reason: "After the shared boundaries are proven, UC2 through UC7 can be implemented in dependency order with end-to-end feedback at every checkpoint."
+      alternatives: ["Continue with a fully layered implementation", "Delay all UI work until every backend component exists"]
+
+  coverage_deferrals: []
+
+  phases:
+    - id: phase-1
+      name: "Risk foundations and secure access"
+      description: "Move the builds and database to the required platform, establish shared transactional primitives, and secure the existing application before scheduling routes are added."
+      covers:
+        - UC1-AC1
+        - UC1-AC2
+        - UC1-AC3
+        - UC1-AC4
+        - UC1-AC5
+        - UC1-AC6
+        - UC1-AC7
+        - UC1-AC8
+        - UC1-AC9
+        - UC1-AC10
+        - UC1-AC11
+        - UC1-AC12
+        - UC1-AC13
+        - UC1-AC14
+        - UC1-AC15
+        - UC1-AC16
+        - UC1-AC17
+        - UC1-AC18
+        - UC1-AC19
+        - UC1-AC20
+        - UC1-AC21
+        - UC1-AC22
+        - UC1-AC23
+        - UC1-AC24
+        - UC1-AC25
+        - UC1-AC26
+        - UC1-AC27
+        - UC1-AC28
+        - UC1-AC29
+        - UC1-AC30
+        - UC1-AC31
+        - UC1-AC32
+        - UC1-AC33
+        - UC1-AC34
+        - UC1-AC35
+        - UC1-AC36
+        - UC1-AC37
+        - UC1-AC38
+        - UC1-AC39
+        - UC1-AC40
+        - UC1-AC41
+        - UC1-AC42
+        - UC1-AC43
+        - UC1-AC44
+        - UC1-AC45
+        - UC1-AC46
+        - UC1-AC47
+        - UC7-AC13
+        - UC7-AC14
+        - UC7-AC25
+
+      tasks:
+        - id: task-1.1
+          name: "Align Java 21 builds and scheduling dependencies"
+          description: "Upgrade Maven, Gradle, and both CI workflows to Java 21; add equivalent Spring Security, Flyway, Spring AI 2.0.1 Ollama, and Timefold 2.5.0 dependencies; reserve the Maven workflow for the later database matrix."
+          artifact: "pom.xml, build.gradle, .github/workflows/maven-build.yml, .github/workflows/gradle-build.yml"
+          covers:
+            acs: []
+            rules: [RULE-9, RULE-11]
+          depends_on: []
+          complexity: "M"
+          validation: "Resolve both dependency graphs on Java 21, run the existing unit suite through both wrappers, and verify the Gradle workflow does not define the database matrix."
+
+        - id: task-1.2
+          name: "Replace SQL initialization with Flyway baselines"
+          description: "Disable Spring SQL initialization; create vendor-specific V1 migrations reproducing every legacy table and sample-data semantic; add V2-or-later scheduling schema migrations, indexes, foreign keys, guard rows, and uniqueness constraints; document and test explicit V1 baselining and unknown-schema refusal."
+          artifact: "src/main/resources/db/migration/{h2,mysql,postgres}/V1__legacy_baseline.sql, V2__smart_appointment_scheduling.sql, application profile properties, migration tests"
+          covers:
+            acs: []
+            rules: [RULE-9, RULE-11]
+          depends_on: [task-1.1]
+          complexity: "L"
+          validation: "Compare fresh Flyway databases with the current legacy schema/data, verify an explicitly baselined legacy schema migrates to scheduling, and verify an unknown non-empty schema fails."
+          risk: "Review hotspot 1: three vendor-specific V1 scripts must reproduce current schema and sample-data semantics on fresh and explicitly baselined databases."
+
+        - id: task-1.3
+          name: "Add shared scheduling persistence and command kernel"
+          description: "Map the account, clinic settings, request, operation, reservation, rejection, claim, appointment, conflict, notification, and audit aggregates; add optimistic versions, absolute deadlines, typed outcomes, centralized transition policies, injected Clock/ZoneId support, and one global pessimistic lock coordinator in Owner-Pet-Vet-Request-Appointment-Reservation order."
+          artifact: "src/main/java/org/springframework/samples/petclinic/{security,scheduling,system}/ domain, repository, transition, time, and locking types with repository tests"
+          covers:
+            acs: []
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-5, RULE-6, RULE-7, RULE-10, RULE-12]
+          depends_on: [task-1.2]
+          complexity: "L"
+          validation: "Run JPA mapping tests, transition-policy tests, deadline/time-zone tests, and opposing lock-order tests proving backward-only lock acquisition and typed stale outcomes."
+          risk: "Review hotspot 2: replacement, cancellation, reservation, reschedule, and cleanup must share centralized ordered locks and terminal-state checks."
+
+        - id: task-1.4
+          name: "Establish form login and the route matrix"
+          description: "Configure form login, CSRF, session-fixation protection, forced-password-change routing, role-aware navigation, public liveness/readiness, STAFF protection for existing /owners routes, authentication for owner self-service, and localized login/security messages."
+          artifact: "src/main/java/org/springframework/samples/petclinic/security web configuration and handlers; Thymeleaf layout/login fragments; MVC security tests"
+          covers:
+            acs: [UC1-AC1, UC1-AC2, UC1-AC3, UC1-AC4, UC1-AC5, UC1-AC17, UC1-AC30, UC1-AC31, UC1-AC38, UC1-AC39, UC1-AC47]
+            rules: [RULE-8, RULE-10, UC1-RULE1, UC1-RULE3, UC1-RULE6]
+          depends_on: [task-1.1, task-1.2, task-1.3]
+          complexity: "L"
+          validation: "Run an explicit public/owner/staff MockMvc route matrix, navigation assertions, CSRF rejection tests, forced-change redirects, session rotation checks, and all pre-existing controller tests under security."
+          risk: "Review hotspot 5: form login and CSRF retrofit every legacy controller test and direct route, so the public/owner/staff matrix must remain explicit."
+
+        - id: task-1.5
+          name: "Implement account administration and session invalidation"
+          description: "Implement normalized unique accounts, BCrypt temporary and replacement passwords, provisioning, bootstrap/demo initialization, profile conflict checks, password reset/change, login lockout, unlock, rename, deactivation, final-staff protection, immutable role/Owner links, audit hooks, and post-commit invalidation of every registered session."
+          artifact: "src/main/java/org/springframework/samples/petclinic/security account services, repositories, forms, controllers, initializers, session registry integration, templates, and tests"
+          covers:
+            acs: [UC1-AC14, UC1-AC15, UC1-AC16, UC1-AC18, UC1-AC19, UC1-AC20, UC1-AC21, UC1-AC22, UC1-AC23, UC1-AC24, UC1-AC25, UC1-AC26, UC1-AC27, UC1-AC28, UC1-AC29, UC1-AC32, UC1-AC33, UC1-AC34, UC1-AC35, UC1-AC36, UC1-AC37, UC1-AC40, UC1-AC41, UC1-AC42, UC1-AC43, UC1-AC44, UC1-AC45, UC1-AC46]
+            rules: [RULE-1, RULE-7, RULE-8, RULE-10, RULE-12, UC1-RULE2, UC1-RULE3, UC1-RULE5]
+          depends_on: [task-1.4]
+          complexity: "L"
+          validation: "Test case-insensitive and Owner-link uniqueness, password boundaries, lockout deadlines with an injected clock, concurrent final-staff mutations, idempotent bootstrap/demo behavior, startup refusal, identity immutability, audit safety, and multi-session invalidation."
+
+        - id: task-1.6
+          name: "Add owner self-service and safe veterinarian projections"
+          description: "Add ownership-scoped profile and pet forms using allowlisted DTOs, preserve deletion and reassignment prohibitions, return indistinguishable 404 results for foreign resources, and replace owner-visible veterinarian entity serialization with name/specialty-only HTML and JSON projections."
+          artifact: "src/main/java/org/springframework/samples/petclinic/owner self-service services/controllers/forms; vet projections; owner templates and MVC tests"
+          covers:
+            acs: [UC1-AC6, UC1-AC7, UC1-AC8, UC1-AC9, UC1-AC10, UC1-AC11, UC1-AC12, UC1-AC13]
+            rules: [RULE-8, UC1-RULE4, UC1-RULE6]
+          depends_on: [task-1.4, task-1.5]
+          complexity: "M"
+          validation: "Verify owned profile/pet updates, foreign and absent identifiers both return 404, deletion/reassignment fields cannot bind, and owner HTML/JSON never contains schedules or availability."
+
+        - id: task-1.7
+          name: "Create privacy-safe audit and notification infrastructure"
+          description: "Add append-only safe audit metadata, keyed notification persistence, allowlisted metadata serializers, transactional writer APIs, sensitive-field-safe toString/exception/logging conventions, and tests that prohibit mutable or sensitive payloads."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/support audit and notification infrastructure; logging configuration; privacy tests"
+          covers:
+            acs: [UC7-AC13, UC7-AC14, UC7-AC25]
+            rules: [RULE-7, RULE-8, RULE-10, UC7-RULE2, UC7-RULE7]
+          depends_on: [task-1.2, task-1.3]
+          complexity: "M"
+          validation: "Persist and query immutable database-neutral audit metadata, reject non-allowlisted values, verify audit retention has no delete path, and capture logs to prove passwords and request text are absent."
+
+      checkpoint:
+        id: cp-1
+        description: "Review the platform migration and secure application boundary before scheduling workflows are built on it."
+        criteria:
+          - "Fresh and explicitly baselined H2 databases reach the scheduling schema; unknown non-empty schemas fail."
+          - "The public/owner/staff route matrix, CSRF, forced password change, lockout, and session invalidation tests pass."
+          - "Shared time, transition, operation, reservation, privacy, and global lock-order primitives are covered by focused tests."
+          - "Both Java 21 builds run the accumulated unit and MVC suites."
+
+    - id: phase-2
+      name: "Clinic calendar and interpreted request"
+      description: "Build the live clinic calendar and complete the owner intake, consent, AI interpretation, clarification, confirmation, replacement, and cancellation slice."
+      covers:
+        - UC2-AC1
+        - UC2-AC2
+        - UC2-AC3
+        - UC2-AC4
+        - UC2-AC5
+        - UC2-AC6
+        - UC2-AC7
+        - UC2-AC8
+        - UC2-AC9
+        - UC2-AC10
+        - UC2-AC11
+        - UC2-AC12
+        - UC2-AC13
+        - UC2-AC14
+        - UC2-AC15
+        - UC2-AC16
+        - UC2-AC17
+        - UC2-AC18
+        - UC2-AC19
+        - UC2-AC20
+        - UC2-AC21
+        - UC2-AC22
+        - UC2-AC23
+        - UC2-AC24
+        - UC2-AC25
+        - UC2-AC26
+        - UC2-AC27
+        - UC2-AC28
+        - UC2-AC29
+        - UC2-AC30
+        - UC2-AC31
+        - UC2-AC32
+        - UC2-AC33
+        - UC2-AC34
+        - UC2-AC35
+        - UC2-AC36
+        - UC2-AC37
+        - UC2-AC38
+        - UC2-AC39
+        - UC2-AC40
+        - UC2-AC41
+        - UC2-AC42
+        - UC2-AC43
+        - UC2-AC44
+        - UC2-AC45
+        - UC2-AC46
+        - UC2-AC47
+        - UC2-AC48
+        - UC2-AC49
+        - UC2-AC50
+        - UC2-AC51
+        - UC3-AC1
+        - UC3-AC2
+        - UC3-AC3
+        - UC3-AC4
+        - UC3-AC5
+        - UC3-AC6
+        - UC3-AC7
+        - UC3-AC8
+        - UC3-AC9
+        - UC3-AC10
+        - UC3-AC11
+        - UC3-AC12
+        - UC3-AC13
+        - UC3-AC14
+        - UC3-AC15
+        - UC3-AC16
+        - UC3-AC17
+        - UC3-AC18
+        - UC3-AC19
+        - UC3-AC20
+        - UC3-AC21
+        - UC3-AC22
+        - UC3-AC23
+        - UC3-AC24
+        - UC3-AC25
+        - UC3-AC26
+        - UC3-AC27
+        - UC3-AC28
+        - UC3-AC29
+        - UC3-AC30
+        - UC3-AC31
+        - UC3-AC32
+        - UC3-AC33
+        - UC3-AC34
+        - UC3-AC35
+        - UC3-AC36
+        - UC3-AC37
+        - UC3-AC38
+        - UC3-AC39
+        - UC3-AC40
+        - UC3-AC41
+        - UC3-AC42
+        - UC3-AC43
+        - UC3-AC44
+        - UC3-AC45
+        - UC3-AC46
+        - UC3-AC47
+        - UC3-AC48
+        - UC3-AC49
+        - UC3-AC50
+        - UC3-AC51
+        - UC3-AC52
+        - UC3-AC53
+        - UC3-AC54
+        - UC3-AC55
+        - UC3-AC56
+        - UC3-AC57
+        - UC3-AC58
+        - UC3-AC59
+        - UC3-AC60
+        - UC3-AC61
+        - UC3-AC62
+        - UC3-AC63
+        - UC3-AC64
+        - UC3-AC65
+        - UC3-AC66
+
+      tasks:
+        - id: task-2.1
+          name: "Implement clinic settings and time configuration"
+          description: "Bind and validate the application-owned clinic ZoneId, expose one versioned settings form for duration bounds, owner/staff horizons, guided-hold duration, named periods, and urgent-care contact details, and calculate future grid and exclusive local-date boundaries from the injected clock."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/config settings/time services, staff controller/forms/templates, and tests"
+          covers:
+            acs: [UC2-AC1, UC2-AC2, UC2-AC3, UC2-AC4, UC2-AC5, UC2-AC6, UC2-AC7, UC2-AC8, UC2-AC9, UC2-AC10, UC2-AC11, UC2-AC12, UC2-AC13, UC2-AC14, UC2-AC15, UC2-AC16, UC2-AC17, UC2-AC18, UC2-AC19, UC2-AC48, UC2-AC50, UC2-AC51]
+            rules: [RULE-2, RULE-7, UC2-RULE1]
+          depends_on: [task-1.3, task-1.4, task-1.7]
+          complexity: "M"
+          validation: "Test defaults and every settings boundary atomically, invalid-zone startup, absence of a zone form field, optimistic-stale edits, localized urgent guidance, and grid/horizon behavior around zone and DST boundaries."
+
+        - id: task-2.2
+          name: "Implement veterinarian catalog and effective availability"
+          description: "Add active/deactivated veterinarian and specialty commands, assignments, cache eviction, weekly split shifts, modified and extra hours, inclusive leave and closures, strict range validation, precedence resolution, unique-offset DST conversion, and idempotent demo schedules."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/calendar catalog/calendar services, repositories, staff MVC, cache hooks, and tests"
+          covers:
+            acs: [UC2-AC20, UC2-AC21, UC2-AC22, UC2-AC23, UC2-AC24, UC2-AC25, UC2-AC26, UC2-AC27, UC2-AC28, UC2-AC29, UC2-AC30, UC2-AC31, UC2-AC32, UC2-AC33, UC2-AC34, UC2-AC35, UC2-AC36, UC2-AC37, UC2-AC38, UC2-AC39, UC2-AC46, UC2-AC47, UC2-AC49]
+            rules: [RULE-2, RULE-5, RULE-7, UC2-RULE2, UC2-RULE3, UC2-RULE6]
+          depends_on: [task-2.1]
+          complexity: "L"
+          validation: "Run catalog/deactivation/cache tests and table-driven effective-availability tests for precedence, adjacency normalization, inclusive dates, overlap/grid rejection, invalid DST offsets, eligibility, and idempotent demo initialization."
+
+        - id: task-2.3
+          name: "Preserve pinned bookings and render the staff calendar"
+          description: "Evaluate calendar reductions against locked BOOKED appointments, require a reason for conflicts, persist unresolved conflict records without moving appointments, distinguish appointments/guided holds/staff offers in the calendar projection, and combine captured request values with live calendar inputs."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/calendar conflict service and calendar projection; staff templates and transaction tests"
+          covers:
+            acs: [UC2-AC40, UC2-AC41, UC2-AC42, UC2-AC43, UC2-AC44, UC2-AC45]
+            rules: [RULE-2, RULE-3, RULE-4, RULE-5, RULE-7, UC2-RULE3, UC2-RULE4, UC2-RULE5]
+          depends_on: [task-1.3, task-2.1, task-2.2]
+          complexity: "M"
+          validation: "Verify conflict reasons and durable flags, pinned intervals, calendar entry labels, rollback atomicity, stable request snapshots after settings edits, and live calendar refresh for later attempts."
+
+        - id: task-2.4
+          name: "Create normalized scheduling requests"
+          description: "Add owner request intake and status pages, localized urgent guidance and language defaults, canonical Unicode/line-ending normalization, owned-pet locking, one-nonterminal-request enforcement, captured interpretation settings, unsupported-language fallback entry, and valid-English AWAITING_CONSENT persistence."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/request intake service/controller/forms/projections; owner templates and tests"
+          covers:
+            acs: [UC3-AC1, UC3-AC2, UC3-AC3, UC3-AC4, UC3-AC5, UC3-AC6, UC3-AC7, UC3-AC8, UC3-AC9, UC3-AC10, UC3-AC11, UC3-AC54, UC3-AC55]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-8, RULE-10, RULE-12, UC3-RULE1, UC3-RULE2, UC3-RULE4, UC3-RULE7]
+          depends_on: [task-1.6, task-1.7, task-2.1]
+          complexity: "L"
+          validation: "Test ownership concealment, 1/2000-code-point boundaries after canonical normalization, concurrent duplicate intake, different-pet intake, pre-routing snapshot capture, unsupported-language no-AI fallback, and English consent state."
+
+        - id: task-2.5
+          name: "Dispatch one consented AI interpretation"
+          description: "Implement exact-version consent, rolling-hour dispatch ledger, bounded AI executor, persisted operation tokens/deadlines, strict allowlisted Spring AI/Ollama input/output DTOs, post-commit one-attempt dispatch, status polling, and conditional AI_UNAVAILABLE or late-result handling."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/interpretation consent, rate-limit, adapter, executor, operation, polling, and fake-adapter tests"
+          covers:
+            acs: [UC3-AC12, UC3-AC13, UC3-AC14, UC3-AC15, UC3-AC16, UC3-AC17, UC3-AC18, UC3-AC19, UC3-AC20, UC3-AC21, UC3-AC22, UC3-AC23, UC3-AC24, UC3-AC25, UC3-AC26, UC3-AC27, UC3-AC28, UC3-AC53, UC3-AC59]
+            rules: [RULE-1, RULE-2, RULE-6, RULE-8, RULE-10, RULE-12, UC3-RULE2, UC3-RULE3, UC3-RULE4, UC3-RULE5]
+          depends_on: [task-1.3, task-1.7, task-2.2, task-2.4]
+          complexity: "L"
+          validation: "Use deterministic fake adapters and an injected clock to test concurrent tenth/eleventh dispatches, retry instant, declined consent, exact outbound fields, strict schema binding, persistence-before-dispatch, timeout/failure/rejection fallback, polling idempotency, and ignored late tokens."
+          risk: "Review hotspot 3: text replacement, absolute deadlines, executor rejection, restart, and late AI/solver results converge on conditional operation-token commits."
+
+        - id: task-2.6
+          name: "Validate, clarify, review, and confirm interpretations"
+          description: "Implement the deterministic interpretation-validation order, catalog and clinical-routing outcomes, duration/window normalization, clarification loop, unrestricted-window confirmation, urgency and dispute fallback, allowlisted owner edits, review UI, confirmation-time weekday expansion, and immutable horizon snapshot transition to MATCHING."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/interpretation validation/confirmation services, owner review forms/templates, and tests"
+          covers:
+            acs: [UC3-AC29, UC3-AC30, UC3-AC31, UC3-AC32, UC3-AC33, UC3-AC34, UC3-AC35, UC3-AC36, UC3-AC37, UC3-AC38, UC3-AC39, UC3-AC40, UC3-AC41, UC3-AC42, UC3-AC43, UC3-AC44, UC3-AC45, UC3-AC50, UC3-AC51, UC3-AC56, UC3-AC57, UC3-AC58]
+            rules: [RULE-1, RULE-2, RULE-5, RULE-8, RULE-10, RULE-12, UC3-RULE4, UC3-RULE6, UC3-RULE7, UC3-RULE8]
+          depends_on: [task-2.1, task-2.2, task-2.3, task-2.5]
+          complexity: "L"
+          validation: "Run table-driven validation-order tests for every schema/issue/catalog outcome, duration and exclusion boundaries, remaining/resolved clarifications, owner-edit allowlists, clinical disputes, and confirmation at time-zone/grid/date boundaries."
+          risk: "Review hotspot 4: confirmation and first fallback use different anchor instants but one captured settings model, so horizon materialization must be tested at zone and grid boundaries."
+
+        - id: task-2.7
+          name: "Invalidate edited requests and cancel atomically"
+          description: "Implement separate confirmed-fact edit, original-text replacement, and owner-cancellation commands that use global locks, invalidate active operations, release guided reservations, clear derived interpretation/suggestion/rejection/horizon state, capture replacement settings, reject late lifecycle replacement, and remove staff claims on cancellation."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/request edit/replacement/cancellation services, forms, and concurrency tests"
+          covers:
+            acs: [UC3-AC46, UC3-AC47, UC3-AC48, UC3-AC49, UC3-AC52, UC3-AC60, UC3-AC61, UC3-AC62, UC3-AC63, UC3-AC64, UC3-AC65, UC3-AC66]
+            rules: [RULE-1, RULE-3, RULE-4, RULE-6, RULE-8, RULE-10, RULE-12, UC3-RULE2, UC3-RULE7, UC3-RULE8, UC3-RULE9, UC3-RULE10]
+          depends_on: [task-1.3, task-1.7, task-2.6]
+          complexity: "L"
+          validation: "Race replacement/cancellation against fake AI completion and held resources; verify token invalidation, complete cleanup, new snapshot capture, terminal/staff-state rejection without mutation, idempotent cancellation, and staff-claim removal."
+
+      checkpoint:
+        id: cp-2
+        description: "Review a complete clinic-calendar and owner-interpretation slice before solver and staff scheduling are added."
+        criteria:
+          - "Effective availability has one tested precedence/DST implementation shared by all future consumers."
+          - "An owned English request reaches MATCHING through consent, strict AI interpretation, review, and confirmation using captured settings."
+          - "Every defined pre-matching fallback is durable and AI absence never prevents startup or staff/calendar use."
+          - "Replacement and cancellation races cannot retain a stale result, reservation, rejection history, or staff claim."
+
+    - id: phase-3
+      name: "Guided matching and staff fallback"
+      description: "Complete automated one-slot matching and every staff-assisted path using the shared feasibility, reservation, appointment, lock, audit, and notification boundaries."
+      covers:
+        - UC4-AC1
+        - UC4-AC2
+        - UC4-AC3
+        - UC4-AC4
+        - UC4-AC5
+        - UC4-AC6
+        - UC4-AC7
+        - UC4-AC8
+        - UC4-AC9
+        - UC4-AC10
+        - UC4-AC11
+        - UC4-AC12
+        - UC4-AC13
+        - UC4-AC14
+        - UC4-AC15
+        - UC4-AC16
+        - UC4-AC17
+        - UC4-AC18
+        - UC4-AC19
+        - UC4-AC20
+        - UC4-AC21
+        - UC4-AC22
+        - UC4-AC23
+        - UC4-AC24
+        - UC4-AC25
+        - UC4-AC26
+        - UC4-AC27
+        - UC4-AC28
+        - UC4-AC29
+        - UC4-AC30
+        - UC4-AC31
+        - UC4-AC32
+        - UC4-AC33
+        - UC4-AC34
+        - UC4-AC35
+        - UC4-AC36
+        - UC4-AC37
+        - UC4-AC38
+        - UC4-AC39
+        - UC4-AC40
+        - UC4-AC41
+        - UC4-AC42
+        - UC4-AC43
+        - UC4-AC44
+        - UC4-AC45
+        - UC4-AC46
+        - UC4-AC47
+        - UC4-AC48
+        - UC5-AC1
+        - UC5-AC2
+        - UC5-AC3
+        - UC5-AC4
+        - UC5-AC5
+        - UC5-AC6
+        - UC5-AC7
+        - UC5-AC8
+        - UC5-AC9
+        - UC5-AC10
+        - UC5-AC11
+        - UC5-AC12
+        - UC5-AC13
+        - UC5-AC14
+        - UC5-AC15
+        - UC5-AC16
+        - UC5-AC17
+        - UC5-AC18
+        - UC5-AC19
+        - UC5-AC20
+        - UC5-AC21
+        - UC5-AC22
+        - UC5-AC23
+        - UC5-AC24
+        - UC5-AC25
+        - UC5-AC26
+        - UC5-AC27
+        - UC5-AC28
+        - UC5-AC29
+        - UC5-AC30
+        - UC5-AC31
+        - UC5-AC32
+        - UC5-AC33
+        - UC5-AC34
+        - UC5-AC35
+        - UC5-AC36
+        - UC5-AC37
+        - UC5-AC38
+        - UC5-AC39
+        - UC5-AC40
+        - UC5-AC41
+        - UC5-AC42
+        - UC5-AC43
+        - UC5-AC44
+        - UC5-AC45
+        - UC5-AC46
+        - UC5-AC47
+        - UC5-AC48
+
+      tasks:
+        - id: task-3.1
+          name: "Model and score one immutable scheduling problem"
+          description: "Build detached single-request Timefold snapshots with every veterinarian/start candidate, invalid-offset facts, live appointments/reservations/calendar/catalog/rejections, one movable assignment, hard feasibility constraints, and lexicographic BendableLongScore levels for preference, veterinarian, time, workload, and stable ties."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/matching problem model, snapshot factory, constraint provider, solver configuration, and score tests"
+          covers:
+            acs: [UC4-AC1, UC4-AC2, UC4-AC3, UC4-AC4, UC4-AC5, UC4-AC6, UC4-AC7, UC4-AC8, UC4-AC9, UC4-AC10, UC4-AC11, UC4-AC12, UC4-AC13, UC4-AC14, UC4-AC15, UC4-AC16, UC4-AC17, UC4-AC18, UC4-AC19, UC4-AC20, UC4-AC21, UC4-AC22, UC4-AC23, UC4-AC24, UC4-AC25, UC4-AC26, UC4-AC27, UC4-AC28, UC4-AC46, UC4-AC47]
+            rules: [RULE-2, RULE-5, RULE-6, UC4-RULE1, UC4-RULE2, UC4-RULE3]
+          depends_on: [task-1.3, task-2.3, task-2.6, task-2.7]
+          complexity: "L"
+          validation: "Use ConstraintVerifier and deterministic solver tests for every hard constraint, half-open adjacency, specialty precheck, exact rejection, all lexicographic levels, committed workload intersections, exhaustive no-solution, and pinned appointments."
+
+        - id: task-3.2
+          name: "Dispatch matching and commit one live guided hold"
+          description: "Persist one solver operation before post-commit execution, enforce the two-second exhaustive deadline, distinguish unavailable from exhausted outcomes, and commit the winner only after global locking, token/state checks, live snapshot rebuild, shared feasibility revalidation, and GUIDED_HOLD insertion."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/matching matching coordinator, solver executor, reservation service, and concurrency tests"
+          covers:
+            acs: [UC4-AC3, UC4-AC4, UC4-AC5, UC4-AC31, UC4-AC32, UC4-AC38, UC4-AC42, UC4-AC46, UC4-AC47, UC4-AC48]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-5, RULE-6, RULE-12, UC4-RULE1, UC4-RULE2, UC4-RULE3, UC4-RULE4]
+          depends_on: [task-1.3, task-1.7, task-3.1]
+          complexity: "L"
+          validation: "Use a deterministic solver adapter and injected clock to test persistence-before-dispatch, timeout/error/rejection, completed exhaustion, stale operation tokens, live revalidation, slot-taken outcomes, and opposing overlapping commits."
+          risk: "Review hotspots 2 and 3: cross-resource concurrency and late solver completion meet at ordered locks, a live policy recheck, and conditional operation-token commits."
+
+        - id: task-3.3
+          name: "Complete the guided suggestion loop"
+          description: "Expose one allowlisted held suggestion and countdown; implement owner accept, reject, explicit ask-again, pure expiry, unique exact rejections, appointment creation, terminal confirmation, typed stale redirects, and idempotent repeated actions without automatic reacquisition."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/matching guided-selection services/controllers/projections; owner templates/JavaScript; MVC and transaction tests"
+          covers:
+            acs: [UC4-AC29, UC4-AC30, UC4-AC31, UC4-AC32, UC4-AC33, UC4-AC34, UC4-AC35, UC4-AC36, UC4-AC37, UC4-AC38, UC4-AC39, UC4-AC40, UC4-AC41, UC4-AC42, UC4-AC43, UC4-AC44, UC4-AC45]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-6, RULE-7, RULE-8, RULE-10, RULE-12, UC4-RULE4, UC4-RULE5, UC4-RULE6]
+          depends_on: [task-2.7, task-3.2]
+          complexity: "L"
+          validation: "Verify the owner never sees candidate lists or score/calendar data; acceptance creates one appointment; rejection versus expiry differs correctly; ask-again uses live inputs; and stale, concurrent, or repeated actions converge on current state."
+
+        - id: task-3.4
+          name: "Persist and prioritize staff fallback"
+          description: "Centralize every fallback transition, immutable initial queue time, seven-day deadline, stable urgency/FIFO ordering, and preservation or first-queue materialization of the owner horizon from captured settings; make re-entry and expiry terminal rules idempotent."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/fallback transition service, queue repository/projection, staff queue template, and tests"
+          covers:
+            acs: [UC5-AC1, UC5-AC2, UC5-AC3, UC5-AC4, UC5-AC5, UC5-AC36, UC5-AC37, UC5-AC38, UC5-AC39, UC5-AC40, UC5-AC46, UC5-AC47]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-7, RULE-12, UC5-RULE1, UC5-RULE4, UC5-RULE6]
+          depends_on: [task-2.5, task-2.6, task-3.2]
+          complexity: "M"
+          validation: "Drive every fallback reason, stable urgency/FIFO ordering, pre/post-confirmation entry, first-queue and preserved horizons, seven-day boundaries, active-offer cleanup, repeat processing, and non-reopenability with an injected clock."
+
+        - id: task-3.5
+          name: "Implement staff claims and structured completion"
+          description: "Add atomic claim/release/reclaim, visible claim activity, claimant-only mutation guards, exact 30-minute absolute reclaim deadlines, success-only activity refresh, and staff replacement of the versioned structured interpretation through shared catalog/duration/window validation without AI."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/fallback claim and interpretation services/controllers/forms/templates with concurrency tests"
+          covers:
+            acs: [UC5-AC6, UC5-AC7, UC5-AC8, UC5-AC9, UC5-AC10, UC5-AC11, UC5-AC12, UC5-AC13, UC5-AC44, UC5-AC45]
+            rules: [RULE-2, RULE-4, RULE-5, RULE-8, RULE-12, UC5-RULE2, UC5-RULE3]
+          depends_on: [task-1.4, task-1.7, task-3.4]
+          complexity: "M"
+          validation: "Race two staff claims, test the 30-minute boundary and optimistic retry, prove reads/failed/foreign mutations do not refresh activity, and verify staff edits reuse strict catalogs and captured request rules without AI calls."
+
+        - id: task-3.6
+          name: "Complete the staff-offer loop"
+          description: "Let the claimant select one live feasible slot from the staff calendar, create a distinct STAFF_OFFER reservation bounded by 24 hours and fallback expiry, notify the owner, and implement accept, reject, expiry, revoke, and replacement with unique rejection and transactional appointment/audit effects."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/fallback staff-offer and owner-action services/controllers/projections/templates with tests"
+          covers:
+            acs: [UC5-AC14, UC5-AC15, UC5-AC16, UC5-AC17, UC5-AC18, UC5-AC19, UC5-AC20, UC5-AC21, UC5-AC22, UC5-AC23, UC5-AC24, UC5-AC25, UC5-AC26, UC5-AC27, UC5-AC39, UC5-AC41, UC5-AC43, UC5-AC48]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-5, RULE-7, RULE-8, RULE-12, UC5-RULE3, UC5-RULE4, UC5-RULE5, UC5-RULE6]
+          depends_on: [task-1.7, task-3.1, task-3.3, task-3.5]
+          complexity: "L"
+          validation: "Test offer deadline boundaries, one-offer disclosure, live policy conflicts, transactional notification/audit writes, accept/reject/expiry/revoke distinctions, replacement as a new row, exact rejection uniqueness, and fallback-expiry precedence."
+
+        - id: task-3.7
+          name: "Complete direct fallback booking and terminal cleanup"
+          description: "Route claimant direct booking through the common locked appointment creator with captured owner horizon and nonblank reason; add staff request cancellation, claim/reservation cleanup, conflict rollback, booking source, terminal confirmation, fallback expiry, and owner notification."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/fallback direct-booking/cancellation services and MVC/concurrency tests"
+          covers:
+            acs: [UC5-AC28, UC5-AC29, UC5-AC30, UC5-AC31, UC5-AC32, UC5-AC33, UC5-AC34, UC5-AC35, UC5-AC37, UC5-AC38, UC5-AC39, UC5-AC40, UC5-AC41, UC5-AC42, UC5-AC48]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-5, RULE-7, RULE-8, RULE-12, UC5-RULE1, UC5-RULE3, UC5-RULE5, UC5-RULE6]
+          depends_on: [task-1.7, task-3.4, task-3.5, task-3.6]
+          complexity: "L"
+          validation: "Verify reason normalization, booking source, every hard constraint and horizon boundary, no AI/solver call, transactional conflict rollback, cancellation cleanup and notification, repeated expiry/cancel idempotency, and races with owner offer actions."
+
+      checkpoint:
+        id: cp-3
+        description: "Review both one-slot owner scheduling paths and their concurrency guarantees."
+        criteria:
+          - "Timefold owns every specified hard constraint and lexicographic rank and never moves an existing appointment."
+          - "One guided suggestion can be accepted, rejected, expired, and retried without leaking the calendar or duplicating state."
+          - "Every automation dead end appears in the prioritized staff queue with the correct captured or preserved horizon."
+          - "Staff claims, offers, direct booking, cancellation, and expiry remain atomic under opposing owner/staff operations."
+
+    - id: phase-4
+      name: "Appointment lifecycle"
+      description: "Complete owner and staff appointment management, durable conflict resolution, and exactly-once Visit creation while removing the legacy booking path."
+      covers:
+        - UC6-AC1
+        - UC6-AC2
+        - UC6-AC3
+        - UC6-AC4
+        - UC6-AC5
+        - UC6-AC6
+        - UC6-AC7
+        - UC6-AC8
+        - UC6-AC9
+        - UC6-AC10
+        - UC6-AC11
+        - UC6-AC12
+        - UC6-AC13
+        - UC6-AC14
+        - UC6-AC15
+        - UC6-AC16
+        - UC6-AC17
+        - UC6-AC18
+        - UC6-AC19
+        - UC6-AC20
+        - UC6-AC21
+        - UC6-AC22
+        - UC6-AC23
+        - UC6-AC24
+        - UC6-AC25
+        - UC6-AC26
+        - UC6-AC27
+        - UC6-AC28
+        - UC6-AC29
+        - UC6-AC30
+        - UC6-AC31
+        - UC6-AC32
+        - UC6-AC33
+        - UC6-AC34
+        - UC6-AC35
+        - UC6-AC36
+        - UC6-AC37
+        - UC6-AC38
+        - UC6-AC39
+        - UC6-AC40
+        - UC6-AC41
+        - UC6-AC42
+        - UC6-AC43
+        - UC6-AC44
+        - UC6-AC45
+        - UC6-AC46
+        - UC6-AC47
+        - UC6-AC48
+        - UC6-AC49
+        - UC6-AC50
+        - UC6-AC51
+        - UC6-AC52
+
+      tasks:
+        - id: task-4.1
+          name: "Expose timed appointments and enforce overlap semantics"
+          description: "Complete Appointment persistence and repositories, owner upcoming and staff full-calendar projections, half-open owner/pet/veterinarian overlap queries, durable clinical routing, deactivated-vet history, and explicit exclusion of legacy Visits from timed feasibility."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment aggregate/repository/projections/controllers/templates and tests"
+          covers:
+            acs: [UC6-AC1, UC6-AC2, UC6-AC3, UC6-AC4, UC6-AC5, UC6-AC6, UC6-AC41, UC6-AC42, UC6-AC43, UC6-AC44, UC6-AC49]
+            rules: [RULE-2, RULE-3, RULE-4, RULE-5, RULE-8, UC6-RULE1, UC6-RULE2, UC6-RULE3]
+          depends_on: [task-3.3, task-3.7]
+          complexity: "M"
+          validation: "Verify role-specific projections, owner scoping, adjacent/overlapping intervals for all three resources, stored clinical routing, deactivated-vet behavior, preserved legacy rows, and zero Visit participation in timed queries."
+
+        - id: task-4.2
+          name: "Implement owner appointment cancellation"
+          description: "Add ownership-scoped cancellation of future BOOKED appointments with optional reason, deadline application inside the transaction, global resource locks, atomic capacity release, current-state stale outcomes, linked terminal-request preservation, and new-request rebooking navigation."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment owner cancellation service/controller/form/template and concurrency tests"
+          covers:
+            acs: [UC6-AC7, UC6-AC8, UC6-AC9, UC6-AC10, UC6-AC11, UC6-AC12]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-7, RULE-8, RULE-12, UC6-RULE2, UC6-RULE4]
+          depends_on: [task-1.7, task-4.1]
+          complexity: "M"
+          validation: "Test ownership concealment, before/at/after-start boundaries, resource release, retained terminal request, rebooking link, notification/audit atomicity, and races with staff reschedule/cancel."
+
+        - id: task-4.3
+          name: "Implement unlinked staff direct booking"
+          description: "Add full-calendar staff booking with nonblank offline reason, validated GENERAL/SPECIALTY routing, active specialty eligibility, next-grid and exclusive staff-horizon boundaries, live hard feasibility, unresolved-request guard, STAFF_DIRECT source, and transactional audit/notification."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment direct-booking service/controller/form/template and tests"
+          covers:
+            acs: [UC6-AC13, UC6-AC14, UC6-AC15, UC6-AC16, UC6-AC17, UC6-AC18, UC6-AC19, UC6-AC20, UC6-AC42, UC6-AC48, UC6-AC49]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-5, RULE-7, RULE-8, RULE-12, UC6-RULE1, UC6-RULE3]
+          depends_on: [task-1.7, task-3.1, task-4.1]
+          complexity: "L"
+          validation: "Test reason and routing combinations, future-grid/staff-horizon boundaries, every shared hard constraint, unresolved pet request, deactivated veterinarian, concurrent overlap, and absence of request/AI/solver side effects."
+
+        - id: task-4.4
+          name: "Reschedule appointments and resolve calendar conflicts"
+          description: "Implement BOOKED-only in-place rescheduling with a nonblank reason, stored clinical routing, shared feasibility and global locks, before/after audit, current-state stale outcomes, preserved identity/history, and atomic resolution of all linked conflicts as RESCHEDULED."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment reschedule service/controller/form and conflict-resolution tests"
+          covers:
+            acs: [UC6-AC21, UC6-AC22, UC6-AC23, UC6-AC24, UC6-AC46, UC6-AC47, UC6-AC50, UC6-AC51]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-5, RULE-7, RULE-12, UC6-RULE3, UC6-RULE4, UC6-RULE7]
+          depends_on: [task-2.3, task-4.1, task-4.3]
+          complexity: "L"
+          validation: "Verify identity and routing retention, terminal/reason/constraint rejection, audit history, atomic conflict resolution, current-state retry outcomes, and races with owner cancel or another reschedule."
+
+        - id: task-4.5
+          name: "Implement staff cancellation and terminal guards"
+          description: "Add reason-required staff cancellation before scheduled end, shared ordered locks and transition policy, transactional capacity release/audit/notification, irreversible completed/cancelled guards, stale-current outcomes, and atomic conflict resolution as CANCELLED."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment staff cancellation service/controller/form and concurrency tests"
+          covers:
+            acs: [UC6-AC25, UC6-AC26, UC6-AC27, UC6-AC40, UC6-AC46, UC6-AC47, UC6-AC52]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-7, RULE-12, UC6-RULE2, UC6-RULE4, UC6-RULE7]
+          depends_on: [task-1.7, task-4.2, task-4.4]
+          complexity: "M"
+          validation: "Test before/at/after-end boundaries, blank reasons, irreversible states, one concurrent winner, resource release, notification/audit rollback, and durable CANCELLED conflict resolution."
+
+        - id: task-4.6
+          name: "Complete appointments with exactly one Visit"
+          description: "Implement scheduled-end-gated completion/no-show transitions, normalized staff-authored descriptions, clinic-local Visit dates, unique Appointment-to-Visit linkage, repeat completion reuse, NO_SHOW-to-COMPLETED correction, no Visit for no-show, and privacy-safe audit effects."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/appointment completion service/controller/forms; Visit mapping/repository change; tests"
+          covers:
+            acs: [UC6-AC28, UC6-AC29, UC6-AC30, UC6-AC31, UC6-AC32, UC6-AC33, UC6-AC34, UC6-AC35, UC6-AC36, UC6-AC37, UC6-AC38, UC6-AC39, UC6-AC40]
+            rules: [RULE-1, RULE-2, RULE-7, RULE-10, RULE-12, UC6-RULE4, UC6-RULE5]
+          depends_on: [task-1.7, task-4.1, task-4.5]
+          complexity: "M"
+          validation: "Test before/at/after-end boundaries, blank descriptions, exactly-once Visit under repeat/concurrent completion, clinic-zone dating, absence of copied owner/AI text, no-show correction, and terminal irreversibility."
+
+        - id: task-4.7
+          name: "Remove the legacy Visit booking route"
+          description: "Remove legacy new-Visit navigation, GET/POST handlers, and form template from the runnable application while retaining historical Visit display and permitting Visit creation only through appointment completion."
+          artifact: "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java removal/update; owner details navigation; templates/pets/createOrUpdateVisitForm.html removal; MVC tests"
+          covers:
+            acs: [UC6-AC45]
+            rules: [RULE-8, UC6-RULE6]
+          depends_on: [task-4.6]
+          complexity: "S"
+          validation: "Verify legacy GET/POST routes cannot create a Visit, no rendered navigation links to them, historical Visits still render, and appointment completion remains the only production Visit writer."
+
+      checkpoint:
+        id: cp-4
+        description: "Review the entire booking lifecycle and the legacy Visit migration boundary."
+        criteria:
+          - "Owners see and cancel only their upcoming bookings; staff direct-book and reschedule through the shared live policy."
+          - "Concurrent lifecycle actions commit at most one transition and resolve conflict records atomically."
+          - "Completion creates exactly one privacy-safe historical Visit, including after NO_SHOW correction."
+          - "The legacy new-Visit route and navigation are no longer booking paths."
+
+    - id: phase-5
+      name: "Notifications, retention, recovery, diagnostics, and matrix verification"
+      description: "Finish cross-use-case communication and audit visibility, purge sensitive data, recover deadlines and interrupted operations, expose sanitized diagnostics, and verify the integrated feature on both builds and all databases."
+      covers:
+        - UC7-AC1
+        - UC7-AC2
+        - UC7-AC3
+        - UC7-AC4
+        - UC7-AC5
+        - UC7-AC6
+        - UC7-AC7
+        - UC7-AC8
+        - UC7-AC9
+        - UC7-AC10
+        - UC7-AC11
+        - UC7-AC12
+        - UC7-AC13
+        - UC7-AC14
+        - UC7-AC15
+        - UC7-AC16
+        - UC7-AC17
+        - UC7-AC18
+        - UC7-AC19
+        - UC7-AC20
+        - UC7-AC21
+        - UC7-AC22
+        - UC7-AC23
+        - UC7-AC24
+        - UC7-AC25
+        - UC7-AC26
+        - UC7-AC27
+        - UC7-AC28
+        - UC7-AC29
+        - UC7-AC30
+        - UC7-AC31
+        - UC7-AC32
+        - UC7-AC33
+        - UC7-AC34
+        - UC7-AC35
+        - UC7-AC36
+        - UC7-AC37
+        - UC7-AC38
+        - UC7-AC39
+        - UC7-AC40
+        - UC7-AC41
+        - UC7-AC42
+        - UC7-AC43
+        - UC7-AC44
+        - UC7-AC45
+
+      tasks:
+        - id: task-5.1
+          name: "Deliver transactional in-app notifications"
+          description: "Wire required offer, offer-expiry, confirmation, reschedule, appointment-cancel, and staff-request-cancel notifications into their source transactions; add owner-scoped unread count/list/mark-read behavior and authorization-checked links to current target state."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/support notification service/controllers/projections; navigation and notification templates; transaction/MVC tests"
+          covers:
+            acs: [UC7-AC1, UC7-AC2, UC7-AC3, UC7-AC4, UC7-AC5, UC7-AC6, UC7-AC7, UC7-AC8, UC7-AC9, UC7-AC10, UC7-AC11, UC7-AC44]
+            rules: [RULE-7, RULE-8, RULE-10, UC7-RULE1]
+          depends_on: [task-1.7, task-3.6, task-3.7, task-4.2, task-4.4, task-4.5]
+          complexity: "M"
+          validation: "Rollback each source mutation to prove its notification also rolls back; verify owner scoping, privacy-safe count, link omission for inaccessible targets, mark-read-only mutation, and stale-action links opening current state."
+
+        - id: task-5.2
+          name: "Complete event audit and role-scoped timelines"
+          description: "Wire the closed audit catalog into every defined security, consent, AI, interpretation, request, claim, reservation, offer, rejection, appointment, calendar, settings, and account mutation; expose complete staff audit and ownership-scoped owner request/appointment timelines."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/support audit integration and timeline controllers/projections/templates with coverage tests"
+          covers:
+            acs: [UC7-AC12, UC7-AC15, UC7-AC16]
+            rules: [RULE-7, RULE-8, RULE-10, UC7-RULE2, UC7-RULE7]
+          depends_on: [task-1.5, task-1.7, task-2.3, task-2.7, task-3.3, task-3.7, task-4.6]
+          complexity: "L"
+          validation: "Assert every catalogued source mutation appends one safe event, staff sees all safe events, owners see only owned scheduling timelines, and security internals/staff notes/sensitive values never enter owner or audit projections."
+
+        - id: task-5.3
+          name: "Purge sensitive request data on immutable deadlines"
+          description: "Set the first linked or unlinked 30-day purge deadline, preserve it through NO_SHOW correction, lock and idempotently null every raw text/AI input/output/factual-summary field at expiry, and preserve structured scheduling, consent, linkage, Visit, and audit data."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/recovery retention service/repository queries and integration tests"
+          covers:
+            acs: [UC7-AC17, UC7-AC18, UC7-AC19, UC7-AC20, UC7-AC21, UC7-AC22, UC7-AC23, UC7-AC24, UC7-AC45]
+            rules: [RULE-1, RULE-2, RULE-4, RULE-7, RULE-10, RULE-12, UC7-RULE3, UC7-RULE4, UC7-RULE7]
+          depends_on: [task-2.5, task-3.7, task-4.6, task-5.2]
+          complexity: "M"
+          validation: "Use an injected clock to test linked/unlinked before/at/after boundaries, immutable first deadline, NO_SHOW correction, repeated purge, exact field removal, preserved minimal record/Visit/audit, and transaction rollback."
+
+        - id: task-5.4
+          name: "Process overdue lifecycle deadlines idempotently"
+          description: "Implement bounded per-kind lifecycle queries and one short transaction per candidate for guided holds, staff offers/fallbacks, claims, account locks, and retention; apply overdue effects inside user commands and from a fixed-delay worker with fallback-before-offer precedence."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/recovery lifecycle processor, scheduler, deadline hooks, worker status, and tests"
+          covers:
+            acs: [UC7-AC26, UC7-AC27, UC7-AC28, UC7-AC29, UC7-AC30, UC7-AC31, UC7-AC32, UC7-AC33, UC7-AC37, UC7-AC38, UC7-AC39]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-4, RULE-7, RULE-12, UC7-RULE4, UC7-RULE5]
+          depends_on: [task-1.5, task-3.3, task-3.6, task-3.7, task-5.1, task-5.3]
+          complexity: "L"
+          validation: "Test every absolute boundary through user and worker paths, bounded batching, per-record rollback isolation, fallback precedence, preserved rejection distinctions, claim/lock release, and repeated processing with exactly-once audit/notification effects."
+
+        - id: task-5.5
+          name: "Recover reservations and interrupted automation at startup"
+          description: "Invoke the lifecycle processor at startup, preserve all unexpired reservation deadlines, release overdue holds/offers, invalidate overdue AI/solver tokens before RECOVERY_REQUIRED fallback, forbid redispatch, and make late completions fail the token check."
+          artifact: "src/main/java/org/springframework/samples/petclinic/scheduling/recovery startup runner and operation recovery services with restart tests"
+          covers:
+            acs: [UC7-AC29, UC7-AC30, UC7-AC31, UC7-AC32, UC7-AC33, UC7-AC34, UC7-AC35, UC7-AC36, UC7-AC39]
+            rules: [RULE-1, RULE-2, RULE-3, RULE-6, RULE-7, RULE-12, UC7-RULE4, UC7-RULE5]
+          depends_on: [task-2.5, task-3.2, task-5.4]
+          complexity: "M"
+          validation: "Restart contexts with overdue/unexpired guided holds, staff offers, fallbacks, INTERPRETING, and active MATCHING operations; assert original deadlines, no redispatch, token invalidation, late-result rejection, correct fallback, and one side-effect set."
+
+        - id: task-5.6
+          name: "Expose sanitized staff diagnostics"
+          description: "Add staff-only MVC diagnostics for bounded Ollama/model checks, local solver readiness, lifecycle-worker status, and Flyway migration metadata; keep public liveness/readiness aggregate-only and prevent prompts, text, model/database details, or optional Ollama failure from leaking or blocking startup."
+          artifact: "src/main/java/org/springframework/samples/petclinic/system diagnostics services/controller/projections/template and security/privacy tests"
+          covers:
+            acs: [UC7-AC25, UC7-AC40, UC7-AC41, UC7-AC42, UC7-AC43]
+            rules: [RULE-8, RULE-10, UC7-RULE6, UC7-RULE7]
+          depends_on: [task-1.4, task-2.5, task-3.1, task-5.4]
+          complexity: "M"
+          validation: "Verify staff versus owner/anonymous access, public endpoint redaction, no-prompt Ollama check, optional-AI startup, accurate solver/worker/Flyway states, and log/diagnostic capture free of sensitive values."
+
+        - id: task-5.7
+          name: "Run the full build and database verification matrix"
+          description: "Complete the Maven-owned H2/MySQL/PostgreSQL fresh-and-baselined migration and opposing-operation concurrency matrix; run the complete unit/MVC suite with both Maven and Gradle; verify localization bundles, schema parity, formatting, and repository cleanliness."
+          artifact: "src/test database matrix/support, Maven and Gradle test configuration, .github/workflows/maven-build.yml, verification report"
+          covers:
+            acs: []
+            rules: [RULE-9, RULE-11]
+          depends_on: [task-1.1, task-1.2, task-5.1, task-5.2, task-5.3, task-5.4, task-5.5, task-5.6]
+          complexity: "L"
+          validation: "Pass ./mvnw verify including the three-database migration/concurrency matrix, pass ./gradlew build without a duplicate database matrix, verify every locale key, and run formatting/checkstyle and git diff --check."
+
+      checkpoint:
+        id: cp-5
+        description: "Approve the feature only after cross-cutting privacy, recovery, and all-database guarantees pass together."
+        criteria:
+          - "Every required notification and audit event is transactionally coupled, role-scoped, localized, and free of sensitive data."
+          - "Retention, deadline processing, and startup recovery are idempotent and never extend deadlines or redispatch interrupted automation."
+          - "Detailed diagnostics are staff-only and Ollama remains an optional runtime dependency."
+          - "Maven passes the H2/MySQL/PostgreSQL migration and concurrency matrix; Gradle passes the equivalent unit and MVC suite on Java 21."
