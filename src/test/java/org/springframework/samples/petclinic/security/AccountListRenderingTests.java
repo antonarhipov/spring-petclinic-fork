@@ -33,8 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies that the account list page renders when open-session-in-view is disabled.
- * This test intentionally does not use {@code @Transactional}, so no Hibernate session is
+ * Verifies that the account list page renders when open-session-in-view is disabled. This
+ * test intentionally does not use {@code @Transactional}, so no Hibernate session is
  * bound to the request thread during view rendering; accessing the lazily-loaded owner
  * association from the template must therefore not fail.
  */

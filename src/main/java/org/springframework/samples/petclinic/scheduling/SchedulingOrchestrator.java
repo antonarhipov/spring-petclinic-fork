@@ -77,57 +77,126 @@ public class SchedulingOrchestrator {
 		}
 	}
 
+	/**
+	 * Runs the AI interpretation for a scheduling request.
+	 *
+	 * <p>
+	 * The (potentially slow) AI call is deliberately performed <em>outside</em> any
+	 * database transaction. The state transitions before and after the call are each
+	 * committed in their own transactional step ({@link #beginInterpretation} /
+	 * {@link #finalizeInterpretation}), so the {@code INTERPRETING} state - and the final
+	 * outcome - become visible to status pollers immediately. Previously the whole method
+	 * was {@code @Transactional}, so a single long-lived transaction spanned the AI call
+	 * and only committed when the method returned; until then pollers still observed the
+	 * last committed state and the owner status page could not advance the spinner or
+	 * swap in the final screen (e.g. {@code STAFF_QUEUED}) when the AI call failed.
+	 */
 	@Async("schedulingTaskExecutor")
-	@Transactional
 	public void processInterpretationAsync(Integer requestId) {
+		InterpretationStart start = beginInterpretation(requestId);
+		if (!start.proceed()) {
+			return;
+		}
+
+		Optional<Interpretation> interpretationOpt;
+		try {
+			interpretationOpt = this.interpreter.interpret(start.rawText());
+		}
+		catch (Exception ex) {
+			log.warn("Exception during interpretation of request {}: {}", requestId, ex.getMessage());
+			interpretationOpt = Optional.empty();
+		}
+
+		finalizeInterpretation(requestId, interpretationOpt);
+	}
+
+	/**
+	 * Marks the request as {@code INTERPRETING} - committing that transition immediately
+	 * - and returns the raw text to interpret. Short-circuits (returning a non-proceeding
+	 * result) when the request no longer needs interpretation (missing, terminal, already
+	 * awaiting confirmation) or when AI consent was declined, in which case it is routed
+	 * straight to the staff queue.
+	 */
+	@Transactional
+	public InterpretationStart beginInterpretation(Integer requestId) {
 		Optional<SchedulingRequest> optionalRequest = this.schedulingRequests.findById(requestId);
 		if (optionalRequest.isEmpty()) {
 			log.warn("SchedulingRequest {} not found for interpretation", requestId);
-			return;
+			return InterpretationStart.stop();
 		}
 
 		SchedulingRequest request = optionalRequest.get();
 		if (request.getState().isTerminal() || request.getState() == RequestState.AWAITING_CONFIRMATION) {
-			return;
+			return InterpretationStart.stop();
 		}
 
 		if (!request.isAiConsent()) {
 			request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.CONSENT_DECLINED);
 			this.schedulingRequests.saveAndFlush(request);
-			return;
+			return InterpretationStart.stop();
 		}
 
 		request.transitionTo(RequestState.INTERPRETING, null);
 		this.schedulingRequests.saveAndFlush(request);
+		return InterpretationStart.proceed(request.getRawText());
+	}
 
-		try {
-			Optional<Interpretation> interpretationOpt = this.interpreter.interpret(request.getRawText());
-			if (interpretationOpt.isEmpty()) {
-				request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.AI_UNAVAILABLE);
+	/**
+	 * Persists the interpretation outcome in its own transaction, transitioning the
+	 * request to {@code AWAITING_CONFIRMATION} (or {@code STAFF_QUEUED} for emergencies /
+	 * AI failures). Only requests still in the {@code INTERPRETING} state are finalized,
+	 * so a concurrent cancellation is never clobbered.
+	 */
+	@Transactional
+	public void finalizeInterpretation(Integer requestId, Optional<Interpretation> interpretationOpt) {
+		Optional<SchedulingRequest> optionalRequest = this.schedulingRequests.findById(requestId);
+		if (optionalRequest.isEmpty()) {
+			log.warn("SchedulingRequest {} not found while finalizing interpretation", requestId);
+			return;
+		}
+
+		SchedulingRequest request = optionalRequest.get();
+		if (request.getState() != RequestState.INTERPRETING) {
+			return;
+		}
+
+		if (interpretationOpt.isEmpty()) {
+			request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.AI_UNAVAILABLE);
+		}
+		else {
+			Interpretation interpretation = interpretationOpt.get();
+			try {
+				request.setInterpretationJson(this.objectMapper.writeValueAsString(interpretation));
+			}
+			catch (Exception e) {
+				log.error("Failed to serialize interpretation to JSON", e);
+			}
+
+			if (interpretation.urgency() == UrgencyLevel.EMERGENCY) {
+				request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.EMERGENCY);
 			}
 			else {
-				Interpretation interpretation = interpretationOpt.get();
-				try {
-					request.setInterpretationJson(this.objectMapper.writeValueAsString(interpretation));
-				}
-				catch (Exception e) {
-					log.error("Failed to serialize interpretation to JSON", e);
-				}
-
-				if (interpretation.urgency() == UrgencyLevel.EMERGENCY) {
-					request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.EMERGENCY);
-				}
-				else {
-					request.transitionTo(RequestState.AWAITING_CONFIRMATION, null);
-				}
+				request.transitionTo(RequestState.AWAITING_CONFIRMATION, null);
 			}
-		}
-		catch (Exception ex) {
-			log.warn("Exception during interpretation of request {}: {}", requestId, ex.getMessage());
-			request.transitionTo(RequestState.STAFF_QUEUED, QueueReason.AI_UNAVAILABLE);
 		}
 
 		this.schedulingRequests.saveAndFlush(request);
+	}
+
+	/**
+	 * Outcome of {@link #beginInterpretation}: whether to proceed with the AI call and,
+	 * if so, the raw text to interpret.
+	 */
+	public record InterpretationStart(boolean proceed, String rawText) {
+
+		static InterpretationStart stop() {
+			return new InterpretationStart(false, null);
+		}
+
+		static InterpretationStart proceed(String rawText) {
+			return new InterpretationStart(true, rawText == null ? "" : rawText);
+		}
+
 	}
 
 	@Async("schedulingTaskExecutor")

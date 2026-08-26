@@ -175,6 +175,18 @@ public class SchedulingController {
 
 	@GetMapping("/scheduling/requests/{requestId}")
 	public String showStatus(@PathVariable("requestId") int requestId, Authentication authentication, Model model) {
+		populateStatusModel(requestId, authentication, model);
+		return "scheduling/status";
+	}
+
+	@GetMapping("/scheduling/requests/{requestId}/status-fragment")
+	public String showStatusFragment(@PathVariable("requestId") int requestId, Authentication authentication,
+			Model model) {
+		populateStatusModel(requestId, authentication, model);
+		return "scheduling/status :: statusContent";
+	}
+
+	private void populateStatusModel(int requestId, Authentication authentication, Model model) {
 		SchedulingRequest request = this.schedulingRequests.findByIdWithOwnerAndPet(requestId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
 		checkRequestOwnership(request, authentication);
@@ -191,7 +203,6 @@ public class SchedulingController {
 		model.addAttribute("interpretation", interpretation.orElse(null));
 		model.addAttribute("heldSlot", activeHold.map(this.holdService::toSuggestionView).orElse(null));
 		model.addAttribute("appointment", appointment.orElse(null));
-		return "scheduling/status";
 	}
 
 	@PostMapping("/scheduling/requests/{requestId}/accept")

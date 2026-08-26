@@ -102,6 +102,46 @@ class AppointmentInterpreterTests {
 	}
 
 	@Test
+	void shouldToleratePlaceholderOrInvalidDateInsteadOfFailing() {
+		// The model sometimes ignores the schema and returns a literal placeholder for
+		// the
+		// date field. This must not abort the whole interpretation (which previously
+		// routed
+		// the request to the staff queue); the bad date is dropped to null instead.
+		String json = """
+				{
+				  "summary": "Vaccination for cat",
+				  "visitDurationMinutes": 30,
+				  "careType": "GENERAL",
+				  "requiredSpecialty": null,
+				  "urgency": "ROUTINE",
+				  "preferredWindows": [
+				    { "dayOfWeek": "TUESDAY", "date": "YYYY-MM-DD", "partOfDay": "MORNING" }
+				  ],
+				  "allowedWindows": [],
+				  "excludedWindows": [],
+				  "preferredVetName": null,
+				  "confidence": 0.9
+				}
+				""";
+
+		AssistantMessage assistantMessage = new AssistantMessage(json);
+		Generation generation = new Generation(assistantMessage);
+		ChatResponse chatResponse = new ChatResponse(List.of(generation));
+		when(this.chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+
+		Optional<Interpretation> result = this.interpreter.interpret("Vaccination for my cat next Tuesday morning");
+
+		assertThat(result).isPresent();
+		Interpretation interpretation = result.get();
+		assertThat(interpretation.summary()).isEqualTo("Vaccination for cat");
+		assertThat(interpretation.preferredWindows()).hasSize(1);
+		assertThat(interpretation.preferredWindows().get(0).dayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+		assertThat(interpretation.preferredWindows().get(0).date()).isNull();
+		assertThat(interpretation.preferredWindows().get(0).partOfDay()).isEqualTo("MORNING");
+	}
+
+	@Test
 	void shouldHandleEmergencyInterpretation() {
 		String json = """
 				{

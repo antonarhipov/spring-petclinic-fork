@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.scheduling;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,6 +101,9 @@ class BookingServiceTests {
 
 	@Autowired
 	private ClinicSettingsRepository clinicSettings;
+
+	@Autowired
+	private EntityManager entityManager;
 
 	private Owner owner;
 
@@ -435,6 +440,189 @@ class BookingServiceTests {
 
 		SchedulingRequest reloadedReq = this.schedulingRequests.findById(request.getId()).orElseThrow();
 		assertThat(reloadedReq.getState()).isEqualTo(RequestState.CONFIRMED);
+	}
+
+	@Test
+	void getScheduleItemsForOwnerExcludesConfirmedRequests() {
+		SchedulingRequest confirmed = new SchedulingRequest();
+		confirmed.setOwner(this.owner);
+		confirmed.setPet(this.pet);
+		confirmed.setRawText("Already booked checkup");
+		confirmed.setState(RequestState.CONFIRMED);
+		confirmed = this.schedulingRequests.saveAndFlush(confirmed);
+
+		List<OwnerScheduleItem> items = this.bookingService.getScheduleItemsForOwner(this.owner.getId());
+
+		assertThat(requestIndex(items, confirmed.getId())).isEqualTo(-1);
+		// A CONFIRMED request is represented by its appointment, not by a request row;
+		// the
+		// owner has no appointments here, so the schedule is empty.
+		assertThat(items).isEmpty();
+	}
+
+	@Test
+	void getScheduleItemsForOwnerIncludesActiveAndRecentClosedButExcludesOldClosed() {
+		SchedulingRequest active = new SchedulingRequest();
+		active.setOwner(this.owner);
+		active.setPet(this.pet);
+		active.setRawText("Need a slot soon");
+		active.setState(RequestState.SLOT_HELD);
+		active = this.schedulingRequests.saveAndFlush(active);
+
+		SchedulingRequest recentClosed = new SchedulingRequest();
+		recentClosed.setOwner(this.owner);
+		recentClosed.setPet(this.pet);
+		recentClosed.setRawText("Changed my mind");
+		recentClosed.setState(RequestState.CANCELLED);
+		recentClosed = this.schedulingRequests.saveAndFlush(recentClosed);
+
+		SchedulingRequest oldClosed = new SchedulingRequest();
+		oldClosed.setOwner(this.owner);
+		oldClosed.setPet(this.pet);
+		oldClosed.setRawText("Stale request");
+		oldClosed.setState(RequestState.EXPIRED);
+		oldClosed = this.schedulingRequests.saveAndFlush(oldClosed);
+
+		// Back-date the terminal request beyond the recent-history window. A bulk update
+		// bypasses the @PreUpdate callback that would otherwise reset updated_at to now.
+		this.entityManager.createNativeQuery("UPDATE scheduling_requests SET updated_at = :ts WHERE id = :id")
+			.setParameter("ts", Timestamp.from(Instant.now().minus(Duration.ofDays(30))))
+			.setParameter("id", oldClosed.getId())
+			.executeUpdate();
+		this.entityManager.clear();
+
+		List<OwnerScheduleItem> items = this.bookingService.getScheduleItemsForOwner(this.owner.getId());
+
+		int activeIdx = requestIndex(items, active.getId());
+		int recentClosedIdx = requestIndex(items, recentClosed.getId());
+		int oldClosedIdx = requestIndex(items, oldClosed.getId());
+
+		assertThat(activeIdx).isGreaterThanOrEqualTo(0);
+		assertThat(recentClosedIdx).isGreaterThanOrEqualTo(0);
+		assertThat(oldClosedIdx).isEqualTo(-1);
+		// Active requests are ordered ahead of recently closed history.
+		assertThat(activeIdx).isLessThan(recentClosedIdx);
+	}
+
+	@Test
+	void getScheduleItemsForOwnerOrdersActionableActiveThenAppointmentsThenClosed() {
+		Owner multiPetOwner = this.owners.findById(3).orElseThrow();
+		Pet firstPet = multiPetOwner.getPet(3);
+		Pet secondPet = multiPetOwner.getPet(4);
+
+		SchedulingRequest actionable = new SchedulingRequest();
+		actionable.setOwner(multiPetOwner);
+		actionable.setPet(firstPet);
+		actionable.setRawText("Slot offered");
+		actionable.setState(RequestState.SLOT_HELD);
+		actionable = this.schedulingRequests.saveAndFlush(actionable);
+
+		SchedulingRequest activeNonActionable = new SchedulingRequest();
+		activeNonActionable.setOwner(multiPetOwner);
+		activeNonActionable.setPet(secondPet);
+		activeNonActionable.setRawText("Analyzing");
+		activeNonActionable.setState(RequestState.INTERPRETING);
+		activeNonActionable = this.schedulingRequests.saveAndFlush(activeNonActionable);
+
+		SchedulingRequest closed = new SchedulingRequest();
+		closed.setOwner(multiPetOwner);
+		closed.setPet(firstPet);
+		closed.setRawText("Cancelled attempt");
+		closed.setState(RequestState.CANCELLED);
+		closed = this.schedulingRequests.saveAndFlush(closed);
+
+		LocalDate targetDate = LocalDate.now().plusDays(3);
+		LocalDateTime start = LocalDateTime.of(targetDate, LocalTime.of(9, 0));
+		LocalDateTime end = LocalDateTime.of(targetDate, LocalTime.of(9, 30));
+		Appointment appt = this.bookingService.bookDirect(multiPetOwner.getId(), secondPet.getId(), this.vet.getId(),
+				start, end, "Upcoming visit");
+
+		List<OwnerScheduleItem> items = this.bookingService.getScheduleItemsForOwner(multiPetOwner.getId());
+
+		int actionableIdx = requestIndex(items, actionable.getId());
+		int activeIdx = requestIndex(items, activeNonActionable.getId());
+		int apptIdx = appointmentIndex(items, appt.getId());
+		int closedIdx = requestIndex(items, closed.getId());
+
+		assertThat(actionableIdx).isGreaterThanOrEqualTo(0);
+		assertThat(activeIdx).isGreaterThanOrEqualTo(0);
+		assertThat(apptIdx).isGreaterThanOrEqualTo(0);
+		assertThat(closedIdx).isGreaterThanOrEqualTo(0);
+
+		// Order: actionable request, then other active request, then appointment, then
+		// recently closed request.
+		assertThat(actionableIdx).isLessThan(activeIdx);
+		assertThat(activeIdx).isLessThan(apptIdx);
+		assertThat(apptIdx).isLessThan(closedIdx);
+
+		assertThat(items.get(actionableIdx).actionable()).isTrue();
+		assertThat(items.get(activeIdx).actionable()).isFalse();
+	}
+
+	@Test
+	void getScheduleItemsForOwnerMapsRequestAndAppointmentFields() {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setRawText("Vaccines please");
+		request.setState(RequestState.SLOT_HELD);
+		request = this.schedulingRequests.saveAndFlush(request);
+
+		LocalDate targetDate = LocalDate.now().plusDays(2);
+		LocalDateTime start = LocalDateTime.of(targetDate, LocalTime.of(10, 0));
+		LocalDateTime end = LocalDateTime.of(targetDate, LocalTime.of(10, 30));
+		Appointment appt = this.bookingService.bookDirect(this.owner.getId(), this.pet.getId(), this.vet.getId(), start,
+				end, "Checkup");
+
+		List<OwnerScheduleItem> items = this.bookingService.getScheduleItemsForOwner(this.owner.getId());
+
+		OwnerScheduleItem requestItem = items.stream()
+			.filter(it -> it.kind() == OwnerScheduleItem.Kind.REQUEST)
+			.findFirst()
+			.orElseThrow();
+		assertThat(requestItem.id()).isEqualTo(request.getId());
+		assertThat(requestItem.statusLabel()).isEqualTo("Slot offered — respond");
+		assertThat(requestItem.badgeClass()).isEqualTo("bg-primary");
+		assertThat(requestItem.actionable()).isTrue();
+		assertThat(requestItem.when()).isNull();
+		assertThat(requestItem.petName()).isEqualTo(this.pet.getName());
+		assertThat(requestItem.vetOrSummary()).isEqualTo("Vaccines please");
+		assertThat(requestItem.detailUrl()).isEqualTo("/scheduling/requests/" + request.getId());
+		assertThat(requestItem.cancelUrl()).isEqualTo("/scheduling/requests/" + request.getId() + "/cancel");
+
+		OwnerScheduleItem appointmentItem = items.stream()
+			.filter(it -> it.kind() == OwnerScheduleItem.Kind.APPOINTMENT)
+			.findFirst()
+			.orElseThrow();
+		assertThat(appointmentItem.id()).isEqualTo(appt.getId());
+		assertThat(appointmentItem.statusLabel()).isEqualTo("Booked");
+		assertThat(appointmentItem.badgeClass()).isEqualTo("bg-success");
+		assertThat(appointmentItem.actionable()).isFalse();
+		assertThat(appointmentItem.when()).isEqualTo(start);
+		assertThat(appointmentItem.petName()).isEqualTo(this.pet.getName());
+		assertThat(appointmentItem.vetOrSummary()).isEqualTo(this.vet.getFirstName() + " " + this.vet.getLastName());
+		assertThat(appointmentItem.detailUrl()).isEqualTo("/my-appointments/" + appt.getId());
+		assertThat(appointmentItem.cancelUrl()).isEqualTo("/my-appointments/" + appt.getId() + "/cancel");
+	}
+
+	private static int requestIndex(List<OwnerScheduleItem> items, Integer requestId) {
+		for (int i = 0; i < items.size(); i++) {
+			OwnerScheduleItem item = items.get(i);
+			if (item.kind() == OwnerScheduleItem.Kind.REQUEST && requestId.equals(item.id())) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private static int appointmentIndex(List<OwnerScheduleItem> items, Integer appointmentId) {
+		for (int i = 0; i < items.size(); i++) {
+			OwnerScheduleItem item = items.get(i);
+			if (item.kind() == OwnerScheduleItem.Kind.APPOINTMENT && appointmentId.equals(item.id())) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 }

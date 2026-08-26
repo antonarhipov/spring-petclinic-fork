@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -128,7 +130,50 @@ class OwnerAppointmentControllerTests {
 		this.mockMvc.perform(get("/my-appointments"))
 			.andExpect(status().isOk())
 			.andExpect(view().name("scheduling/myAppointments"))
-			.andExpect(model().attributeExists("appointments"));
+			.andExpect(model().attributeExists("scheduleItems"));
+	}
+
+	@Test
+	@WithMockUser(username = "george", roles = "OWNER")
+	void shouldRenderBothRequestAndAppointmentRows() throws Exception {
+		// FR-1/FR-2/FR-3/FR-4: unified list mixes a scheduling request and a confirmed
+		// appointment, each with a status badge, working detail link, and the right
+		// action.
+		OwnerScheduleItem requestItem = new OwnerScheduleItem(OwnerScheduleItem.Kind.REQUEST, 5, "Rosy",
+				"My dog is limping", null, "Needs your confirmation", "bg-warning", true, "/scheduling/requests/5",
+				"/scheduling/requests/5/cancel");
+		OwnerScheduleItem appointmentItem = new OwnerScheduleItem(OwnerScheduleItem.Kind.APPOINTMENT, 10, "Leo",
+				"James Carter", LocalDateTime.now().plusDays(2), "Booked", "bg-success", false, "/my-appointments/10",
+				"/my-appointments/10/cancel");
+		when(this.bookingService.getScheduleItemsForOwner(1)).thenReturn(List.of(requestItem, appointmentItem));
+
+		this.mockMvc.perform(get("/my-appointments"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/myAppointments"))
+			.andExpect(model().attribute("scheduleItems", List.of(requestItem, appointmentItem)))
+			// Request row: status badge, View link to the status page, Cancel request
+			// action.
+			.andExpect(content().string(containsString("Needs your confirmation")))
+			.andExpect(content().string(containsString("bg-warning")))
+			.andExpect(content().string(containsString("/scheduling/requests/5")))
+			.andExpect(content().string(containsString("/scheduling/requests/5/cancel")))
+			.andExpect(content().string(containsString("Cancel request")))
+			// Appointment row: status badge, Details link, Cancel action.
+			.andExpect(content().string(containsString("Booked")))
+			.andExpect(content().string(containsString("bg-success")))
+			.andExpect(content().string(containsString("/my-appointments/10")))
+			.andExpect(content().string(containsString("Details")));
+	}
+
+	@Test
+	@WithMockUser(username = "george", roles = "OWNER")
+	void shouldShowEmptyStateWhenNoScheduleItems() throws Exception {
+		when(this.bookingService.getScheduleItemsForOwner(1)).thenReturn(List.of());
+
+		this.mockMvc.perform(get("/my-appointments"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/myAppointments"))
+			.andExpect(content().string(containsString("You have no appointments or scheduling requests yet.")));
 	}
 
 	@Test

@@ -354,4 +354,122 @@ class SchedulingControllerTests {
 		verify(this.schedulingRequests).saveAndFlush(request);
 	}
 
+	@Test
+	void statusFragmentRendersStep1ActiveForInterpreting() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setState(RequestState.INTERPRETING);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}/status-fragment", TEST_REQUEST_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/status :: statusContent"))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"step-ai\" data-status=\"active\"")))
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.containsString("id=\"step-solver\" data-status=\"pending\"")))
+			// the urgent banner lives outside the swappable fragment and must not be
+			// re-rendered by the fragment endpoint
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Urgent &amp; Emergency Care"))))
+			// the polling script also lives outside the fragment, so swapping the
+			// fragment in place must never re-inject (and duplicate) the poller
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("scheduling-status.js"))));
+	}
+
+	@Test
+	void statusFragmentRendersStep2ActiveForSuggesting() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setState(RequestState.SUGGESTING);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}/status-fragment", TEST_REQUEST_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/status :: statusContent"))
+			.andExpect(
+					content().string(org.hamcrest.Matchers.containsString("id=\"step-ai\" data-status=\"complete\"")))
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.containsString("id=\"step-solver\" data-status=\"active\"")));
+	}
+
+	@Test
+	void fullPageStatusShowsStep1CompleteStep2PendingForAwaitingConfirmation() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setState(RequestState.AWAITING_CONFIRMATION);
+		request.setRawText("Ear infection");
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}", TEST_REQUEST_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/status"))
+			.andExpect(
+					content().string(org.hamcrest.Matchers.containsString("id=\"step-ai\" data-status=\"complete\"")))
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.containsString("id=\"step-solver\" data-status=\"pending\"")));
+	}
+
+	@Test
+	void fullPageStatusShowsBothStepsCompleteWithOfferForSlotHeld() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setState(RequestState.SLOT_HELD);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}", TEST_REQUEST_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/status"))
+			.andExpect(
+					content().string(org.hamcrest.Matchers.containsString("id=\"step-ai\" data-status=\"complete\"")))
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.containsString("id=\"step-solver\" data-status=\"complete\"")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("Suggested Appointment Slot")));
+	}
+
+	@Test
+	void fullPageStatusReferencesLivePollingScript() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner);
+		request.setPet(this.pet);
+		request.setState(RequestState.INTERPRETING);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}", TEST_REQUEST_ID))
+			.andExpect(status().isOk())
+			.andExpect(view().name("scheduling/status"))
+			// the live-polling script is wired into the full page (outside the fragment)
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("/resources/js/scheduling-status.js")))
+			// no-JS fallback keeps the flow advancing while busy
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("http-equiv=\"refresh\"")));
+	}
+
+	@Test
+	@WithMockUser(username = "otherowner", roles = "OWNER")
+	void statusFragmentForbiddenWhenNotOwner() throws Exception {
+		SchedulingRequest request = new SchedulingRequest();
+		request.setId(TEST_REQUEST_ID);
+		request.setOwner(this.owner); // owned by owner id 1
+		request.setPet(this.pet);
+		request.setState(RequestState.INTERPRETING);
+		when(this.schedulingRequests.findByIdWithOwnerAndPet(TEST_REQUEST_ID)).thenReturn(Optional.of(request));
+
+		Owner otherOwner = new Owner();
+		otherOwner.setId(2);
+		UserAccount account = new UserAccount("otherowner", "secret", UserRole.OWNER, false, otherOwner);
+		when(this.userAccountRepository.findByUsername("otherowner")).thenReturn(Optional.of(account));
+
+		this.mockMvc.perform(get("/scheduling/requests/{requestId}/status-fragment", TEST_REQUEST_ID))
+			.andExpect(status().isForbidden());
+	}
+
 }

@@ -2,7 +2,7 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
 <body>
 
-  <h2 th:text="'My Upcoming Appointments'">My Upcoming Appointments</h2>
+  <h2 th:text="'My Appointments'">My Appointments</h2>
 
   <div th:if="${message}" class="alert alert-success">
     <span th:text="${message}"></span>
@@ -15,34 +15,45 @@
   <table class="table table-striped table-bordered">
     <thead>
       <tr>
-        <th th:text="'Date &amp; Time'">Date &amp; Time</th>
+        <th th:text="'When'">When</th>
         <th th:text="'Pet'">Pet</th>
-        <th th:text="'Veterinarian'">Veterinarian</th>
-        <th th:text="'Reason'">Reason</th>
+        <th th:text="'Vet / Summary'">Vet / Summary</th>
         <th th:text="'Status'">Status</th>
         <th th:text="'Actions'">Actions</th>
       </tr>
     </thead>
     <tbody>
-      <tr th:each="appt : ${appointments}">
-        <td th:text="${#temporals.format(appt.startTime, 'yyyy-MM-dd HH:mm') + ' - ' + #temporals.format(appt.endTime, 'HH:mm')}">2026-08-26 09:00 - 09:30</td>
-        <td th:text="${appt.pet != null ? appt.pet.name : '-'}">Leo</td>
-        <td th:text="${appt.vet != null ? (appt.vet.firstName + ' ' + appt.vet.lastName) : '-'}">James Carter</td>
-        <td th:text="${appt.reason}">Annual Checkup</td>
+      <tr th:each="item : ${scheduleItems}" th:classappend="${item.actionable} ? 'table-warning' : ''">
+        <td th:if="${item.when != null}" th:text="${#temporals.format(item.when, 'yyyy-MM-dd HH:mm')}">2026-08-26 09:00</td>
+        <td th:if="${item.when == null}" class="text-muted" th:text="'—'">—</td>
+        <td th:text="${item.petName != null ? item.petName : '-'}">Leo</td>
+        <td th:text="${item.vetOrSummary != null ? item.vetOrSummary : '-'}">James Carter</td>
         <td>
-          <span class="badge bg-primary" th:text="${appt.status}">BOOKED</span>
+          <span class="badge" th:classappend="${item.badgeClass}" th:text="${item.statusLabel}">Booked</span>
         </td>
         <td>
-          <a th:href="@{/my-appointments/__${appt.id}__}" class="btn btn-sm btn-info" th:text="'Details'">Details</a>
-          <form th:action="@{/my-appointments/__${appt.id}__/cancel}" method="post" style="display:inline;">
-            <button type="submit" class="btn btn-sm btn-outline-danger ms-1"
-                    onclick="return confirm('Are you sure you want to cancel this appointment?');"
-                    th:text="'Cancel'">Cancel</button>
-          </form>
+          <!-- Appointment row: Details + Cancel -->
+          <th:block th:if="${item.kind.name() == 'APPOINTMENT'}">
+            <a th:href="@{__${item.detailUrl}__}" class="btn btn-sm btn-info" th:text="'Details'">Details</a>
+            <form th:if="${item.cancelUrl != null}" th:action="@{__${item.cancelUrl}__}" method="post" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline-danger ms-1"
+                      onclick="return confirm('Are you sure you want to cancel this appointment?');"
+                      th:text="'Cancel'">Cancel</button>
+            </form>
+          </th:block>
+          <!-- Request row: View + Cancel request -->
+          <th:block th:if="${item.kind.name() == 'REQUEST'}">
+            <a th:href="@{__${item.detailUrl}__}" class="btn btn-sm btn-info" th:text="'View'">View</a>
+            <form th:if="${item.cancelUrl != null}" th:action="@{__${item.cancelUrl}__}" method="post" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline-danger ms-1"
+                      onclick="return confirm('Are you sure you want to cancel this request?');"
+                      th:text="'Cancel request'">Cancel request</button>
+            </form>
+          </th:block>
         </td>
       </tr>
-      <tr th:if="${#lists.isEmpty(appointments)}">
-        <td colspan="6" class="text-center text-muted" th:text="'You have no upcoming appointments scheduled.'">You have no upcoming appointments scheduled.</td>
+      <tr th:if="${#lists.isEmpty(scheduleItems)}">
+        <td colspan="5" class="text-center text-muted" th:text="'You have no appointments or scheduling requests yet.'">You have no appointments or scheduling requests yet.</td>
       </tr>
     </tbody>
   </table>

@@ -18,8 +18,10 @@ package org.springframework.samples.petclinic.scheduling.ai;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
-public record SymbolicWindow(DayOfWeek dayOfWeek, LocalDate date, String partOfDay) {
+public record SymbolicWindow(DayOfWeek dayOfWeek,
+		@JsonDeserialize(using = LenientLocalDateDeserializer.class) LocalDate date, String partOfDay) {
 
 	public SymbolicWindow {
 		if (partOfDay != null) {

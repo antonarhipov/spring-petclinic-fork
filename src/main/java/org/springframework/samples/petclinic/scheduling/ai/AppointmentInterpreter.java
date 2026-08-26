@@ -44,6 +44,16 @@ public class AppointmentInterpreter {
 			8. excludedWindows: List of times/days the owner explicitly cannot make.
 			9. preferredVetName: Name of veterinarian if specifically requested, or null.
 			10. confidence: A score from 0.0 to 1.0 representing your confidence in this extraction.
+
+			Output rules (follow strictly):
+			- Return ONLY the fields defined by the provided schema. Do not invent fields or wrap the result.
+			- Use null for any value you are unsure about. Never emit placeholder text.
+			- dayOfWeek must be one of the uppercase names MONDAY..SUNDAY, or null.
+			- date must be an actual calendar date in strict ISO-8601 format yyyy-MM-dd (e.g. 2026-08-31).
+			  Resolve relative expressions ("next Monday", "tomorrow") against the CURRENT DATE given below.
+			  If no concrete date is stated or can be resolved, set date to null.
+			  Never output a literal template such as "YYYY-MM-DD" and never guess a date.
+			- partOfDay must be one of MORNING, AFTERNOON, EVENING, or null.
 			""";
 
 	private final ChatClient.Builder chatClientBuilder;
@@ -72,7 +82,10 @@ public class AppointmentInterpreter {
 
 			Interpretation interpretation = client.prompt()
 				.system(SYSTEM_PROMPT)
-				.user(u -> u.text("Please extract appointment scheduling details from this owner request: {text}")
+				.user(u -> u
+					.text("CURRENT DATE: {today} (use this to resolve any relative dates as strict yyyy-MM-dd).\n"
+							+ "Please extract appointment scheduling details from this owner request: {text}")
+					.param("today", java.time.LocalDate.now().toString())
 					.param("text", rawText))
 				.call()
 				.entity(Interpretation.class);

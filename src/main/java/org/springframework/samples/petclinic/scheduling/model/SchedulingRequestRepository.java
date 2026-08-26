@@ -42,6 +42,18 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 	@Transactional(readOnly = true)
 	List<SchedulingRequest> findByOwnerId(Integer ownerId);
 
+	/**
+	 * Loads all requests owned by the given owner together with their
+	 * {@link SchedulingRequest#getOwner() owner} and {@link SchedulingRequest#getPet()
+	 * pet}. Both associations are {@code @ManyToOne(fetch = LAZY)}, so with
+	 * {@code spring.jpa.open-in-view=false} they must be fetched eagerly here; otherwise
+	 * the "My Appointments" view fails with a {@code LazyInitializationException} once
+	 * the session is closed.
+	 */
+	@Transactional(readOnly = true)
+	@Query("SELECT sr FROM SchedulingRequest sr LEFT JOIN FETCH sr.owner LEFT JOIN FETCH sr.pet WHERE sr.owner.id = :ownerId")
+	List<SchedulingRequest> findByOwnerIdWithPet(@Param("ownerId") Integer ownerId);
+
 	@Transactional(readOnly = true)
 	List<SchedulingRequest> findByPetId(Integer petId);
 

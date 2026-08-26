@@ -16,7 +16,6 @@
 
 package org.springframework.samples.petclinic.scheduling;
 
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.scheduling.model.Appointment;
@@ -65,8 +64,7 @@ public class OwnerAppointmentController {
 	@GetMapping
 	public String listMyAppointments(Authentication authentication, Model model) {
 		Owner owner = getAuthenticatedOwner(authentication);
-		List<Appointment> upcoming = this.bookingService.getUpcomingAppointmentsForOwner(owner.getId());
-		model.addAttribute("appointments", upcoming);
+		model.addAttribute("scheduleItems", this.bookingService.getScheduleItemsForOwner(owner.getId()));
 		return "scheduling/myAppointments";
 	}
 

@@ -16,9 +16,11 @@
 
 package org.springframework.samples.petclinic.scheduling;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -48,6 +50,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class BookingService {
+
+	/**
+	 * How far back a terminal ({@code CANCELLED}/{@code EXPIRED}/{@code REJECTED})
+	 * request remains visible in the owner's schedule as short-term history.
+	 */
+	private static final long RECENT_CLOSED_WINDOW_DAYS = 14;
 
 	private final AppointmentRepository appointments;
 
@@ -350,6 +358,123 @@ public class BookingService {
 		LocalDateTime now = this.availabilityService.getNow().toLocalDateTime();
 		return this.appointments.findByOwnerIdAndStatusAndStartTimeAfterOrderByStartTimeAsc(ownerId,
 				AppointmentStatus.BOOKED, now);
+	}
+
+	/**
+	 * Assembles the owner's unified schedule: in-progress scheduling requests, recently
+	 * closed requests kept as short-term history, and confirmed upcoming appointments,
+	 * each normalized into an {@link OwnerScheduleItem}.
+	 * <p>
+	 * Requests in {@code CONFIRMED} state are excluded because they are already
+	 * represented by their resulting appointment. Terminal requests
+	 * ({@code CANCELLED}/{@code EXPIRED}/{@code REJECTED}) are only included when updated
+	 * within {@link #RECENT_CLOSED_WINDOW_DAYS} days.
+	 * <p>
+	 * Ordering: requests needing owner action first, then the remaining active requests,
+	 * then upcoming appointments by start time, then recently closed requests (most
+	 * recently updated first).
+	 * @param ownerId the owner whose schedule should be assembled
+	 * @return the ordered, view-ready schedule items
+	 */
+	@Transactional(readOnly = true)
+	public List<OwnerScheduleItem> getScheduleItemsForOwner(Integer ownerId) {
+		Instant closedCutoff = this.availabilityService.getNow()
+			.toInstant()
+			.minus(Duration.ofDays(RECENT_CLOSED_WINDOW_DAYS));
+
+		List<SchedulingRequest> requests = new ArrayList<>(this.schedulingRequests.findByOwnerIdWithPet(ownerId));
+		requests.sort(BookingService::byUpdatedAtDescending);
+
+		List<OwnerScheduleItem> actionable = new ArrayList<>();
+		List<OwnerScheduleItem> active = new ArrayList<>();
+		List<OwnerScheduleItem> recentlyClosed = new ArrayList<>();
+		for (SchedulingRequest request : requests) {
+			RequestState state = request.getState();
+			if (state == RequestState.CONFIRMED) {
+				// Represented by its resulting appointment; skip to avoid duplicates.
+				continue;
+			}
+			if (state.isTerminal()) {
+				Instant updatedAt = request.getUpdatedAt();
+				if (updatedAt != null && updatedAt.isAfter(closedCutoff)) {
+					recentlyClosed.add(toScheduleItem(request));
+				}
+				continue;
+			}
+			OwnerScheduleItem item = toScheduleItem(request);
+			(item.actionable() ? actionable : active).add(item);
+		}
+
+		List<OwnerScheduleItem> appointmentItems = getUpcomingAppointmentsForOwner(ownerId).stream()
+			.map(this::toScheduleItem)
+			.toList();
+
+		List<OwnerScheduleItem> items = new ArrayList<>();
+		items.addAll(actionable);
+		items.addAll(active);
+		items.addAll(appointmentItems);
+		items.addAll(recentlyClosed);
+		return items;
+	}
+
+	private static int byUpdatedAtDescending(SchedulingRequest a, SchedulingRequest b) {
+		Instant ua = a.getUpdatedAt();
+		Instant ub = b.getUpdatedAt();
+		if (ua == null && ub == null) {
+			return 0;
+		}
+		if (ua == null) {
+			return 1;
+		}
+		if (ub == null) {
+			return -1;
+		}
+		return ub.compareTo(ua);
+	}
+
+	private OwnerScheduleItem toScheduleItem(Appointment appointment) {
+		String petName = (appointment.getPet() != null) ? appointment.getPet().getName() : null;
+		String vetName = (appointment.getVet() != null)
+				? (appointment.getVet().getFirstName() + " " + appointment.getVet().getLastName()) : null;
+		String base = "/my-appointments/" + appointment.getId();
+		return new OwnerScheduleItem(OwnerScheduleItem.Kind.APPOINTMENT, appointment.getId(), petName, vetName,
+				appointment.getStartTime(), "Booked", "bg-success", false, base, base + "/cancel");
+	}
+
+	private OwnerScheduleItem toScheduleItem(SchedulingRequest request) {
+		RequestState state = request.getState();
+		String petName = (request.getPet() != null) ? request.getPet().getName() : null;
+		boolean actionable = state == RequestState.AWAITING_CONFIRMATION || state == RequestState.SLOT_HELD;
+		String detailUrl = "/scheduling/requests/" + request.getId();
+		String cancelUrl = state.isTerminal() ? null : detailUrl + "/cancel";
+		return new OwnerScheduleItem(OwnerScheduleItem.Kind.REQUEST, request.getId(), petName, request.getRawText(),
+				null, requestStatusLabel(state), requestBadgeClass(state), actionable, detailUrl, cancelUrl);
+	}
+
+	private static String requestStatusLabel(RequestState state) {
+		return switch (state) {
+			case DRAFT -> "Draft";
+			case INTERPRETING -> "Analyzing request";
+			case AWAITING_CONFIRMATION -> "Needs your confirmation";
+			case SUGGESTING -> "Finding a slot";
+			case SLOT_HELD -> "Slot offered — respond";
+			case STAFF_QUEUED -> "With clinic staff";
+			case CONFIRMED -> "Booked";
+			case CANCELLED -> "Cancelled";
+			case EXPIRED -> "Expired";
+			case REJECTED -> "Closed";
+		};
+	}
+
+	private static String requestBadgeClass(RequestState state) {
+		return switch (state) {
+			case INTERPRETING, SUGGESTING -> "bg-info";
+			case AWAITING_CONFIRMATION -> "bg-warning";
+			case SLOT_HELD -> "bg-primary";
+			case CONFIRMED -> "bg-success";
+			case CANCELLED -> "bg-dark";
+			case DRAFT, STAFF_QUEUED, EXPIRED, REJECTED -> "bg-secondary";
+		};
 	}
 
 	@Transactional(readOnly = true)
