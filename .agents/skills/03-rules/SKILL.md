@@ -1,199 +1,363 @@
 ---
 name: rules
-description: Capture feature-level design decisions and the technical constraints that follow, traceable to acceptance criteria
+description: Capture feature-level and use-case-specific technical design decisions and constraints, grounded in the codebase and traceable to acceptance criteria
 ---
 
 # Technical Design and Constraints Skill
 
-Translate spec and criteria into the design shape for this feature and the constraints that follow. Constraints specify HOW the system should be built, complementing acceptance criteria which specify WHAT.
+Translate specs and criteria into the technical design decisions an implementing agent would otherwise invent.
+
+Constraints specify HOW the system should be built, complementing acceptance criteria which specify WHAT.
 
 Pipeline position: proposal → spec → criteria → **rules** → review → plan
 
 # Role
 
-You make the feature-level design decisions an implementing agent would otherwise invent during coding, and record them as validatable constraints. You do not invent product decisions. If a rule would require resolving a product ambiguity, route the gap back to the spec step.
+Make non-trivial technical decisions and record them as validatable constraints.
+
+Do not invent product decisions. If a rule requires resolving product behavior, route the gap to `spec`. If an acceptance criterion is too vague, route it to `criteria`.
 
 # Inputs
 
-- Resolved spec: @file:spec/spec.md
-- Acceptance criteria: @file:spec/criteria.md
-- Proposal: @file:spec/proposal.md (tech stack and intent reference)
-- Project conventions:
-  - `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` at the project root, if present
-  - Top-level build files (Gradle, Maven, package.json) for stack and versions
-  - Existing source layout, ADRs, `docs/architecture` if present
+Feature-level:
 
-Spec and criteria take precedence over the proposal.
+- `spec/<feature>/spec.md`
+- `spec/<feature>/proposal.md`
+- `spec/<feature>/rules.md` (output, when shared rules exist)
 
-# Codebase Grounding (run first)
+Per use case:
 
-Before writing any rule, read agent guidance files and note established package layout, frameworks and versions, and existing patterns for persistence, error handling, logging, testing. Rules align with existing conventions unless there is a documented reason to deviate.
+- `spec/<feature>/<use-case>/spec.md`
+- `spec/<feature>/<use-case>/criteria.md`
+- `spec/<feature>/<use-case>/rules.md` (output, when local rules exist)
 
-This step is non-negotiable. The output of rules is the diff against conventions; you cannot write a diff without reading what you're diffing against.
+Project conventions:
 
-# Analysis Pass (internal)
+- `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`
+- top-level build files
+- existing source layout and implementation patterns
+- ADRs and `docs/architecture`, if present
 
-Identify the actual decisions this feature requires. Walk the coverage checklist below as prompts, not as a forced output structure. For each item, ask: "Does this feature need a non-trivial decision here, or does it inherit from AGENTS.md, skills, and existing patterns?"
+Spec and criteria take precedence over proposal.
 
-Coverage checklist:
+# Rule Scope
 
-1. Project Structure: packages, modules, layering, boundaries
-2. Component Design: classes, interfaces, responsibilities
-3. Technology Decisions: specific libraries, versions, configurations
-4. Code Style: naming, formatting, file organization
-5. Design Patterns: which to apply, which to avoid
-6. Error Handling: result types vs exceptions, boundaries, atomicity
-7. Testing Strategy: pyramid composition, mocking policy, fixtures, frameworks
-8. Security: authn/authz, input validation, secrets, PII
-9. Observability: what to log (and not), structured format, metrics, traces
-10. Concurrency: thread safety, async patterns, blocking call rules
-11. Data Persistence: transactions, migrations, query patterns, schema evolution
-12. API Contracts: versioning, backward compatibility, deprecation
-13. Performance Budgets: resource targets tied to non-functional ACs
-14. Dependency Policy: new deps to add, deps to avoid, version pinning
+Assign each decision to the narrowest scope where it remains correct.
 
-If an item is fully covered by AGENTS.md, skills, or existing patterns, do not produce a rule for it. Inheritance is the default; rules capture only the diff.
+**Feature-level rule:** use when the decision affects multiple use cases or defines shared architecture, data models, dependencies, integrations, security, persistence, concurrency, or API boundaries.
+
+**Use-case rule:** use when the decision constrains only one use case.
+
+Feature-level rules are inherited by all use cases. Do not duplicate them in use-case files.
+
+If a supposedly local rule affects another use case, promote it to feature level.
+
+For a feature without separate use cases, keep all rules in `spec/<feature>/rules.md`.
+
+# Codebase Grounding
+
+Before writing any rule, inspect project guidance and relevant code.
+
+Identify:
+
+- package/module layout
+- frameworks and versions
+- persistence and transaction patterns
+- error handling
+- logging and observability
+- testing conventions
+- security patterns
+- dependency policy
+- relevant architectural boundaries
+
+This is non-negotiable.
+
+Rules capture the **diff from existing conventions**. If the project already establishes the answer, inherit it instead of restating it.
+
+# Analysis Pass
+
+Read the feature spec, all use-case specs and criteria, then inspect the relevant codebase.
+
+Consider:
+
+1. Project structure and boundaries
+2. Components and responsibilities
+3. Libraries and technology choices
+4. Design patterns
+5. Error handling
+6. Testing strategy
+7. Security
+8. Observability
+9. Concurrency
+10. Persistence and transactions
+11. API contracts
+12. Performance constraints
+13. Dependencies
+
+For each ask:
+
+> Does this require a feature-specific decision, a use-case-specific decision, or can it inherit existing conventions?
+
+Before deciding use-case rules, identify shared capabilities so separate use cases do not invent incompatible models, services, persistence strategies, or dependencies.
 
 # Ecosystem Survey
 
-For each checklist item that touches technology or architecture (3, 5, 6, 7, 9, 10, 11, 12), apply the Ecosystem Survey lens before deciding:
+For technology or architecture decisions, check whether:
 
-- Is there a canonical framework for this category that the project doesn't use? (Spring Batch for batch jobs; Spring Integration for messaging; Liquibase/Flyway for migrations; Testcontainers for integration testing; Resilience4j for retries)
-- Are there multiple equally-valid library options for a required capability that the project hasn't already chosen? (CSV parser, HTTP client, JSON library)
-- Does the feature require an architectural pattern not present in the codebase? (async, streaming, event-driven, distributed transactions)
-- Does the decision have long-term coupling beyond this feature?
+- a canonical framework or library exists that the project does not use
+- multiple equally valid approaches exist
+- the feature introduces a new architectural pattern
+- the choice creates long-term coupling beyond one use case
 
-If yes to any, the decision is a judgment call. It MUST go through Interactive Resolution. Do not silently default to "what the project already has." Staying lean is a valid choice, but it must be a recorded one.
+If yes, treat it as a judgment call.
+
+Examples: Spring Batch, Spring Integration, Flyway/Liquibase, Testcontainers, Resilience4j, Timefold.
+
+Do not silently choose the existing stack just because it is already present.
 
 # Interactive Resolution
 
-Some decisions derive mechanically (naming matches convention, test framework matches the project). Others require judgment, including every decision flagged by the Ecosystem Survey.
+Mechanical decisions inherit from the project.
 
-For judgment calls, you **MUST** use AskUserTool. Do not silently default. Provide 2 to 4 concrete options that always include the leanest viable path (no new framework, no new dependency). Mark your pick "(recommended)" with a one-line reason and a one-line trade-off per option. **One question at a time.** Re-plan after every answer.
+Judgment calls require user input.
 
-If a decision needs a stakeholder you cannot reach, record under "External dependencies" with the question, blocker, and default in use until resolution.
+Use AskUserTool with:
+
+- 2–4 concrete options
+- the leanest viable path included
+- one option marked `(recommended)`
+- one-line reason and trade-off per option
+- one question at a time
+
+Resolve shared decisions at feature level. Resolve local decisions while processing that use case.
+
+If input depends on an unavailable stakeholder, record it under `External dependencies` with blocker and default.
 
 # Worth-Recording Bar
 
-Only emit a rule if at least one holds:
-- It captures a feature-specific decision not already in AGENTS.md, skills, or build config
-- It documents a deliberate deviation from project conventions
-- It binds a specific AC to a technical constraint that validates it
-- It records a deliberate choice NOT to adopt an ecosystem option that was surfaced (e.g., "decided against Spring Batch; uses @Scheduled and JdbcTemplate")
+Emit a rule only if at least one holds:
 
-Restating project-wide defaults is noise. If the rule would just say "use the framework the rest of the project uses," skip it. Negative decisions, on the other hand, are the most often-lost context and must be recorded.
+- feature-specific decision not already established by the project
+- use-case-specific technical constraint
+- deliberate deviation from project conventions
+- AC requires a technical invariant
+- meaningful ecosystem option was deliberately declined
+- shared boundary between use cases must be protected
 
-# Constraint Language (RFC 2119)
+Do not record generic best practices or restate project defaults.
 
-- **MUST**: non-negotiable; violating breaks a requirement, AC, or invariant
-- **MUST NOT**: known antipattern, security or correctness hazard
-- **SHOULD / SHOULD NOT**: strong preference; deviation requires inline justification
-- **MAY**: optional, no preference
+Negative decisions matter and should be preserved.
 
-If every rule in the output is at one level, you've lost signal. Use the scale.
+# Constraint Language
+
+Use RFC 2119 language:
+
+- **MUST / MUST NOT** — required for correctness, security, compatibility, AC, or invariant
+- **SHOULD / SHOULD NOT** — strong preference; deviation requires justification
+- **MAY** — explicit implementation freedom
+
+Use the weakest level that accurately expresses the constraint.
+
+# Identifiers
+
+Feature-level:
+
+`RULE-1`, `RULE-2`, ...
+
+Use-case-specific:
+
+`UC1-RULE1`, `UC1-RULE2`, `UC2-RULE1`, ...
+
+Keep IDs stable once written.
 
 # Rule Format
 
 Each rule has:
-- Stable ID: `RULE-1`, `RULE-2`, ... in document order
-- Modal verb
-- Concrete, validatable statement
-- `Reason:` line on why it exists
-- `Covers:` line listing AC(s), or `Covers: project-wide` for cross-cutting rules
 
-Example:
+- stable ID
+- `Covers:` line
+- concrete RFC 2119 statement
+- `Reason:` line
 
-### RULE-7
-**Covers:** AC-3, AC-4
-**MUST** place domain logic under `com.acme.invoice.domain` and depend only on Java stdlib and Kotlin stdlib.
-**Reason:** Keeps domain free of framework coupling; testable without Spring context.
+Feature-level example:
 
-Example of a negative-decision rule:
-
+```markdown
 ### RULE-2
-**Covers:** project-wide
-**MUST NOT** introduce Spring Batch as a dependency.
-**Reason:** Surveyed as the canonical batch framework; declined because the import is single-source, single-table, with acceptable manual restart logic via a checkpoint column. Reconsider if requirements grow to multi-source, partitioned, or long-running imports.
+**Covers:** UC1-AC2, UC2-AC1
+**MUST** represent scheduling constraints using the shared `SchedulingConstraints` domain model before slot selection.
+**Reason:** Both use cases depend on the same interpretation of scheduling constraints.
+```
 
-# Anti-patterns
+Use-case example:
 
-**Bad:** `MUST be well-architected` → **Better:** `MUST place domain logic in com.acme.feature.domain; MUST NOT depend on Spring from this package.` "Well-architected" isn't validatable.
+```markdown
+### UC1-RULE1
+**Covers:** UC1-AC3
+**MUST** reject temporal expressions that cannot be mapped to the supported scheduling model.
+**Reason:** UC1-AC3 requires ambiguous input to fail explicitly.
+```
 
-**Bad:** `MUST handle errors properly` → **Better:** `MUST return Result<T, DomainError>; MUST NOT throw across the application service boundary.` Concrete subjects and verbs.
+For architectural decisions not tied directly to one AC:
 
-**Bad:** `MUST follow best practices` → drop, or name the specific practice. Unfalsifiable rules are worse than no rule.
+`Covers: feature-wide`
 
-**Bad:** restating an AGENTS.md convention → drop. If the rule would say "use the framework the rest of the project uses," inheritance handles it.
+Use sparingly.
 
-**Bad:** rationale stuffed into the rule statement → keep the rule one concrete sentence; rationale belongs in `Reason:`.
+# Acceptance-Criteria Coverage
 
-**Bad:** defaulting to "stay with what's in build.gradle" for a category where a canonical ecosystem solution exists, without surfacing the choice → always run the Ecosystem Survey first.
+Evaluate every AC for whether it needs a technical constraint.
+
+It is valid for an AC to need none.
+
+Do not manufacture rules to achieve one-to-one coverage.
+
+Record `(none needed)` in the cross-reference when observable behavior is sufficiently constrained by the AC and existing conventions.
+
+Feature rules may cover ACs from multiple use cases.
+
+Use-case rules normally cover only ACs from their own use case.
+
+# Anti-Patterns
+
+**Bad:** `MUST be well-architected.`  
+**Better:** `MUST keep constraint evaluation behind the SchedulingService boundary.`
+
+**Bad:** `MUST handle errors properly.`  
+**Better:** `MUST NOT propagate optimizer exceptions across the application-service boundary.`
+
+**Bad:** `MUST use Spring Boot because the project uses it.`  
+Drop it; this is inherited.
+
+**Bad:** duplicate the same shared rule in multiple use cases.  
+Promote it to feature level.
+
+**Bad:** choose an ecosystem option silently.  
+Surface the judgment call first.
 
 # Route-Back Triggers
 
-Route back to an earlier step when any of:
-- A rule would require inventing a product decision (route to spec)
-- An AC is too vague to derive a technical constraint from (route to criteria)
-- A boundary, dependency, or pattern decision keeps oscillating between two equally valid options with no AC to disambiguate (route to criteria; the spec likely under-constrained the behavior)
+Route to `spec` when:
 
-Don't paper over a missing decision with a `SHOULD` rule. That hides the gap.
+- a rule requires inventing product behavior
+- use-case ownership is unclear
+- a missing interaction between use cases affects behavior
+
+Route to `criteria` when:
+
+- an AC is too vague to derive or validate a constraint
+- a non-functional AC lacks a necessary threshold
+- competing technical approaches create materially different observable behavior that criteria do not disambiguate
+
+Do not hide missing requirements behind `SHOULD`.
 
 # Success Criteria
 
-Complete only when ALL hold:
+Complete only when:
 
-- Every coverage checklist item considered during analysis (covered, inherited, or noted internally as not applicable)
-- Every technology or architecture item that triggered the Ecosystem Survey went through Interactive Resolution
-- Every rule passes the Worth-Recording Bar
-- Every rule has ID, modal, concrete statement, `Reason:`, `Covers:`
-- Every rule is validatable by reading code (no subjective adjectives)
-- Every AC is either covered by at least one RULE or explicitly marked as needing none
-- Rules align with project conventions, or deviation is justified in `Reason:`
-- The Design section communicates the feature's shape in under 200 words
+- codebase conventions were inspected first
+- shared architecture was considered before local rules
+- every relevant design category was considered
+- every Ecosystem Survey judgment call was resolved interactively
+- every emitted rule passes the Worth-Recording Bar
+- every rule has ID, modal, concrete statement, `Reason:`, and `Covers:`
+- shared rules appear only at feature level
+- local rules affect only their use case
+- every AC maps to rules or `(none needed)`
+- deviations from project conventions are justified
+- no rule invents product behavior
 
-Run a verification pass before writing. Do not write a partial file.
+Run a verification pass before writing.
 
-# Output
+# Output: Feature Rules
 
-Write to `spec/rules.md`:
+If shared technical decisions exist, write:
 
-```
+`spec/<feature>/rules.md`
+
+```markdown
 # Technical Design and Constraints: <Feature>
 
 ## Overview
-Feature in one sentence. Tech stack with versions. Links to spec/spec.md and spec/criteria.md.
+<feature and relevant stack>
 
 ## Design
-Components: <new components introduced by this feature, with one-line responsibility each>
-Boundaries: <what this feature exposes and what it keeps internal>
-Flow: <one paragraph or numbered steps describing how data moves through the components>
-Key dependencies: <new libraries to add, with reason; existing libraries to use; ecosystem options considered and declined>
+Components: <shared components and responsibilities>
+Boundaries: <shared architectural boundaries>
+Flow: <how use cases interact through the design>
+Key dependencies: <added, reused, or deliberately declined dependencies>
 
 ## Codebase Alignment
-One paragraph: conventions inherited from AGENTS.md, skills, and existing patterns. Deviations with justification.
+<inherited conventions and justified deviations>
 
 ## Rules
 
 ### RULE-1
 **Covers:** ...
-**MUST/MUST NOT/SHOULD/SHOULD NOT/MAY** ...
+**MUST/SHOULD/...** ...
 **Reason:** ...
-
-### RULE-2
-...
-
-(flat list, no category headers; order by relevance to the design)
 
 ## Cross-Reference
 
-| AC    | Rules           |
-|-------|-----------------|
-| AC-1  | RULE-3, RULE-7  |
-| AC-2  | (none needed)   |
+| AC | Rules |
+|---|---|
+| UC1-AC1 | RULE-1 |
+| UC1-AC2 | (none needed) |
 
 ## Design Exclusions
-Architectural concerns explicitly out of scope for this feature, with reason.
+<only when relevant>
 
 ## External Dependencies
-Question / blocker / default for each.
+<only when relevant>
 ```
+
+Do not create an empty feature `rules.md` if no shared decisions exist.
+
+# Output: Use-Case Rules
+
+For a use case with local constraints, write:
+
+`spec/<feature>/<use-case>/rules.md`
+
+```markdown
+# Technical Constraints: UC<N> — <Use Case>
+
+## Design
+<local components or flow only>
+
+## Rules
+
+### UC<N>-RULE1
+**Covers:** UC<N>-AC1
+**MUST/SHOULD/...** ...
+**Reason:** ...
+
+## Cross-Reference
+
+| AC | Rules |
+|---|---|
+| UC<N>-AC1 | UC<N>-RULE1 |
+| UC<N>-AC2 | (none needed) |
+
+## Design Exclusions
+<only when relevant>
+
+## External Dependencies
+<only when relevant>
+```
+
+Do not repeat feature-level design or rules here.
+
+Do not create a use-case `rules.md` when no local rules are needed.
+
+# Final Verification
+
+Before completing:
+
+1. Verify shared decisions appear only at feature level.
+2. Verify local rules constrain only their use case.
+3. Verify every AC maps to rules or `(none needed)`.
+4. Verify no rule restates project conventions.
+5. Verify all ecosystem judgment calls were surfaced.
+6. Verify no rule invents product behavior.
+7. Verify negative technical decisions were preserved.
+8. Verify an implementing agent can understand feature architecture before implementing a use case.
