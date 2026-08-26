@@ -1,96 +1,224 @@
 ---
 name: tasks
-description: Generate an implementation task list from validated spec artifacts
+description: Generate an ordered, atomic implementation task list from validated feature and use-case spec artifacts, traceable to acceptance criteria and technical rules
 ---
 
-# Taslk List Generator Skill
+# Task List Generator Skill
 
-Translate a validated spec into an ordered, atomic, AC-traceable execution list an implementing agent can run task by task.
+Translate a validated feature specification into an ordered, atomic, AC-traceable execution list an implementing agent can run task by task.
 
-Pipeline position: proposal → spec → rules → review → **tasks** -> execute
+Pipeline position: proposal → spec → criteria → rules → review → **tasks** → execute
 
 # Role
 
-You translate a validated spec into a task list written to disk. You do not write code, run tests, or modify project files outside `spec/tasks.yaml`. You do not ask questions; document judgment calls in `decisions` for the user to review.
+Translate validated spec artifacts into one feature-level task list.
 
-# Pipeline Contract
+Do not write code, run tests, or modify project files outside the feature's `tasks.yaml`.
 
-Read `spec/review.md` (if exists) first. Locate the verdict line under `## Summary`.
-
-- **FAIL**: refuse. Print the blocker IDs and recommend rerunning the relevant upstream skill. Do not write `spec/tasks.yaml`.
-- **PASS WITH CONDITIONS**: each major must be reflected in the task list, either as a dedicated task with `source: review/MAJOR-N` or a `risk` annotation on an existing task. Note in `assumptions`.
-- **PASS**: proceed.
-
-Risk Hotspots from the review surface as `risk` annotations on the relevant task, regardless of verdict.
+Do not ask questions. Record planning judgment calls in `decisions`.
 
 # Inputs
 
-- Proposal: @file:spec/proposal.md
-- Spec: @file:spec/spec.md
-- Rules: @file:spec/rules.md (optional)
-- Review: @file:spec/review.md (optional, pipeline gate)
-- Project conventions: `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, build files, source tree
+Feature-level:
 
-Spec takes precedence over the proposal.
+- `spec/<feature>/proposal.md`
+- `spec/<feature>/spec.md`
+- `spec/<feature>/rules.md` if present
+- `spec/<feature>/review.md` if present
 
-# Codebase Grounding (run first)
+Per use case:
 
-Read agent guidance files. Note package layout, module boundaries, naming, build/test/deployment patterns, and architectural style (layered, hexagonal, feature-sliced). Tasks place artifacts in paths consistent with the existing structure. Phases respect the existing architectural style unless `rules.md` mandates a deviation.
+- `spec/<feature>/<use-case>/spec.md`
+- `spec/<feature>/<use-case>/criteria.md`
+- `spec/<feature>/<use-case>/rules.md` if present
+
+For non-decomposed features:
+
+- `spec/<feature>/criteria.md`
+- `spec/<feature>/rules.md` if present
+
+Project conventions:
+
+- `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`
+- build files
+- source tree
+
+Spec and criteria take precedence over proposal.
+
+# Pipeline Contract
+
+Read `spec/<feature>/review.md` first when present.
+
+Locate the verdict under `## Summary`.
+
+- **FAIL**: refuse. Print blocker IDs and recommend rerunning the upstream skills from the Fix Plan. Do not write `tasks.yaml`.
+- **PASS WITH CONDITIONS**: every unresolved major must appear either as a dedicated task with `source: review/MAJOR-N` or as a `risk` annotation. Note this in `assumptions`.
+- **PASS**: proceed.
+
+Risk Hotspots become `risk` annotations on relevant tasks regardless of verdict.
+
+# Codebase Grounding
+
+Read project guidance and inspect the source tree.
+
+Identify:
+
+- package and module boundaries
+- naming conventions
+- architectural style
+- build and test patterns
+- existing implementation paths for the relevant feature area
+
+Place task artifacts consistently with the existing codebase unless rules explicitly require a deviation.
+
+# Use Cases as Planning Units
+
+For decomposed features, use cases are the default implementation slices.
+
+Each use case already represents an independently specified behavioral unit with scoped acceptance criteria:
+
+`UC<N>-AC<M>`
+
+Prefer keeping tasks for one use case together unless a shared prerequisite or architectural dependency requires another order.
+
+Shared infrastructure or feature-level design may be implemented before multiple use cases depend on it.
+
+Do not force one phase per use case when this would delay necessary end-to-end feedback.
 
 # Phase Organization
 
-Pick an organizing principle and state it in `organizing_principle`:
+Choose and record `organizing_principle`:
 
-- **walking_skeleton**: thin end-to-end slice first, then thicken. Default. Best when integration risk dominates.
-- **layered**: data → domain → application → presentation. Best for layered architectures.
-- **feature_slice**: one phase per AC cluster, each shippable. Best for feature-sliced or hexagonal projects.
-- **risk_first**: highest-risk decisions first. Best when Risk Hotspots are non-trivial.
+- **feature_slice** — implement use cases or AC clusters as independently testable slices
+- **walking_skeleton** — establish a thin end-to-end path first
+- **risk_first** — resolve load-bearing technical uncertainty first
+- **layered** — data → domain → application → presentation when the architecture strongly favors it
 
-State the choice and one-line reason in `decisions`.
+## Selection Ladder
+
+1. **Explicit mandate**  
+   Follow rules or invocation instructions.
+
+2. **Architectural risk**  
+   If review identifies a load-bearing architectural hotspot, use `risk_first`.
+
+3. **Unproven end-to-end path**  
+   If the feature crosses a new integration or architectural seam, use `walking_skeleton`.
+
+4. **Decomposed use cases**  
+   If use cases can be implemented and validated substantially independently, use `feature_slice`.
+
+5. **Fallback**  
+   Mirror the existing architecture, commonly `layered`.
+
+If two principles genuinely apply, use at most two:
+
+`walking_skeleton then feature_slice`
+
+Record the handoff in `decisions`.
+
+# Tracer Bullets
+
+When integration risk exists, implement a minimal end-to-end path first, validate it, then expand behavior.
+
+A tracer bullet should cross the real architectural boundaries without attempting to satisfy every AC.
+
+Use it for feedback, not as an excuse to build throwaway architecture.
 
 # Task Granularity
 
-- Completable in a single focused effort (rule of thumb: under an hour)
-- Produces a verifiable artifact (file, passing test, documented decision)
-- Small enough to roll back cleanly
-- References ACs and RULES it covers via `covers`
+Each task should:
+
+- fit one focused implementation effort
+- produce a verifiable artifact or outcome
+- be independently understandable
+- be small enough to roll back
+- reference the ACs and rules it implements
+
+Avoid tasks such as:
+
+`Implement UC2`
+
+Prefer:
+
+`Add scheduling constraint domain model`
+`Map parsed availability into scheduling constraints`
+`Add slot-selection integration test for UC2-AC1`
+
+# Traceability
+
+Use scoped identifiers from upstream artifacts.
+
+Acceptance criteria:
+
+- `UC1-AC1`
+- `UC2-AC3`
+
+Use-case rules:
+
+- `UC1-RULE1`
+- `UC2-RULE2`
+
+Feature rules:
+
+- `RULE-1`
+- `RULE-2`
+
+Every AC must appear in:
+
+- at least one task's `covers.acs`, or
+- `coverage_deferrals`
+
+No third option.
+
+Feature rules may be referenced by tasks from multiple use cases.
 
 # Dependency Rules
 
-- No circular dependencies
-- Minimize cross-phase dependencies
-- Infrastructure before business logic; interfaces before implementations; fixtures before tests
+- no circular dependencies
+- every dependency references an earlier task
+- minimize cross-phase dependencies
+- shared prerequisites before dependent use cases
+- interfaces before implementations when consumers depend on them
+- migrations before code requiring the new schema
+- fixtures/support before tests depending on them
 
-# Checkpoint Patterns
+Do not impose infrastructure-before-business-logic mechanically when a walking skeleton gives faster validation.
 
-Place checkpoints where human review meaningfully reduces risk:
-- After project structure or scaffolding
-- After the first end-to-end slice runs
-- After core domain logic is in place
-- After each major integration boundary
-- After test suite green for a phase's ACs
-- Before any irreversible step (migrations, deletions, API contract changes)
+# Checkpoints
 
-Every phase ends with a checkpoint. Intermediate checkpoints allowed within a phase.
+Add checkpoints where human review materially reduces risk:
+
+- shared architecture or scaffolding completed
+- first end-to-end slice works
+- major integration boundary works
+- a use case's ACs are satisfied
+- migrations or irreversible changes are ready
+- phase test suite is green
+
+Every phase ends with a checkpoint.
 
 # Stable IDs
 
-- Phases: `phase-1`, `phase-2`, ... in execution order
-- Tasks: `task-N.M` (phase number, task number)
-- Checkpoints: `cp-N` (terminal) or `cp-N.M` (intermediate)
-- Decisions: `dec-1`, `dec-2`, ...
+- phases: `phase-1`, `phase-2`, ...
+- tasks: `task-N.M`
+- checkpoints: `cp-N` or `cp-N.M`
+- decisions: `dec-1`, `dec-2`, ...
+
+Task IDs describe execution order, not use-case ownership.
+
+Use `covers.acs` for ownership and traceability.
 
 # Soft Limits
 
-Aim for ≤ 5 phases, ≤ 7 tasks per phase. If you exceed:
-- The feature is probably too large. Recommend a split in `decisions` rather than padding.
-- If a split isn't sensible, exceed the limit and note the reason in `decisions`.
+Aim for:
 
-Don't pad or merge to fit the numbers.
+- ≤ 5 phases
+- ≤ 7 tasks per phase
 
-# Coverage
+If substantially exceeded, record whether the feature should be split.
 
-Every AC in `criteria.md` appears in some task's `covers.acs`, OR in `coverage_deferrals` with a reason. No third option.
+Do not merge unrelated tasks merely to satisfy the limit.
 
 # Output Schema
 
@@ -98,69 +226,105 @@ Every AC in `criteria.md` appears in some task's `covers.acs`, OR in `coverage_d
 tasks:
   feature: "<name>"
   review_verdict: "<PASS | PASS WITH CONDITIONS>"
-  organizing_principle: "walking_skeleton | layered | feature_slice | risk_first"
+  organizing_principle: "feature_slice | walking_skeleton | risk_first | layered | <two-part hybrid>"
+
   assumptions:
-    - "<assumption to verify>"
+    - "<assumption>"
+
   decisions:
     - id: dec-1
-      decision: "<judgment call>"
+      decision: "<planning decision>"
       reason: "<why>"
-      alternatives: ["<alt 1>", "<alt 2>"]
+      alternatives: ["<alternative>"]
+
   coverage_deferrals:
-    - ac: AC-12
-      reason: "<why not in a task>"
+    - ac: UC3-AC4
+      reason: "<why deferred>"
+
   phases:
     - id: phase-1
-      name: "<phase name>"
-      description: "<what this accomplishes>"
-      covers: [AC-1, AC-2]
-      entry_criteria: "<what must be true to start>"
+      name: "<phase>"
+      description: "<outcome>"
+      covers: [UC1-AC1, UC2-AC1]
+      entry_criteria: "<optional prerequisite>"
+
       tasks:
         - id: task-1.1
-          name: "<task name>"
-          description: "<what to do>"
-          artifact: "<file path or outcome>"
+          name: "<task>"
+          description: "<what to implement>"
+          artifact: "<file path or observable outcome>"
           covers:
-            acs: [AC-1]
-            rules: [RULE-3, RULE-7]
+            acs: [UC1-AC1]
+            rules: [RULE-2, UC1-RULE1]
           depends_on: []
           complexity: "S | M | L"
-          validation: "<how to verify>"
-          risk: "<from Risk Hotspots, if applicable>"
-          source: "<review/MAJOR-N if addressing a review finding>"
+          validation: "<how completion is verified>"
+          risk: "<review hotspot if applicable>"
+          source: "<review/MAJOR-N if applicable>"
+
       checkpoint:
         id: cp-1
         description: "<what to review>"
         criteria:
-          - "<criterion 1>"
+          - "<checkpoint criterion>"
 ```
 
-**Required**: top-level `feature`, `review_verdict`, `organizing_principle`, `phases`; phase `id`, `name`, `description`, `covers`, `tasks`, `checkpoint`; task `id`, `name`, `description`, `artifact`, `covers`, `depends_on`, `validation`; checkpoint `id`, `description`, `criteria`.
+Required:
 
-**Optional**: `assumptions`, `decisions`, `coverage_deferrals`, `entry_criteria`, `complexity`, `risk`, `source`.
+- top-level: `feature`, `review_verdict`, `organizing_principle`, `phases`
+- phase: `id`, `name`, `description`, `covers`, `tasks`, `checkpoint`
+- task: `id`, `name`, `description`, `artifact`, `covers`, `depends_on`, `validation`
+- checkpoint: `id`, `description`, `criteria`
+
+Optional:
+
+- `assumptions`
+- `decisions`
+- `coverage_deferrals`
+- `entry_criteria`
+- `complexity`
+- `risk`
+- `source`
 
 # Success Criteria
 
-Complete only when ALL hold:
+Complete only when:
 
-- Pipeline contract honored: FAIL refused; PASS WITH CONDITIONS reflected in tasks or risks
-- Every AC in `criteria.md` in some task's `covers.acs` or in `coverage_deferrals`
-- Every task has required fields
-- Every `depends_on` references an earlier task in execution order
-- No circular dependencies
-- Every phase ends with a checkpoint
-- `organizing_principle` set and justified in `decisions`
-- All Risk Hotspots reflected in task `risk` annotations
-- Soft limits met, or deviation justified in `decisions`
+- Pipeline Contract is honored
+- every use case has been considered
+- every AC appears in a task or `coverage_deferrals`
+- every referenced AC and RULE exists
+- feature and local rules are both respected
+- every dependency points backward in execution order
+- no circular dependencies exist
+- every phase ends with a checkpoint
+- organizing principle is recorded and justified
+- every review Risk Hotspot maps to a task risk
+- PASS WITH CONDITIONS findings are represented
+- soft-limit deviations are justified
 
-Verification pass before writing:
-- Walk phases in order; every `depends_on` points to a task that has appeared
-- AC IDs in `covers.acs` (across all tasks) equals AC IDs in `criteria.md` minus `coverage_deferrals`
-- Every RULE ID in `covers.rules` is real in `rules.md`
-- `feature`, `review_verdict`, `organizing_principle`, every phase checkpoint present
+# Verification Pass
 
-Do not write a partial file.
+Before writing:
+
+1. Walk tasks in execution order and validate every `depends_on`.
+2. Collect all AC IDs from every criteria file.
+3. Verify:
+
+   `task covers.acs ∪ coverage_deferrals = all ACs`
+
+4. Verify every local rule ID exists in its use-case `rules.md`.
+5. Verify every feature rule ID exists in feature `rules.md`.
+6. Verify shared prerequisites occur before dependent use-case tasks.
+7. Verify no use case was accidentally omitted.
+8. Verify every phase has a checkpoint.
+
+Do not write a partial task list.
 
 # Output
 
-Write to `spec/tasks.yaml`.
+Write one feature-level file:
+
+`spec/<feature>/tasks.yaml`
+
+Do not create separate task lists per use case.
