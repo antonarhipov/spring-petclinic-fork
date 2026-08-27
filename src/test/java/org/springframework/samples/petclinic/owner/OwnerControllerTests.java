@@ -21,9 +21,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.expression.AbstractSecurityExpressionHandler;
+import org.springframework.security.access.expression.SecurityExpressionHandler;
+import org.springframework.security.access.expression.SecurityExpressionOperations;
+import org.springframework.security.access.expression.SecurityExpressionRoot;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.FilterInvocation;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -58,9 +68,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
+@Import(OwnerControllerTests.SecurityTestConfig.class)
+@WithMockUser(roles = "STAFF")
 @DisabledInNativeImage
 @DisabledInAotMode
 class OwnerControllerTests {
+
+	@TestConfiguration
+	static class SecurityTestConfig {
+
+		@Bean
+		public SecurityExpressionHandler<FilterInvocation> securityExpressionHandler() {
+			return new AbstractSecurityExpressionHandler<FilterInvocation>() {
+				@Override
+				protected SecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication,
+						FilterInvocation invocation) {
+					return new SecurityExpressionRoot<FilterInvocation>(authentication) {
+					};
+				}
+			};
+		}
+
+	}
 
 	private static final int TEST_OWNER_ID = 1;
 

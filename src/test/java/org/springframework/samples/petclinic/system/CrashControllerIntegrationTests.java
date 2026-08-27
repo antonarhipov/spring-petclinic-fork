@@ -25,13 +25,15 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +42,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.security.MustChangePasswordFilter;
+import org.springframework.samples.petclinic.security.SecurityConfig;
 
 /**
  * Integration Test for {@link CrashController}.
@@ -47,7 +51,7 @@ import org.springframework.http.ResponseEntity;
  * @author Alex Lutz
  */
 // NOT Waiting https://github.com/spring-projects/spring-boot/issues/5574
-@SpringBootTest(webEnvironment = RANDOM_PORT,
+@SpringBootTest(webEnvironment = RANDOM_PORT, classes = CrashControllerIntegrationTests.TestConfiguration.class,
 		properties = { "spring.web.error.include-message=ALWAYS", "management.endpoints.access.default=none" })
 @AutoConfigureTestRestTemplate
 class CrashControllerIntegrationTests {
@@ -92,8 +96,10 @@ class CrashControllerIntegrationTests {
 				"This application has no explicit mapping for");
 	}
 
-	@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class,
+	@Configuration
+	@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class,
 			DataSourceTransactionManagerAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
+	@Import({ CrashController.class, SecurityConfig.class, MustChangePasswordFilter.class })
 	static class TestConfiguration {
 
 	}

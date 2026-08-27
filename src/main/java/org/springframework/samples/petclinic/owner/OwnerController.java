@@ -22,6 +22,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -70,11 +71,13 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners/new")
+	@PreAuthorize("hasRole('STAFF')")
 	public String initCreationForm() {
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/owners/new")
+	@PreAuthorize("hasRole('STAFF')")
 	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
 			redirectAttributes.addFlashAttribute("error", "There was an error in creating the owner.");
@@ -87,11 +90,13 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners/find")
+	@PreAuthorize("hasRole('STAFF')")
 	public String initFindForm() {
 		return "owners/findOwners";
 	}
 
 	@GetMapping("/owners")
+	@PreAuthorize("hasRole('STAFF')")
 	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
 			Model model) {
 		// allow parameterless GET request for /owners to return all records
@@ -137,11 +142,13 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")
-	public String initUpdateOwnerForm() {
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
+	public String initUpdateOwnerForm(@PathVariable("ownerId") int ownerId) {
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/owners/{ownerId}/edit")
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
 	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
 			RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
@@ -167,6 +174,7 @@ class OwnerController {
 	 * @return a ModelMap with the model attributes for the view
 	 */
 	@GetMapping("/owners/{ownerId}")
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
 	public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
 		ModelAndView mav = new ModelAndView("owners/ownerDetails");
 		Optional<Owner> optionalOwner = this.owners.findById(ownerId);

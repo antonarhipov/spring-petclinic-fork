@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.util.Assert;
@@ -98,15 +99,17 @@ class PetController {
 	}
 
 	@GetMapping("/pets/new")
-	public String initCreationForm(Owner owner, ModelMap model) {
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
+	public String initCreationForm(@PathVariable("ownerId") int ownerId, Owner owner, ModelMap model) {
 		Pet pet = new Pet();
 		owner.addPet(pet);
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/pets/new")
-	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
-			RedirectAttributes redirectAttributes) {
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
+	public String processCreationForm(@PathVariable("ownerId") int ownerId, Owner owner, @Valid Pet pet,
+			BindingResult result, RedirectAttributes redirectAttributes) {
 
 		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
 			result.rejectValue("name", "duplicate", "already exists");
@@ -137,13 +140,15 @@ class PetController {
 	}
 
 	@GetMapping("/pets/{petId}/edit")
-	public String initUpdateForm() {
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
+	public String initUpdateForm(@PathVariable("ownerId") int ownerId) {
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/pets/{petId}/edit")
-	public String processUpdateForm(Owner owner, @Valid Pet pet, BindingResult result,
-			RedirectAttributes redirectAttributes) {
+	@PreAuthorize("hasRole('STAFF') or @ownerSecurity.canAccessOwner(#ownerId, authentication)")
+	public String processUpdateForm(@PathVariable("ownerId") int ownerId, Owner owner, @Valid Pet pet,
+			BindingResult result, RedirectAttributes redirectAttributes) {
 
 		String petName = pet.getName();
 
@@ -201,7 +206,12 @@ class PetController {
 
 	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
 		String message = ex.getMessage();
-		return message != null && message.toLowerCase().contains("unique_owner_pet_name");
+		if (message != null && message.toLowerCase().contains("unique_owner_pet_name")) {
+			return true;
+		}
+		Throwable root = ex.getRootCause();
+		return root != null && root.getMessage() != null
+				&& root.getMessage().toLowerCase().contains("unique_owner_pet_name");
 	}
 
 }

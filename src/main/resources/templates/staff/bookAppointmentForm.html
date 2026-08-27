@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+
+<body>
+
+  <h2 th:text="'Book Appointment (Staff Direct)'">Book Appointment (Staff Direct)</h2>
+
+  <div th:if="${error}" class="alert alert-danger" id="error-message">
+    <span th:text="${error}"></span>
+  </div>
+
+  <div th:if="${message}" class="alert alert-success" id="success-message">
+    <span th:text="${message}"></span>
+  </div>
+
+  <b th:text="'Pet and Owner Details'">Pet and Owner Details</b>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="#{name}">Name</th>
+        <th th:text="#{birthDate}">Birth Date</th>
+        <th th:text="#{type}">Type</th>
+        <th th:text="#{owner}">Owner</th>
+      </tr>
+    </thead>
+    <tr>
+      <td th:text="${pet.name}"></td>
+      <td th:text="${#temporals.format(pet.birthDate, 'yyyy-MM-dd')}"></td>
+      <td th:text="${pet.type}"></td>
+      <td th:text="${owner.firstName + ' ' + owner.lastName}"></td>
+    </tr>
+  </table>
+
+  <br />
+  <h4 th:text="'Select Veterinarian, Date & Duration'">Select Veterinarian, Date &amp; Duration</h4>
+  <form th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/appointments/new}" method="get" class="row g-3 align-items-end mb-4">
+    <div class="col-md-4">
+      <label for="vetSelect" class="form-label" th:text="'Veterinarian'">Veterinarian</label>
+      <select id="vetSelect" name="vetId" class="form-select">
+        <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}" th:selected="${v.id == selectedVetId}"></option>
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label for="dateSelect" class="form-label" th:text="'Date'">Date</label>
+      <input type="date" id="dateSelect" name="date" class="form-control" th:value="${selectedDate}" th:min="${minDate}" th:max="${maxDate}" required />
+    </div>
+
+    <div class="col-md-2">
+      <label for="durationSelect" class="form-label" th:text="'Duration (min)'">Duration (min)</label>
+      <input type="number" id="durationSelect" name="durationMin" class="form-control" th:value="${durationMin}" th:min="${minDuration}" th:max="${maxDuration}" step="15" required />
+    </div>
+
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary w-100" th:text="'Check Availability'">Check Availability</button>
+    </div>
+  </form>
+
+  <br />
+  <h4 th:text="'Available Slots'">Available Slots</h4>
+  <div th:if="${slots.empty}" class="alert alert-warning">
+    <span th:text="'No available appointment slots found for the selected veterinarian on this date. Please choose another date or veterinarian.'">No available appointment slots found for the selected veterinarian on this date. Please choose another date or veterinarian.</span>
+  </div>
+
+  <form th:if="${!slots.empty}" th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/appointments/new}" method="post">
+    <input type="hidden" name="vetId" th:value="${selectedVetId}" />
+    <input type="hidden" name="durationMin" th:value="${durationMin}" />
+
+    <div class="mb-3">
+      <label class="form-label"><b th:text="'Choose a Start Time:'">Choose a Start Time:</b></label>
+      <div class="row row-cols-2 row-cols-md-4 g-2">
+        <div class="col" th:each="slot, slotStat : ${slots}">
+          <div class="form-check card p-2">
+            <input class="form-check-input ms-1" type="radio" name="startInstant" th:value="${slot.startInstantIso}" th:id="${'slot-' + slotStat.index}" th:checked="${slotStat.first}" required />
+            <label class="form-check-label ps-2" th:for="${'slot-' + slotStat.index}" th:text="${slot.label}"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="reasonInput" class="form-label" th:text="'Reason / Notes (optional)'">Reason / Notes (optional)</label>
+      <input type="text" id="reasonInput" name="reason" class="form-control" placeholder="e.g. Annual vaccination checkup" />
+    </div>
+
+    <div class="mb-3">
+      <button type="submit" class="btn btn-success" th:text="'Confirm & Book Appointment'">Confirm &amp; Book Appointment</button>
+      <a th:href="@{/owners/__${owner.id}__}" class="btn btn-secondary" th:text="'Cancel'">Cancel</a>
+    </div>
+  </form>
+
+</body>
+
+</html>

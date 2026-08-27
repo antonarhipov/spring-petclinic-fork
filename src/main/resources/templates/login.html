@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+
+<body>
+
+  <h2 th:text="'Login'">Login</h2>
+
+  <div th:if="${param.error}" class="alert alert-danger" th:text="'Invalid username or password.'">
+    Invalid username or password.
+  </div>
+  <div th:if="${param.logout}" class="alert alert-info" th:text="'You have been logged out.'">
+    You have been logged out.
+  </div>
+
+  <form th:action="@{/login}" method="post" class="form-horizontal" style="max-width: 400px;">
+    <div class="form-group mb-3">
+      <label for="username" class="form-label" th:text="'Username'">Username</label>
+      <input type="text" id="username" name="username" class="form-control" autofocus required />
+    </div>
+
+    <div class="form-group mb-3">
+      <label for="password" class="form-label" th:text="'Password'">Password</label>
+      <input type="password" id="password" name="password" class="form-control" required />
+    </div>
+
+    <div class="form-group mb-3">
+      <button type="submit" class="btn btn-primary" th:text="'Log In'">Log In</button>
+    </div>
+  </form>
+
+  <div class="mt-4">
+    <p><strong th:text="'Need urgent assistance?'">Need urgent assistance?</strong> <a th:href="@{/urgent-care}" th:text="'View 24/7 Urgent-Care Guidance'">View 24/7 Urgent-Care Guidance</a></p>
+    <div class="card p-3 mt-3 bg-light">
+      <h5 th:text="'Demo Accounts'">Demo Accounts</h5>
+      <ul>
+        <li><strong th:text="'Owner:'">Owner:</strong> <code th:text="'george'">george</code> / <code th:text="'george123'">george123</code> <span th:text="'(or any sample owner\'s first name in lowercase)'">(or any sample owner's first name in lowercase)</span></li>
+        <li><strong th:text="'Staff:'">Staff:</strong> <code th:text="'staff'">staff</code> / <code th:text="'staff123'">staff123</code></li>
+      </ul>
+    </div>
+  </div>
+
+</body>
+
+</html>

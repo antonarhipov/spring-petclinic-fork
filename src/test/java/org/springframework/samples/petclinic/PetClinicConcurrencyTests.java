@@ -2,23 +2,28 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.http.HttpClient;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.util.LinkedMultiValueMap;
@@ -34,8 +39,22 @@ public class PetClinicConcurrencyTests {
 	@Autowired
 	private OwnerRepository ownerRepository;
 
-	@Autowired
-	private RestTemplateBuilder restTemplateBuilder;
+	private String extractCsrfToken(String html) {
+		if (html == null) {
+			return null;
+		}
+		Pattern pattern = Pattern.compile("name=[\"']_csrf[\"'][^>]*value=[\"']([^\"']+)[\"']");
+		Matcher matcher = pattern.matcher(html);
+		if (matcher.find()) {
+			return matcher.group(1);
+		}
+		Pattern pattern2 = Pattern.compile("value=[\"']([^\"']+)[\"'][^>]*name=[\"']_csrf[\"']");
+		Matcher matcher2 = pattern2.matcher(html);
+		if (matcher2.find()) {
+			return matcher2.group(1);
+		}
+		return null;
+	}
 
 	@Test
 	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
@@ -50,7 +69,35 @@ public class PetClinicConcurrencyTests {
 		// Ensure duplicate pet name does not exist yet
 		assertThat(owner.getPet(duplicatePetName)).isNull();
 
-		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
+		CookieManager cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient httpClient = HttpClient.newBuilder()
+			.cookieHandler(cookieManager)
+			.followRedirects(HttpClient.Redirect.NORMAL)
+			.build();
+		RestTemplate template = new RestTemplate(new JdkClientHttpRequestFactory(httpClient));
+
+		String baseUrl = "http://localhost:" + port;
+
+		// 1. Fetch /login to get initial CSRF token
+		ResponseEntity<String> loginPageResponse = template.getForEntity(baseUrl + "/login", String.class);
+		String loginCsrfToken = extractCsrfToken(loginPageResponse.getBody());
+
+		// 2. Perform POST /login to authenticate as george
+		HttpHeaders loginPostHeaders = new HttpHeaders();
+		loginPostHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		MultiValueMap<String, String> loginForm = new LinkedMultiValueMap<>();
+		loginForm.add("username", "george");
+		loginForm.add("password", "george123");
+		if (loginCsrfToken != null) {
+			loginForm.add("_csrf", loginCsrfToken);
+		}
+		HttpEntity<MultiValueMap<String, String>> loginPostEntity = new HttpEntity<>(loginForm, loginPostHeaders);
+		template.postForEntity(baseUrl + "/login", loginPostEntity, String.class);
+
+		// 3. Fetch /owners/1/pets/new to get form CSRF token
+		ResponseEntity<String> formResponse = template.getForEntity(baseUrl + "/owners/" + ownerId + "/pets/new",
+				String.class);
+		String formCsrfToken = extractCsrfToken(formResponse.getBody());
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -74,17 +121,21 @@ public class PetClinicConcurrencyTests {
 					map.add("name", duplicatePetName);
 					map.add("birthDate", "2020-01-01");
 					map.add("type", "cat");
+					if (formCsrfToken != null) {
+						map.add("_csrf", formCsrfToken);
+					}
 
 					HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
 
-					ResponseEntity<String> response = template.postForEntity("/owners/" + ownerId + "/pets/new",
-							request, String.class);
+					ResponseEntity<String> response = template
+						.postForEntity(baseUrl + "/owners/" + ownerId + "/pets/new", request, String.class);
 
 					String body = response.getBody();
-					// If the response page contains the duplicate validation error, it
-					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					// If the response redirected to Owner Information and does not have
+					// form errors, it succeeded.
+					boolean isSuccess = response.getStatusCode().is2xxSuccessful() && body != null
+							&& body.contains("Owner Information") && !body.contains("has-error");
+					if (isSuccess) {
 						successCount.incrementAndGet();
 					}
 					else {

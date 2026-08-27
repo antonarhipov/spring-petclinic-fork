@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+
+<body>
+
+  <h2 th:text="'24/7 Urgent-Care & Emergency Guidance'">24/7 Urgent-Care &amp; Emergency Guidance</h2>
+
+  <div class="alert alert-warning mt-3">
+    <h4 th:text="'Life-Threatening Emergency?'"><span class="fa fa-exclamation-triangle"></span> Life-Threatening Emergency?</h4>
+    <p th:text="'If your pet is in critical condition, please proceed to our emergency facility immediately or call our 24/7 Emergency Line at (555) 911-PETS.'">If your pet is in critical condition, please proceed to our emergency facility immediately or call our 24/7 Emergency Line at (555) 911-PETS.</p>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5 th:text="'Signs Requiring Immediate Emergency Care:'">Signs Requiring Immediate Emergency Care:</h5>
+        <ul>
+          <li th:text="'Severe difficulty breathing or continuous choking'">Severe difficulty breathing or continuous choking</li>
+          <li th:text="'Unconsciousness, fainting, or severe collapse'">Unconsciousness, fainting, or severe collapse</li>
+          <li th:text="'Active, uncontrolled bleeding'">Active, uncontrolled bleeding</li>
+          <li th:text="'Suspected poisoning or ingestion of toxic substances'">Suspected poisoning or ingestion of toxic substances</li>
+          <li th:text="'Inability to urinate or defecate (especially male cats)'">Inability to urinate or defecate (especially male cats)</li>
+          <li th:text="'Severe trauma (e.g. hit by car, fall from height)'">Severe trauma (e.g. hit by car, fall from height)</li>
+          <li th:text="'Sudden inability to use hind legs or paralysis'">Sudden inability to use hind legs or paralysis</li>
+          <li th:text="'Seizures lasting more than a few minutes or multiple seizures in 24 hours'">Seizures lasting more than a few minutes or multiple seizures in 24 hours</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card p-3 mb-3">
+        <h5 th:text="'Emergency Instructions:'">Emergency Instructions:</h5>
+        <ol>
+          <li th:text="'Keep calm and keep your pet warm and quiet.'">Keep calm and keep your pet warm and quiet.</li>
+          <li th:text="'Do not administer human medication unless instructed by a vet.'">Do not administer human medication unless instructed by a vet.</li>
+          <li th:text="'Call ahead if possible so our trauma team can prepare for your arrival.'">Call ahead if possible so our trauma team can prepare for your arrival.</li>
+        </ol>
+        <p th:text="'Clinic Address: 110 W. Liberty St., Madison, WI'">Clinic Address: 110 W. Liberty St., Madison, WI</p>
+        <p th:text="'Emergency Telephone: (555) 911-PETS'">Emergency Telephone: (555) 911-PETS</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a th:href="@{/}" class="btn btn-secondary" th:text="'Return to Home'">Return to Home</a>
+  </div>
+
+</body>
+
+</html>
