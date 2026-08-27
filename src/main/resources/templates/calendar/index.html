@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-calendar')}">
+
+<body>
+  <h2 th:text="#{veterinarianCalendar}">Veterinarian Calendar</h2>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+
+  <p><a class="btn btn-primary" th:href="@{/staff/calendar/closures}" th:text="#{clinicClosures}">Clinic Closures</a></p>
+
+  <h3 th:text="#{selectVeterinarian}">Select Veterinarian</h3>
+  <table class="table table-striped align-middle">
+	<thead><tr><th th:text="#{veterinarian}">Veterinarian</th><th th:text="#{actions}">Actions</th></tr></thead>
+	<tbody>
+	  <tr th:each="vet : ${vets}">
+		<td th:text="${vet.firstName + ' ' + vet.lastName}"></td>
+		<td>
+		  <a class="btn btn-sm btn-primary" th:href="@{/staff/calendar/vets/__${vet.id}__}"
+			 th:text="#{manageCalendar}">Manage Calendar</a>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</body>
+</html>

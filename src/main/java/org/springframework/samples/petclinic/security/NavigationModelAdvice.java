@@ -22,4 +22,20 @@ public class NavigationModelAdvice {
 			.anyMatch("ROLE_STAFF"::equals);
 	}
 
+	@ModelAttribute("currentOwnerId")
+	public Integer currentOwnerId(Authentication authentication) {
+		if (authentication == null || !authentication.isAuthenticated()) {
+			return null;
+		}
+		if (authentication.getPrincipal() instanceof AppUserDetails userDetails) {
+			return userDetails.getOwnerId();
+		}
+		return null;
+	}
+
+	@ModelAttribute("ownerUser")
+	public boolean ownerUser(Authentication authentication) {
+		return currentOwnerId(authentication) != null;
+	}
+
 }

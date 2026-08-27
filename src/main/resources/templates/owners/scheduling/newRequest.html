@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'schedule')}">
+
+<body>
+  <h2 th:text="#{newSchedulingRequest}">Schedule an Appointment</h2>
+
+  <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+  <form th:action="@{/owners/__${ownerId}__/scheduling}" method="post">
+	<div class="form-group">
+	  <label for="petId" th:text="#{selectPet}">Select pet</label>
+	  <select id="petId" name="petId" class="form-control" required>
+		<option th:each="pet : ${owner.pets}" th:value="${pet.id}" th:text="${pet.name}"></option>
+	  </select>
+	</div>
+	<div class="form-group">
+	  <label for="freeText" th:text="#{describeYourNeed}">Describe what you need</label>
+	  <textarea id="freeText" name="freeText" class="form-control" rows="4" required></textarea>
+	  <small class="form-text text-muted" th:text="#{freeTextHelp}">Tell us in your own words what your pet needs and when you are available.</small>
+	</div>
+	<br />
+	<button class="btn btn-primary" type="submit" th:text="#{startRequest}">Start request</button>
+	<a class="btn btn-secondary" th:href="@{/owners/__${ownerId}__/appointments}" th:text="#{backToAppointments}">Back to my appointments</a>
+  </form>
+</body>
+</html>

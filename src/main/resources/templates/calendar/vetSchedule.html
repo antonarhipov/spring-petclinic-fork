@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-calendar')}">
+
+<body>
+  <h2 th:text="#{veterinarianCalendar}">Veterinarian Calendar</h2>
+  <h3 th:text="${vet.firstName + ' ' + vet.lastName}"></h3>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+
+  <p><a class="btn btn-secondary" th:href="@{/staff/calendar}" th:text="#{back}">Back</a></p>
+
+  <h4 th:text="#{weeklyShifts}">Weekly Shifts</h4>
+  <table class="table table-striped align-middle">
+	<thead>
+	  <tr>
+		<th th:text="#{dayOfWeek}">Day of Week</th>
+		<th th:text="#{startTime}">Start Time</th>
+		<th th:text="#{endTime}">End Time</th>
+		<th th:text="#{actions}">Actions</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr th:each="shift : ${shifts}">
+		<td th:text="${shift.dayOfWeek}"></td>
+		<td th:text="${shift.startLocal}"></td>
+		<td th:text="${shift.endLocal}"></td>
+		<td>
+		  <form th:action="@{/staff/calendar/vets/__${vet.id}__/shifts/__${shift.id}__/delete}" method="post" class="d-inline">
+			<button class="btn btn-sm btn-danger" type="submit" th:text="#{delete}">Delete</button>
+		  </form>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+  <form th:action="@{/staff/calendar/vets/__${vet.id}__/shifts}" method="post" class="row g-2 align-items-end">
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{dayOfWeek}">Day of Week</label>
+	  <select class="form-select" name="dayOfWeek">
+		<option th:each="day : ${#numbers.sequence(1, 7)}" th:value="${day}" th:text="${day}"></option>
+	  </select>
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{startTime}">Start Time</label>
+	  <input class="form-control" type="time" name="startLocal" required />
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{endTime}">End Time</label>
+	  <input class="form-control" type="time" name="endLocal" required />
+	</div>
+	<div class="col-auto">
+	  <button class="btn btn-primary" type="submit" th:text="#{addShift}">Add Shift</button>
+	</div>
+  </form>
+
+  <h4 class="mt-4" th:text="#{availabilityExceptions}">Availability Exceptions</h4>
+  <table class="table table-striped align-middle">
+	<thead>
+	  <tr>
+		<th th:text="#{date}">Date</th>
+		<th th:text="#{exceptionType}">Exception Type</th>
+		<th th:text="#{startTime}">Start Time</th>
+		<th th:text="#{endTime}">End Time</th>
+		<th th:text="#{actions}">Actions</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr th:each="exception : ${exceptions}">
+		<td th:text="${exception.date}"></td>
+		<td th:text="${exception.type}"></td>
+		<td th:text="${exception.startLocal}"></td>
+		<td th:text="${exception.endLocal}"></td>
+		<td>
+		  <form th:action="@{/staff/calendar/vets/__${vet.id}__/exceptions/__${exception.id}__/delete}" method="post" class="d-inline">
+			<button class="btn btn-sm btn-danger" type="submit" th:text="#{delete}">Delete</button>
+		  </form>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+  <form th:action="@{/staff/calendar/vets/__${vet.id}__/exceptions}" method="post" class="row g-2 align-items-end">
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{date}">Date</label>
+	  <input class="form-control" type="date" name="date" required />
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{exceptionType}">Exception Type</label>
+	  <select class="form-select" name="type">
+		<option th:each="exceptionType : ${exceptionTypes}" th:value="${exceptionType}" th:text="${exceptionType}"></option>
+	  </select>
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{startTime}">Start Time</label>
+	  <input class="form-control" type="time" name="startLocal" />
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{endTime}">End Time</label>
+	  <input class="form-control" type="time" name="endLocal" />
+	</div>
+	<div class="col-auto">
+	  <button class="btn btn-primary" type="submit" th:text="#{addException}">Add Exception</button>
+	</div>
+  </form>
+
+  <h4 class="mt-4" th:text="#{vetLeave}">Vet Leave</h4>
+  <table class="table table-striped align-middle">
+	<thead>
+	  <tr>
+		<th th:text="#{fromDate}">From Date</th>
+		<th th:text="#{toDate}">To Date</th>
+		<th th:text="#{actions}">Actions</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr th:each="leave : ${leaves}">
+		<td th:text="${leave.fromDate}"></td>
+		<td th:text="${leave.toDate}"></td>
+		<td>
+		  <form th:action="@{/staff/calendar/vets/__${vet.id}__/leave/__${leave.id}__/delete}" method="post" class="d-inline">
+			<button class="btn btn-sm btn-danger" type="submit" th:text="#{delete}">Delete</button>
+		  </form>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+  <form th:action="@{/staff/calendar/vets/__${vet.id}__/leave}" method="post" class="row g-2 align-items-end">
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{fromDate}">From Date</label>
+	  <input class="form-control" type="date" name="fromDate" required />
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{toDate}">To Date</label>
+	  <input class="form-control" type="date" name="toDate" required />
+	</div>
+	<div class="col-auto">
+	  <button class="btn btn-primary" type="submit" th:text="#{addLeave}">Add Leave</button>
+	</div>
+  </form>
+</body>
+</html>

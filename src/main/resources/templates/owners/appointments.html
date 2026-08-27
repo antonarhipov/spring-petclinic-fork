@@ -27,9 +27,10 @@
 	<thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{request}">Request</th><th th:text="#{status}">Status</th><th></th></tr></thead>
 	<tbody><tr th:each="request : ${requests}">
 	  <td th:text="${request.pet.name}"></td><td th:text="${request.freeText}"></td><td th:text="${request.status}"></td>
-	  <td><form th:if="${request.status.name() == 'SUGGESTING'}" th:action="@{/owners/__${ownerId}__/appointment-requests/__${request.id}__/resume}" method="post"><button class="btn btn-sm btn-primary" type="submit" th:text="#{resumeScheduling}">Resume scheduling</button></form><span th:if="${request.status.name() == 'QUEUED_FOR_STAFF'}" th:text="#{staffWillHelp}">Clinic staff will help with this request.</span></td>
+	  <td><a class="btn btn-sm btn-primary" th:href="@{/owners/__${ownerId}__/scheduling/__${request.id}__}" th:text="#{view}">View</a></td>
 	</tr></tbody>
   </table>
+  <a class="btn btn-primary" th:href="@{/owners/__${ownerId}__/scheduling/new}" th:text="#{scheduleAppointment}">Schedule Appointment</a>
   <a class="btn btn-secondary" th:href="@{/owners/__${ownerId}__}" th:text="#{backToOwner}">Back to owner</a>
 </body>
 </html>

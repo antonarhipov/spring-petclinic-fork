@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'schedule')}">
+
+<body>
+  <h2 th:text="#{schedulingRequest}">Scheduling request</h2>
+
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+  <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+  <table class="table table-striped">
+	<tr><th th:text="#{pet}">Pet</th><td th:text="${request.pet.name}"></td></tr>
+	<tr><th th:text="#{request}">Request</th><td th:text="${request.freeText}"></td></tr>
+	<tr><th th:text="#{status}">Status</th><td th:text="${request.status}"></td></tr>
+  </table>
+
+  <!-- Consent gate: interpretation must not run before consent is granted. -->
+  <div th:if="${request.status.name() == 'AWAITING_CONSENT'}" class="card">
+	<div class="card-body">
+	  <h4 th:text="#{consentTitle}">Consent to AI-assisted scheduling</h4>
+	  <p th:text="#{consentBody}">To suggest a suitable time, we will process the text you entered with an automated assistant. Do you consent?</p>
+	  <p><strong th:text="#{consentedText}">Text to be processed</strong>: <span th:text="${request.freeText}"></span></p>
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/consent}" method="post" style="display:inline">
+		<button class="btn btn-primary" type="submit" th:text="#{grantConsent}">I consent, find a time</button>
+	  </form>
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/decline}" method="post" style="display:inline">
+		<button class="btn btn-secondary" type="submit" th:text="#{declineConsent}">No, ask staff to help</button>
+	  </form>
+	</div>
+  </div>
+
+  <!-- Interpretation summary: owner confirms to look for a slot. -->
+  <div th:if="${request.status.name() == 'INTERPRETED'}" class="card">
+	<div class="card-body">
+	  <h4 th:text="#{interpretationSummary}">Here is what we understood</h4>
+	  <ul th:if="${interpretation != null}">
+		<li><span th:text="#{estimatedDuration}">Estimated duration</span>:
+		  <span th:text="${interpretation.estimatedDurationMin()}"></span> <span th:text="#{minutes}">minutes</span></li>
+		<li th:if="${interpretation.requiredSpecialty() != null}">
+		  <span th:text="#{requiredSpecialty}">Required specialty</span>: <span th:text="${interpretation.requiredSpecialty()}"></span></li>
+	  </ul>
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/confirm}" method="post">
+		<button class="btn btn-primary" type="submit" th:text="#{findASlot}">Find a suitable slot</button>
+	  </form>
+	</div>
+  </div>
+
+  <!-- One held slot at a time: accept, reject (exclude), or ask again. -->
+  <div th:if="${request.status.name() == 'HELD'}" class="card">
+	<div class="card-body">
+	  <h4 th:text="#{suggestedSlot}">Suggested slot</h4>
+	  <p>
+		<span th:text="${#temporals.format(request.suggestedStartInstant.atZone(clinicZone), 'yyyy-MM-dd HH:mm z')}"></span>
+		&ndash;
+		<span th:text="${request.suggestedVet.firstName + ' ' + request.suggestedVet.lastName}"></span>
+	  </p>
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/accept}" method="post" style="display:inline">
+		<button class="btn btn-success" type="submit" th:text="#{acceptSlot}">Accept this slot</button>
+	  </form>
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/reject}" method="post" style="display:inline">
+		<button class="btn btn-warning" type="submit" th:text="#{rejectSlot}">Reject and see another</button>
+	  </form>
+	</div>
+  </div>
+
+  <!-- Suggesting (e.g. after a hold expired): owner can ask for another option. -->
+  <div th:if="${request.status.name() == 'SUGGESTING'}" class="card">
+	<div class="card-body">
+	  <form th:action="@{/owners/__${ownerId}__/scheduling/__${request.id}__/ask-again}" method="post">
+		<button class="btn btn-primary" type="submit" th:text="#{askAgain}">Show another option</button>
+	  </form>
+	</div>
+  </div>
+
+  <div th:if="${request.status.name() == 'SCHEDULED'}" class="alert alert-success" th:text="#{requestScheduled}">Your appointment is scheduled.</div>
+  <div th:if="${request.status.name() == 'QUEUED_FOR_STAFF'}" class="alert alert-info" th:text="#{requestQueued}">Clinic staff will follow up with you about this request.</div>
+
+  <br />
+  <a class="btn btn-secondary" th:href="@{/owners/__${ownerId}__/appointments}" th:text="#{backToAppointments}">Back to my appointments</a>
+</body>
+</html>

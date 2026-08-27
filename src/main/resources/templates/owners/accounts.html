@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-accounts')}">
+
+<body>
+  <h2 th:text="#{accountsOverview}">User Accounts</h2>
+
+  <table class="table table-striped">
+	<thead>
+	  <tr>
+		<th th:text="#{owner}">Owner</th>
+		<th th:text="#{hasLogin}">Has login</th>
+		<th th:text="#{actions}">Actions</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr th:each="owner : ${owners}">
+		<td th:text="${owner.firstName + ' ' + owner.lastName}"></td>
+		<td>
+		  <span th:if="${ownersWithLogin.contains(owner.id)}" th:text="#{yes}">Yes</span>
+		  <span th:unless="${ownersWithLogin.contains(owner.id)}" th:text="#{no}">No</span>
+		</td>
+		<td>
+		  <a class="btn btn-sm btn-primary" th:href="@{/owners/__${owner.id}__}" th:text="#{manageAccount}">Manage account</a>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</body>
+</html>

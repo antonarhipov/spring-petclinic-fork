@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.system;
 
+import org.springframework.samples.petclinic.security.AppUserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -23,7 +25,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 class WelcomeController {
 
 	@GetMapping("/")
-	public String welcome() {
+	public String welcome(Authentication authentication) {
+		if (authentication != null && authentication.isAuthenticated()
+				&& authentication.getPrincipal() instanceof AppUserDetails userDetails
+				&& userDetails.getOwnerId() != null) {
+			return "redirect:/owners/" + userDetails.getOwnerId();
+		}
 		return "welcome";
 	}
 

@@ -53,6 +53,23 @@
             <span th:text="#{vets}">Veterinarians</span>
           </li>
 
+		  <th:block th:if="${ownerUser}">
+			<li th:replace="~{::menuItem (${'/owners/' + currentOwnerId},'owners','my data','user',#{myData})}">
+			  <span class="fa fa-user" aria-hidden="true"></span>
+			  <span th:text="#{myData}">My Data</span>
+			</li>
+
+			<li th:replace="~{::menuItem (${'/owners/' + currentOwnerId + '/appointments'},'my-appointments','my appointments','calendar',#{myAppointments})}">
+			  <span class="fa fa-calendar" aria-hidden="true"></span>
+			  <span th:text="#{myAppointments}">My Appointments</span>
+			</li>
+
+			<li th:replace="~{::menuItem (${'/owners/' + currentOwnerId + '/scheduling/new'},'schedule','schedule an appointment','plus',#{scheduleAppointment})}">
+			  <span class="fa fa-plus" aria-hidden="true"></span>
+			  <span th:text="#{scheduleAppointment}">Schedule Appointment</span>
+			</li>
+		  </th:block>
+
 		  <th:block th:if="${staffUser}">
 			<li th:replace="~{::menuItem ('/staff/fallback','staff-fallback','staff fallback queue','inbox',#{staffQueue})}">
 			  <span class="fa fa-inbox" aria-hidden="true"></span>
@@ -62,6 +79,21 @@
 			<li th:replace="~{::menuItem ('/staff/appointments','staff-appointments','manage appointments','calendar',#{appointments})}">
 			  <span class="fa fa-calendar" aria-hidden="true"></span>
 			  <span th:text="#{appointments}">Appointments</span>
+			</li>
+
+			<li th:replace="~{::menuItem ('/staff/calendar','staff-calendar','manage veterinarian calendar','clock-o',#{manageCalendar})}">
+			  <span class="fa fa-clock-o" aria-hidden="true"></span>
+			  <span th:text="#{manageCalendar}">Calendar</span>
+			</li>
+
+			<li th:replace="~{::menuItem ('/staff/clinic-settings','clinic-settings','clinic settings','cog',#{clinicSettings})}">
+			  <span class="fa fa-cog" aria-hidden="true"></span>
+			  <span th:text="#{clinicSettings}">Clinic Settings</span>
+			</li>
+
+			<li th:replace="~{::menuItem ('/staff/accounts','staff-accounts','manage user accounts','users',#{userAccounts})}">
+			  <span class="fa fa-users" aria-hidden="true"></span>
+			  <span th:text="#{userAccounts}">User Accounts</span>
 			</li>
 		  </th:block>
 

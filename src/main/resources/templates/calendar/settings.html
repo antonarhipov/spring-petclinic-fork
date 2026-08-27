@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'clinic-settings')}">
+
+<body>
+  <h2 th:text="#{clinicSettings}">Clinic Settings</h2>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+
+  <form th:action="@{/staff/clinic-settings}" th:object="${settings}" method="post" class="form-horizontal">
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{gridGranularity}">Grid Granularity</label>
+	  <input class="form-control" type="number" name="gridGranularityMin" th:field="*{gridGranularityMin}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{holdDuration}">Hold Duration</label>
+	  <input class="form-control" type="number" name="holdDurationMin" th:field="*{holdDurationMin}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{bookingHorizon}">Booking Horizon</label>
+	  <input class="form-control" type="number" name="bookingHorizonDays" th:field="*{bookingHorizonDays}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{minVisit}">Min Visit</label>
+	  <input class="form-control" type="number" name="minVisitMin" th:field="*{minVisitMin}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{maxVisit}">Max Visit</label>
+	  <input class="form-control" type="number" name="maxVisitMin" th:field="*{maxVisitMin}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{defaultVisit}">Default Visit</label>
+	  <input class="form-control" type="number" name="defaultVisitMin" th:field="*{defaultVisitMin}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{timeZone}">Time Zone</label>
+	  <input class="form-control" type="text" name="zoneId" th:field="*{zoneId}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{morningStart}">Morning Start</label>
+	  <input class="form-control" type="time" name="morningStart" th:field="*{morningStart}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{morningEnd}">Morning End</label>
+	  <input class="form-control" type="time" name="morningEnd" th:field="*{morningEnd}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{afternoonStart}">Afternoon Start</label>
+	  <input class="form-control" type="time" name="afternoonStart" th:field="*{afternoonStart}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{afternoonEnd}">Afternoon End</label>
+	  <input class="form-control" type="time" name="afternoonEnd" th:field="*{afternoonEnd}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{eveningStart}">Evening Start</label>
+	  <input class="form-control" type="time" name="eveningStart" th:field="*{eveningStart}" />
+	</div>
+	<div class="mb-3">
+	  <label class="form-label" th:text="#{eveningEnd}">Evening End</label>
+	  <input class="form-control" type="time" name="eveningEnd" th:field="*{eveningEnd}" />
+	</div>
+	<div class="mb-3">
+	  <button class="btn btn-primary" type="submit" th:text="#{save}">Save</button>
+	</div>
+  </form>
+</body>
+</html>

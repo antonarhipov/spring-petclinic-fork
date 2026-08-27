@@ -40,6 +40,24 @@
     New Pet</a>
 	<a th:href="@{/owners/__${owner.id}__/appointments}" class="btn btn-primary" th:text="#{viewAppointments}">View Appointments</a>
 
+  <div sec:authorize="hasRole('STAFF')" class="card mt-3">
+    <div class="card-body">
+      <h4 th:text="#{accountManagement}">Account Management</h4>
+      <form th:action="@{/staff/owners/__${owner.id}__/provision}" method="post" class="form-inline mb-2">
+        <label class="me-1" for="provision-username" th:text="#{username}">Username</label>
+        <input id="provision-username" type="text" name="username" class="form-control me-2" />
+        <label class="me-1" for="provision-password" th:text="#{initialPassword}">Initial password</label>
+        <input id="provision-password" type="text" name="initialPassword" class="form-control me-2" />
+        <button class="btn btn-sm btn-primary" type="submit" th:text="#{provisionAccount}">Provision account</button>
+      </form>
+      <form th:action="@{/staff/owners/__${owner.id}__/reset-password}" method="post" class="form-inline">
+        <label class="me-1" for="reset-password" th:text="#{temporaryPassword}">Temporary password</label>
+        <input id="reset-password" type="text" name="temporaryPassword" class="form-control me-2" />
+        <button class="btn btn-sm btn-warning" type="submit" th:text="#{resetPassword}">Reset password</button>
+      </form>
+    </div>
+  </div>
+
   <br />
   <br />
   <br />

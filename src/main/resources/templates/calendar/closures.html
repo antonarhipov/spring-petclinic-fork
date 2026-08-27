@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-calendar')}">
+
+<body>
+  <h2 th:text="#{clinicClosures}">Clinic Closures</h2>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+
+  <p><a class="btn btn-secondary" th:href="@{/staff/calendar}" th:text="#{back}">Back</a></p>
+
+  <table class="table table-striped align-middle">
+	<thead>
+	  <tr>
+		<th th:text="#{fromDate}">From Date</th>
+		<th th:text="#{toDate}">To Date</th>
+		<th th:text="#{actions}">Actions</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr th:each="closure : ${closures}">
+		<td th:text="${closure.fromDate}"></td>
+		<td th:text="${closure.toDate}"></td>
+		<td>
+		  <form th:action="@{/staff/calendar/closures/__${closure.id}__/delete}" method="post" class="d-inline">
+			<button class="btn btn-sm btn-danger" type="submit" th:text="#{delete}">Delete</button>
+		  </form>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+  <form th:action="@{/staff/calendar/closures}" method="post" class="row g-2 align-items-end">
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{fromDate}">From Date</label>
+	  <input class="form-control" type="date" name="fromDate" required />
+	</div>
+	<div class="col-auto">
+	  <label class="form-label" th:text="#{toDate}">To Date</label>
+	  <input class="form-control" type="date" name="toDate" required />
+	</div>
+	<div class="col-auto">
+	  <button class="btn btn-primary" type="submit" th:text="#{addClosure}">Add Closure</button>
+	</div>
+  </form>
+</body>
+</html>
