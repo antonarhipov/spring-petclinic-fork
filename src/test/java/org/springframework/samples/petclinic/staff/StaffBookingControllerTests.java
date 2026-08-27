@@ -25,22 +25,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.samples.petclinic.appointment.Appointment;
+import org.springframework.samples.petclinic.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
-import org.springframework.samples.petclinic.security.AppUserRepository;
-import org.springframework.samples.petclinic.security.MustChangePasswordFilter;
-import org.springframework.samples.petclinic.security.OwnerSecurity;
-import org.springframework.samples.petclinic.security.SecurityConfig;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.security.access.expression.AbstractSecurityExpressionHandler;
+import org.springframework.security.access.expression.SecurityExpressionHandler;
+import org.springframework.security.access.expression.SecurityExpressionOperations;
+import org.springframework.security.access.expression.SecurityExpressionRoot;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.FilterInvocation;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -60,10 +65,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(StaffBookingController.class)
+@Import(StaffBookingControllerTests.SecurityTestConfig.class)
 @WithMockUser(roles = "STAFF")
 @DisabledInNativeImage
 @DisabledInAotMode
 class StaffBookingControllerTests {
+
+	@TestConfiguration
+	static class SecurityTestConfig {
+
+		@Bean
+		SecurityExpressionHandler<FilterInvocation> securityExpressionHandler() {
+			return new AbstractSecurityExpressionHandler<>() {
+				@Override
+				protected SecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication,
+						FilterInvocation invocation) {
+					return new SecurityExpressionRoot<FilterInvocation>(authentication) {
+					};
+				}
+			};
+		}
+
+	}
 
 	private static final int TEST_OWNER_ID = 1;
 
@@ -85,6 +108,9 @@ class StaffBookingControllerTests {
 
 	@MockitoBean
 	private ClinicSettingsRepository clinicSettingsRepository;
+
+	@MockitoBean
+	private AppointmentRepository appointmentRepository;
 
 	private ClinicSettings clinicSettings;
 
@@ -153,7 +179,7 @@ class StaffBookingControllerTests {
 		appointment.setStatus(AppointmentStatus.SCHEDULED);
 
 		given(this.staffBookingService.bookDirectAppointment(eq(TEST_OWNER_ID), eq(TEST_PET_ID), eq(TEST_VET_ID),
-				eq(start), eq(30), eq("Routine Checkup")))
+				eq(start), eq(30), eq("Routine Checkup"), eq(null)))
 			.willReturn(appointment);
 
 		this.mockMvc
@@ -172,7 +198,7 @@ class StaffBookingControllerTests {
 	void processNewAppointmentFormFailsOnCollisionAndRedirects() throws Exception {
 		Instant start = Instant.parse("2026-09-01T08:00:00Z");
 		given(this.staffBookingService.bookDirectAppointment(anyInt(), anyInt(), anyInt(), any(Instant.class), anyInt(),
-				any()))
+				any(), eq(null)))
 			.willThrow(new IllegalStateException("The selected slot is no longer available"));
 
 		this.mockMvc

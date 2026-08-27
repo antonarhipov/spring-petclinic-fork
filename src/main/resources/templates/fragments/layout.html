@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org">
 
 <head>
 
@@ -53,6 +53,18 @@
             <span th:text="#{vets}">Veterinarians</span>
           </li>
 
+		  <th:block th:if="${staffUser}">
+			<li th:replace="~{::menuItem ('/staff/fallback','staff-fallback','staff fallback queue','inbox',#{staffQueue})}">
+			  <span class="fa fa-inbox" aria-hidden="true"></span>
+			  <span th:text="#{staffQueue}">Staff Queue</span>
+			</li>
+
+			<li th:replace="~{::menuItem ('/staff/appointments','staff-appointments','manage appointments','calendar',#{appointments})}">
+			  <span class="fa fa-calendar" aria-hidden="true"></span>
+			  <span th:text="#{appointments}">Appointments</span>
+			</li>
+		  </th:block>
+
           <li
             th:replace="~{::menuItem ('/oups','error','trigger a RuntimeException to see how it is handled','exclamation-triangle',#{error})}">
             <span class="fa exclamation-triangle" aria-hidden="true"></span>
@@ -63,6 +75,10 @@
       </div>
     </div>
   </nav>
+	<div class="alert alert-warning rounded-0 mb-0" role="alert">
+	  <span th:text="#{urgentCarePrompt}">Need urgent veterinary help?</span>
+	  <a th:href="@{/urgent-care}" class="alert-link" th:text="#{urgentCareLink}">View 24/7 urgent-care guidance</a>.
+	</div>
   <div class="container-fluid">
     <div class="container xd-container">
 

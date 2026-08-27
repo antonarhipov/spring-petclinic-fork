@@ -88,6 +88,18 @@ class SecurityAccessControlTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/login"));
 
+		this.mockMvc.perform(get("/staff/fallback"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/login"));
+
+		this.mockMvc.perform(get("/staff/appointments"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/login"));
+
+		this.mockMvc.perform(get("/owners/1/appointments"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/login"));
+
 		this.mockMvc.perform(get("/vets.html"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/login"));
@@ -120,6 +132,10 @@ class SecurityAccessControlTests {
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdateVisitForm"));
 
+		this.mockMvc.perform(get("/owners/1/appointments"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("owners/appointments"));
+
 		// Vets viewable by owner
 		this.mockMvc.perform(get("/vets.html")).andExpect(status().isOk()).andExpect(view().name("vets/vetList"));
 
@@ -132,6 +148,8 @@ class SecurityAccessControlTests {
 
 		this.mockMvc.perform(get("/owners/2/pets/2/visits/new")).andExpect(status().isForbidden());
 
+		this.mockMvc.perform(get("/owners/2/appointments")).andExpect(status().isForbidden());
+
 		// Finding or listing all owners or creating owners is forbidden for OWNER role
 		this.mockMvc.perform(get("/owners/find")).andExpect(status().isForbidden());
 
@@ -143,6 +161,10 @@ class SecurityAccessControlTests {
 		this.mockMvc.perform(get("/owners/1/pets/1/appointments/new")).andExpect(status().isForbidden());
 
 		this.mockMvc.perform(get("/staff/appointments/new")).andExpect(status().isForbidden());
+
+		this.mockMvc.perform(get("/staff/fallback")).andExpect(status().isForbidden());
+
+		this.mockMvc.perform(get("/staff/appointments")).andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -167,6 +189,12 @@ class SecurityAccessControlTests {
 		this.mockMvc.perform(get("/owners/1/pets/1/appointments/new")).andExpect(status().isOk());
 
 		this.mockMvc.perform(get("/owners/2/pets/2/appointments/new")).andExpect(status().isOk());
+
+		this.mockMvc.perform(get("/owners/1/appointments")).andExpect(status().isOk());
+
+		this.mockMvc.perform(get("/staff/fallback")).andExpect(status().isOk());
+
+		this.mockMvc.perform(get("/staff/appointments")).andExpect(status().isOk());
 
 		// Staff can reset owner password
 		this.mockMvc.perform(post("/staff/owners/4/reset-password").with(csrf()))

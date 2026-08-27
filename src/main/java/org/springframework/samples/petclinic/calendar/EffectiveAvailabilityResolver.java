@@ -159,11 +159,7 @@ public class EffectiveAvailabilityResolver {
 		// 4. Local -> Instant conversion at clinic ZoneId boundary (DST handling)
 		List<InstantInterval> rawInstants = new ArrayList<>();
 		for (LocalTimeInterval interval : localIntervals) {
-			Instant startInstant = ZonedDateTime.of(date, interval.start(), zoneId).toInstant();
-			Instant endInstant = ZonedDateTime.of(date, interval.end(), zoneId).toInstant();
-			if (startInstant.isBefore(endInstant)) {
-				rawInstants.add(new InstantInterval(startInstant, endInstant));
-			}
+			rawInstants.add(toInstantInterval(date, interval.start(), interval.end(), zoneId));
 		}
 
 		if (rawInstants.isEmpty()) {
@@ -194,6 +190,19 @@ public class EffectiveAvailabilityResolver {
 		merged.add(new InstantInterval(currentStart, currentEnd));
 
 		return Collections.unmodifiableList(merged);
+	}
+
+	/**
+	 * Converts one clinic-local interval at the shared DST-aware conversion boundary.
+	 */
+	public static InstantInterval toInstantInterval(LocalDate date, LocalTime start, LocalTime end, ZoneId zoneId) {
+		Objects.requireNonNull(date, "date must not be null");
+		Objects.requireNonNull(start, "start must not be null");
+		Objects.requireNonNull(end, "end must not be null");
+		Objects.requireNonNull(zoneId, "zoneId must not be null");
+		Instant startInstant = ZonedDateTime.of(date, start, zoneId).toInstant();
+		Instant endInstant = ZonedDateTime.of(date, end, zoneId).toInstant();
+		return new InstantInterval(startInstant, endInstant);
 	}
 
 	private static List<LocalTimeInterval> subtractInterval(List<LocalTimeInterval> intervals, LocalTime removeStart,

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-appointments')}">
+
+<body>
+  <h2 th:text="#{scheduledAppointments}">Scheduled Appointments</h2>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+  <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+  <div th:if="${appointments.empty}" class="alert alert-info" th:text="#{noScheduledAppointments}">No scheduled appointments.</div>
+
+  <table th:if="${!appointments.empty}" class="table table-striped align-middle">
+	<thead><tr><th th:text="#{when}">When</th><th th:text="#{pet}">Pet</th><th th:text="#{veterinarian}">Veterinarian</th><th th:text="#{actions}">Actions</th></tr></thead>
+	<tbody>
+	  <tr th:each="appointment : ${appointments}">
+		<td th:text="${#temporals.format(appointment.startInstant.atZone(clinicZone), 'yyyy-MM-dd HH:mm z')}"></td>
+		<td th:text="${appointment.pet.name}"></td>
+		<td th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}"></td>
+		<td>
+		  <a class="btn btn-sm btn-primary" th:href="@{/staff/appointments/__${appointment.id}__/reschedule}" th:text="#{reschedule}">Reschedule</a>
+		  <form th:action="@{/staff/appointments/__${appointment.id}__/complete}" method="post" class="d-inline"><button class="btn btn-sm btn-success" type="submit" th:text="#{complete}">Complete</button></form>
+		  <form th:action="@{/staff/appointments/__${appointment.id}__/no-show}" method="post" class="d-inline"><button class="btn btn-sm btn-warning" type="submit" th:text="#{noShow}">No-show</button></form>
+		  <form th:action="@{/staff/appointments/__${appointment.id}__/cancel}" method="post" class="d-inline-flex gap-1">
+			<input class="form-control form-control-sm" name="reason" th:placeholder="#{cancellationReason}" required />
+			<button class="btn btn-sm btn-danger" type="submit" th:text="#{cancel}">Cancel</button>
+		  </form>
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</body>
+</html>

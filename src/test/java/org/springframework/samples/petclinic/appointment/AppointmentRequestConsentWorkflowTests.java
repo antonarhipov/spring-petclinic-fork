@@ -109,11 +109,46 @@ class AppointmentRequestConsentWorkflowTests {
 		this.workflowService.declineConsent(1);
 
 		assertThat(awaiting.getStatus()).isEqualTo(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+		assertThat(awaiting.getFallbackReason()).isEqualTo(FallbackReason.DECLINED_CONSENT);
 		AppointmentRequest scheduled = request(AppointmentRequestStatus.SCHEDULED);
 		given(this.requestRepository.findByIdForUpdate(2)).willReturn(Optional.of(scheduled));
 		assertThatThrownBy(() -> this.workflowService.confirmInterpretation(2))
 			.isInstanceOf(IllegalStateException.class);
 		assertThat(scheduled.getStatus()).isEqualTo(AppointmentRequestStatus.SCHEDULED);
+	}
+
+	@Test
+	void staffCanUnblockOnlyInterpretedQueuedRequestsAndDirectBookingCompletesThem() {
+		AppointmentRequest request = request(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+		request.setInterpretationJson("{}");
+		request.setFallbackReason(FallbackReason.NO_FEASIBLE_SLOT);
+		given(this.requestRepository.findByIdForUpdate(1)).willReturn(Optional.of(request));
+
+		this.workflowService.unblock(1);
+
+		assertThat(request.getStatus()).isEqualTo(AppointmentRequestStatus.SUGGESTING);
+		assertThat(request.getFallbackReason()).isNull();
+
+		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+		org.springframework.samples.petclinic.owner.Pet pet = new org.springframework.samples.petclinic.owner.Pet();
+		pet.setId(2);
+		request.setPet(pet);
+		Appointment appointment = new Appointment();
+		appointment.setPet(pet);
+		this.workflowService.completeByStaff(1, appointment);
+
+		assertThat(request.getStatus()).isEqualTo(AppointmentRequestStatus.SCHEDULED);
+		assertThat(request.getResultingAppointment()).isSameAs(appointment);
+		assertThat(appointment.getRequest()).isSameAs(request);
+	}
+
+	@Test
+	void staffCannotUnblockQueuedRequestWithoutInterpretation() {
+		AppointmentRequest request = request(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+		given(this.requestRepository.findByIdForUpdate(1)).willReturn(Optional.of(request));
+
+		assertThatThrownBy(() -> this.workflowService.unblock(1)).isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("valid interpretation");
 	}
 
 	private static AppointmentRequest request(AppointmentRequestStatus status) {

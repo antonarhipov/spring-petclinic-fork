@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'staff-appointments')}">
+
+<body>
+  <h2 th:text="#{rescheduleAppointment}">Reschedule Appointment</h2>
+  <p><strong th:text="${appointment.pet.name}"></strong> — <span th:text="${owner.firstName + ' ' + owner.lastName}"></span></p>
+
+  <form th:action="@{/staff/appointments/__${appointment.id}__/reschedule}" method="get" class="row g-3 align-items-end mb-4">
+	<div class="col-md-4"><label class="form-label" for="vetId" th:text="#{veterinarian}">Veterinarian</label><select id="vetId" name="vetId" class="form-select"><option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}" th:selected="${vet.id == selectedVetId}"></option></select></div>
+	<div class="col-md-3"><label class="form-label" for="date" th:text="#{date}">Date</label><input id="date" name="date" type="date" class="form-control" th:value="${selectedDate}" th:min="${minDate}" th:max="${maxDate}" required /></div>
+	<div class="col-md-2"><label class="form-label" for="durationMin" th:text="#{duration}">Duration</label><input id="durationMin" name="durationMin" type="number" class="form-control" th:value="${durationMin}" th:min="${minDuration}" th:max="${maxDuration}" step="15" required /></div>
+	<div class="col-md-3"><button class="btn btn-primary" type="submit" th:text="#{checkAvailability}">Check availability</button></div>
+  </form>
+
+  <div th:if="${slots.empty}" class="alert alert-warning" th:text="#{noAvailableSlots}">No available slots for this selection.</div>
+  <form th:if="${!slots.empty}" th:action="@{/staff/appointments/__${appointment.id}__/reschedule}" method="post">
+	<input type="hidden" name="vetId" th:value="${selectedVetId}" /><input type="hidden" name="durationMin" th:value="${durationMin}" />
+	<div class="mb-3" th:each="slot, stat : ${slots}"><input type="radio" name="startInstant" th:value="${slot.startInstantIso}" th:id="${'slot-' + stat.index}" th:checked="${stat.first}" required /><label class="ms-2" th:for="${'slot-' + stat.index}" th:text="${slot.label}"></label></div>
+	<div class="mb-3"><label class="form-label" for="reason" th:text="#{rescheduleReason}">Reschedule reason</label><input id="reason" name="reason" class="form-control" required /></div>
+	<button class="btn btn-success" type="submit" th:text="#{reschedule}">Reschedule</button><a class="btn btn-secondary" th:href="@{/staff/appointments}" th:text="#{back}">Back</a>
+  </form>
+</body>
+</html>

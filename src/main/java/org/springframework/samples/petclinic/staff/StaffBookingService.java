@@ -26,6 +26,7 @@ import java.util.Objects;
 
 import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
 import org.springframework.samples.petclinic.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
@@ -55,13 +56,17 @@ public class StaffBookingService {
 
 	private final VetRepository vetRepository;
 
+	private final AppointmentRequestWorkflowService workflowService;
+
 	public StaffBookingService(ClinicSettingsRepository clinicSettingsRepository, GridGenerator gridGenerator,
-			AppointmentRepository appointmentRepository, OwnerRepository ownerRepository, VetRepository vetRepository) {
+			AppointmentRepository appointmentRepository, OwnerRepository ownerRepository, VetRepository vetRepository,
+			AppointmentRequestWorkflowService workflowService) {
 		this.clinicSettingsRepository = clinicSettingsRepository;
 		this.gridGenerator = gridGenerator;
 		this.appointmentRepository = appointmentRepository;
 		this.ownerRepository = ownerRepository;
 		this.vetRepository = vetRepository;
+		this.workflowService = workflowService;
 	}
 
 	/**
@@ -71,6 +76,12 @@ public class StaffBookingService {
 	 */
 	@Transactional(readOnly = true)
 	public List<Instant> getAvailableSlots(Integer vetId, LocalDate date, Integer durationMin) {
+		return getAvailableSlotsExcluding(vetId, date, durationMin, null);
+	}
+
+	@Transactional(readOnly = true)
+	public List<Instant> getAvailableSlotsExcluding(Integer vetId, LocalDate date, Integer durationMin,
+			Integer excludedAppointmentId) {
 		Objects.requireNonNull(vetId, "vetId must not be null");
 		Objects.requireNonNull(date, "date must not be null");
 
@@ -96,7 +107,7 @@ public class StaffBookingService {
 		for (Instant start : candidateStarts) {
 			boolean collision = false;
 			for (Appointment existing : existingAppointments) {
-				if (existing.overlaps(start, duration)) {
+				if (!Objects.equals(existing.getId(), excludedAppointmentId) && existing.overlaps(start, duration)) {
 					collision = true;
 					break;
 				}
@@ -116,6 +127,12 @@ public class StaffBookingService {
 	@Transactional
 	public Appointment bookDirectAppointment(Integer ownerId, Integer petId, Integer vetId, Instant startInstant,
 			Integer durationMin, String reason) {
+		return bookDirectAppointment(ownerId, petId, vetId, startInstant, durationMin, reason, null);
+	}
+
+	@Transactional
+	public Appointment bookDirectAppointment(Integer ownerId, Integer petId, Integer vetId, Instant startInstant,
+			Integer durationMin, String reason, Integer requestId) {
 		Objects.requireNonNull(ownerId, "ownerId must not be null");
 		Objects.requireNonNull(petId, "petId must not be null");
 		Objects.requireNonNull(vetId, "vetId must not be null");
@@ -148,9 +165,46 @@ public class StaffBookingService {
 		appointment.setStartInstant(startInstant);
 		appointment.setDurationMin(duration);
 		appointment.setStatus(AppointmentStatus.SCHEDULED);
-		appointment.setReason(reason);
+		appointment
+			.setReason(requestId == null ? trimToNull(reason) : AppointmentLifecycleService.requireReason(reason));
 
-		return this.appointmentRepository.save(appointment);
+		Appointment saved = this.appointmentRepository.saveAndFlush(appointment);
+		if (requestId != null) {
+			this.workflowService.completeByStaff(requestId, saved);
+		}
+		return saved;
+	}
+
+	@Transactional
+	public Appointment reschedule(Integer appointmentId, Integer vetId, Instant startInstant, Integer durationMin,
+			String reason) {
+		Objects.requireNonNull(appointmentId, "appointmentId must not be null");
+		Objects.requireNonNull(vetId, "vetId must not be null");
+		Objects.requireNonNull(startInstant, "startInstant must not be null");
+		Appointment appointment = this.appointmentRepository.findByIdForUpdate(appointmentId)
+			.orElseThrow(() -> new IllegalArgumentException("Appointment not found with id: " + appointmentId));
+		if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+			throw new IllegalStateException("Only scheduled appointments can be rescheduled");
+		}
+
+		Vet vet = this.vetRepository.findById(vetId)
+			.orElseThrow(() -> new IllegalArgumentException("Vet not found with id: " + vetId));
+		ClinicSettings settings = this.clinicSettingsRepository.getClinicSettings();
+		int duration = settings.clampDuration(durationMin);
+		LocalDate date = startInstant.atZone(settings.getZone()).toLocalDate();
+		if (!getAvailableSlotsExcluding(vetId, date, duration, appointmentId).contains(startInstant)) {
+			throw new IllegalStateException(
+					"The selected slot is no longer available or overlaps with an existing appointment.");
+		}
+		appointment.setVet(vet);
+		appointment.setStartInstant(startInstant);
+		appointment.setDurationMin(duration);
+		appointment.setReason(AppointmentLifecycleService.requireReason(reason));
+		return appointment;
+	}
+
+	private static String trimToNull(String value) {
+		return value == null || value.isBlank() ? null : value.trim();
 	}
 
 }

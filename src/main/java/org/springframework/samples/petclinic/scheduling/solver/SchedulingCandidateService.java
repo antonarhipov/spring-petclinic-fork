@@ -95,6 +95,11 @@ public class SchedulingCandidateService {
 		return List.copyOf(feasible);
 	}
 
+	@Transactional(readOnly = true)
+	public boolean hasMatchingSpecialty(String requiredSpecialty) {
+		return this.vetRepository.findAll().stream().anyMatch(vet -> hasRequiredSpecialty(vet, requiredSpecialty));
+	}
+
 	private Set<CandidateKey> rejectedKeys(Integer requestId) {
 		Set<CandidateKey> rejected = new HashSet<>();
 		for (RejectedSuggestion suggestion : this.rejectedSuggestionRepository.findByRequestId(requestId)) {

@@ -19,8 +19,11 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * Repository for {@link Appointment} domain objects.
@@ -44,5 +47,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 
 	@Query("SELECT a FROM Appointment a WHERE a.pet.id IN :petIds ORDER BY a.startInstant ASC")
 	List<Appointment> findByPetIds(@Param("petIds") List<Integer> petIds);
+
+	@Query("SELECT a FROM Appointment a WHERE a.status = :status ORDER BY a.startInstant ASC")
+	List<Appointment> findByStatus(@Param("status") AppointmentStatus status);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT a FROM Appointment a WHERE a.id = :id")
+	java.util.Optional<Appointment> findByIdForUpdate(@Param("id") Integer id);
 
 }

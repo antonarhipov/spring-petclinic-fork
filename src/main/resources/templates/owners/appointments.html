@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org"
+	th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+
+<body>
+  <h2 th:text="#{myAppointments}">My Appointments</h2>
+  <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+  <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+  <h3 th:text="#{upcoming}">Upcoming</h3>
+  <div th:if="${appointments.empty}" class="alert alert-info" th:text="#{noUpcomingAppointments}">No upcoming appointments.</div>
+  <table th:if="${!appointments.empty}" class="table table-striped">
+	<thead><tr><th th:text="#{when}">When</th><th th:text="#{pet}">Pet</th><th th:text="#{veterinarian}">Veterinarian</th><th></th></tr></thead>
+	<tbody><tr th:each="appointment : ${appointments}">
+	  <td th:text="${#temporals.format(appointment.startInstant.atZone(clinicZone), 'yyyy-MM-dd HH:mm z')}"></td>
+	  <td th:text="${appointment.pet.name}"></td>
+	  <td th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}"></td>
+	  <td><form th:action="@{/owners/__${ownerId}__/appointments/__${appointment.id}__/cancel}" method="post"><button class="btn btn-sm btn-danger" type="submit" th:text="#{cancelAppointment}">Cancel appointment</button></form></td>
+	</tr></tbody>
+  </table>
+  <p class="text-muted" th:text="#{onlineCancellationNotice}">Online cancellation closes 24 hours before the appointment. Contact clinic staff for later changes.</p>
+
+  <h3 th:text="#{schedulingRequests}">Scheduling Requests</h3>
+  <div th:if="${requests.empty}" class="alert alert-info" th:text="#{noActiveSchedulingRequests}">No active scheduling requests.</div>
+  <table th:if="${!requests.empty}" class="table table-striped">
+	<thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{request}">Request</th><th th:text="#{status}">Status</th><th></th></tr></thead>
+	<tbody><tr th:each="request : ${requests}">
+	  <td th:text="${request.pet.name}"></td><td th:text="${request.freeText}"></td><td th:text="${request.status}"></td>
+	  <td><form th:if="${request.status.name() == 'SUGGESTING'}" th:action="@{/owners/__${ownerId}__/appointment-requests/__${request.id}__/resume}" method="post"><button class="btn btn-sm btn-primary" type="submit" th:text="#{resumeScheduling}">Resume scheduling</button></form><span th:if="${request.status.name() == 'QUEUED_FOR_STAFF'}" th:text="#{staffWillHelp}">Clinic staff will help with this request.</span></td>
+	</tr></tbody>
+  </table>
+  <a class="btn btn-secondary" th:href="@{/owners/__${ownerId}__}" th:text="#{backToOwner}">Back to owner</a>
+</body>
+</html>

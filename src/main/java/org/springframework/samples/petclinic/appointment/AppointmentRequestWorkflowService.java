@@ -59,6 +59,7 @@ public class AppointmentRequestWorkflowService {
 		request.setConsentAt(null);
 		request.setConsentTextSnapshot(null);
 		request.setInterpretationJson(null);
+		request.setFallbackReason(null);
 		request.setStatus(AppointmentRequestStatus.AWAITING_CONSENT);
 	}
 
@@ -87,6 +88,7 @@ public class AppointmentRequestWorkflowService {
 		request.setConsentFlag(false);
 		request.setConsentAt(null);
 		request.setConsentTextSnapshot(null);
+		request.setFallbackReason(FallbackReason.DECLINED_CONSENT);
 		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
 	}
 
@@ -101,6 +103,7 @@ public class AppointmentRequestWorkflowService {
 			throw new IllegalArgumentException("Interpretation JSON must not be blank");
 		}
 		request.setInterpretationJson(interpretationJson);
+		request.setFallbackReason(null);
 		request.setStatus(AppointmentRequestStatus.INTERPRETED);
 	}
 
@@ -126,12 +129,13 @@ public class AppointmentRequestWorkflowService {
 	}
 
 	@Transactional
-	public void markInterpretationFailed(Integer requestId) {
+	public void markInterpretationFailed(Integer requestId, FallbackReason reason) {
 		AppointmentRequest request = getForUpdate(requestId);
 		if (request.getStatus() != AppointmentRequestStatus.AWAITING_CONSENT || !request.isConsentFlag()) {
 			throw invalidTransition(request, "queue failed interpretation");
 		}
 		request.setInterpretationJson(null);
+		request.setFallbackReason(reason);
 		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
 	}
 
@@ -192,13 +196,44 @@ public class AppointmentRequestWorkflowService {
 	}
 
 	@Transactional
-	public void markNoFit(Integer requestId) {
+	public void markNoFit(Integer requestId, FallbackReason reason) {
 		AppointmentRequest request = getForUpdate(requestId);
 		if (request.getStatus() != AppointmentRequestStatus.SUGGESTING) {
 			throw invalidTransition(request, "queue request");
 		}
 		request.clearSuggestion();
+		request.setFallbackReason(reason);
 		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+	}
+
+	@Transactional
+	public void unblock(Integer requestId) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.QUEUED_FOR_STAFF) {
+			throw invalidTransition(request, "unblock request");
+		}
+		if (request.getInterpretationJson() == null || request.getInterpretationJson().isBlank()) {
+			throw new IllegalStateException("A request needs a valid interpretation before it can resume");
+		}
+		request.clearSuggestion();
+		request.setFallbackReason(null);
+		request.setStatus(AppointmentRequestStatus.SUGGESTING);
+	}
+
+	@Transactional
+	public void completeByStaff(Integer requestId, Appointment appointment) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.QUEUED_FOR_STAFF) {
+			throw invalidTransition(request, "book request directly");
+		}
+		if (!request.getPet().getId().equals(appointment.getPet().getId())) {
+			throw new IllegalArgumentException("Appointment pet does not match the queued request");
+		}
+		request.clearSuggestion();
+		request.setFallbackReason(null);
+		request.setResultingAppointment(appointment);
+		request.setStatus(AppointmentRequestStatus.SCHEDULED);
+		appointment.setRequest(request);
 	}
 
 	@Transactional

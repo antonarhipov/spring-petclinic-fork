@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestStatus;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
+import org.springframework.samples.petclinic.appointment.FallbackReason;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
 
@@ -84,7 +85,7 @@ class AppointmentInterpretationServiceTests {
 		AppointmentInterpretationService.InterpretationResult result = this.service.grantConsentAndInterpret(7);
 
 		assertThat(result.status()).isEqualTo(AppointmentRequestStatus.QUEUED_FOR_STAFF);
-		verify(this.workflowService).markInterpretationFailed(7);
+		verify(this.workflowService).markInterpretationFailed(7, FallbackReason.AI_UNAVAILABLE);
 		verify(this.workflowService, never()).completeInterpretation(org.mockito.ArgumentMatchers.anyInt(),
 				org.mockito.ArgumentMatchers.anyString());
 	}

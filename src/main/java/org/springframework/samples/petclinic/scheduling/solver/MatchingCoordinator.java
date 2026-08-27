@@ -15,6 +15,7 @@ import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService.CurrentOffer;
 import org.springframework.samples.petclinic.appointment.ExpiredHoldCleanupService;
+import org.springframework.samples.petclinic.appointment.FallbackReason;
 import org.springframework.samples.petclinic.appointment.SlotHold;
 import org.springframework.samples.petclinic.appointment.SlotHoldAcquisitionService;
 import org.springframework.samples.petclinic.appointment.SlotUnavailableException;
@@ -113,11 +114,13 @@ public class MatchingCoordinator {
 				best = this.slotSolver.solve(candidates);
 			}
 			catch (RuntimeException ex) {
-				this.workflowService.markNoFit(requestId);
+				this.workflowService.markNoFit(requestId, FallbackReason.SOLVER_UNAVAILABLE);
 				return SuggestionResult.queued(requestId, "Scheduling is unavailable; clinic staff will help");
 			}
 			if (best.isEmpty()) {
-				this.workflowService.markNoFit(requestId);
+				FallbackReason reason = this.candidateService.hasMatchingSpecialty(criteria.requiredSpecialty())
+						? FallbackReason.NO_FEASIBLE_SLOT : FallbackReason.NO_MATCHING_SPECIALTY;
+				this.workflowService.markNoFit(requestId, reason);
 				return SuggestionResult.queued(requestId, "No feasible slot remains; clinic staff will help");
 			}
 

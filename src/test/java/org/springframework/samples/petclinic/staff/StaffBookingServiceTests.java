@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
 import org.springframework.samples.petclinic.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
@@ -61,6 +62,9 @@ class StaffBookingServiceTests {
 	private AppointmentRepository appointmentRepository;
 
 	@Mock
+	private AppointmentRequestWorkflowService workflowService;
+
+	@Mock
 	private OwnerRepository ownerRepository;
 
 	@Mock
@@ -86,7 +90,7 @@ class StaffBookingServiceTests {
 
 		this.gridGenerator = new GridGenerator(this.availabilityResolver, this.clinicSettingsRepository);
 		this.staffBookingService = new StaffBookingService(this.clinicSettingsRepository, this.gridGenerator,
-				this.appointmentRepository, this.ownerRepository, this.vetRepository);
+				this.appointmentRepository, this.ownerRepository, this.vetRepository, this.workflowService);
 
 		given(this.clinicSettingsRepository.getClinicSettings()).willReturn(this.clinicSettings);
 	}
@@ -172,7 +176,7 @@ class StaffBookingServiceTests {
 		given(this.appointmentRepository.findByVetIdAndStatusNot(vetId, AppointmentStatus.CANCELLED))
 			.willReturn(List.of());
 
-		given(this.appointmentRepository.save(any(Appointment.class))).willAnswer(inv -> inv.getArgument(0));
+		given(this.appointmentRepository.saveAndFlush(any(Appointment.class))).willAnswer(inv -> inv.getArgument(0));
 
 		Appointment booked = this.staffBookingService.bookDirectAppointment(ownerId, petId, vetId, slotStart, 30,
 				"Direct staff booking");

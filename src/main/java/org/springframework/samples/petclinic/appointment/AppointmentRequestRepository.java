@@ -30,13 +30,14 @@ import jakarta.persistence.LockModeType;
  */
 public interface AppointmentRequestRepository extends JpaRepository<AppointmentRequest, Integer> {
 
-	@Query("SELECT r FROM AppointmentRequest r WHERE r.owner.id = :ownerId ORDER BY r.id DESC")
+	@Query("SELECT r FROM AppointmentRequest r JOIN FETCH r.pet WHERE r.owner.id = :ownerId ORDER BY r.id DESC")
 	List<AppointmentRequest> findByOwnerId(@Param("ownerId") Integer ownerId);
 
 	@Query("SELECT r FROM AppointmentRequest r WHERE r.pet.id = :petId ORDER BY r.id DESC")
 	List<AppointmentRequest> findByPetId(@Param("petId") Integer petId);
 
-	List<AppointmentRequest> findByStatus(AppointmentRequestStatus status);
+	@Query("SELECT r FROM AppointmentRequest r JOIN FETCH r.owner JOIN FETCH r.pet WHERE r.status = :status ORDER BY r.id ASC")
+	List<AppointmentRequest> findByStatus(@Param("status") AppointmentRequestStatus status);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT r FROM AppointmentRequest r WHERE r.id = :id")

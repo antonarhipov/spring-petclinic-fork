@@ -65,6 +65,10 @@ public class AppointmentRequest extends BaseEntity {
 	@Column(name = "interpretation_json")
 	private String interpretationJson;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "fallback_reason", length = 50)
+	private FallbackReason fallbackReason;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "resulting_appointment_id")
 	private Appointment resultingAppointment;
@@ -141,6 +145,14 @@ public class AppointmentRequest extends BaseEntity {
 
 	public void setInterpretationJson(String interpretationJson) {
 		this.interpretationJson = interpretationJson;
+	}
+
+	public FallbackReason getFallbackReason() {
+		return this.fallbackReason;
+	}
+
+	public void setFallbackReason(FallbackReason fallbackReason) {
+		this.fallbackReason = fallbackReason;
 	}
 
 	public Appointment getResultingAppointment() {

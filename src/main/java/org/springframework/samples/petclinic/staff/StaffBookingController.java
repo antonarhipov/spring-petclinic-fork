@@ -22,6 +22,8 @@ import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.samples.petclinic.appointment.Appointment;
+import org.springframework.samples.petclinic.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
 import org.springframework.samples.petclinic.owner.Owner;
@@ -53,12 +55,16 @@ public class StaffBookingController {
 
 	private final ClinicSettingsRepository clinicSettingsRepository;
 
+	private final AppointmentRepository appointmentRepository;
+
 	public StaffBookingController(StaffBookingService staffBookingService, OwnerRepository ownerRepository,
-			VetRepository vetRepository, ClinicSettingsRepository clinicSettingsRepository) {
+			VetRepository vetRepository, ClinicSettingsRepository clinicSettingsRepository,
+			AppointmentRepository appointmentRepository) {
 		this.staffBookingService = staffBookingService;
 		this.ownerRepository = ownerRepository;
 		this.vetRepository = vetRepository;
 		this.clinicSettingsRepository = clinicSettingsRepository;
+		this.appointmentRepository = appointmentRepository;
 	}
 
 	@GetMapping("/staff/appointments/new")
@@ -95,7 +101,8 @@ public class StaffBookingController {
 			@RequestParam(value = "vetId", required = false) Integer vetId,
 			@RequestParam(value = "date",
 					required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			@RequestParam(value = "durationMin", required = false) Integer durationMin, Model model) {
+			@RequestParam(value = "durationMin", required = false) Integer durationMin,
+			@RequestParam(value = "requestId", required = false) Integer requestId, Model model) {
 
 		Owner owner = this.ownerRepository.findById(ownerId)
 			.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId));
@@ -136,6 +143,7 @@ public class StaffBookingController {
 		model.addAttribute("minDate", today);
 		model.addAttribute("maxDate", today.plusDays(settings.getBookingHorizonDays() - 1));
 		model.addAttribute("slots", slots);
+		model.addAttribute("requestId", requestId);
 
 		return "staff/bookAppointmentForm";
 	}
@@ -144,12 +152,14 @@ public class StaffBookingController {
 	public String processNewAppointmentForm(@PathVariable("ownerId") int ownerId, @PathVariable("petId") int petId,
 			@RequestParam("vetId") int vetId, @RequestParam("startInstant") String startInstantStr,
 			@RequestParam(value = "durationMin", required = false) Integer durationMin,
-			@RequestParam(value = "reason", required = false) String reason, RedirectAttributes redirectAttributes) {
+			@RequestParam(value = "reason", required = false) String reason,
+			@RequestParam(value = "requestId", required = false) Integer requestId,
+			RedirectAttributes redirectAttributes) {
 
 		try {
 			Instant startInstant = Instant.parse(startInstantStr);
 			Appointment appointment = this.staffBookingService.bookDirectAppointment(ownerId, petId, vetId,
-					startInstant, durationMin, reason);
+					startInstant, durationMin, reason, requestId);
 
 			redirectAttributes.addFlashAttribute("message",
 					"Appointment scheduled successfully for " + appointment.getPet().getName() + ".");
@@ -157,8 +167,63 @@ public class StaffBookingController {
 		}
 		catch (Exception ex) {
 			redirectAttributes.addFlashAttribute("error", ex.getMessage());
-			return "redirect:/owners/" + ownerId + "/pets/" + petId + "/appointments/new?vetId=" + vetId;
+			String redirect = "redirect:/owners/" + ownerId + "/pets/" + petId + "/appointments/new?vetId=" + vetId;
+			return requestId == null ? redirect : redirect + "&requestId=" + requestId;
 		}
+	}
+
+	@GetMapping("/staff/appointments/{appointmentId}/reschedule")
+	public String initRescheduleForm(@PathVariable Integer appointmentId,
+			@RequestParam(value = "vetId", required = false) Integer vetId,
+			@RequestParam(value = "date",
+					required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam(value = "durationMin", required = false) Integer durationMin, Model model) {
+		Appointment appointment = this.appointmentRepository.findById(appointmentId)
+			.orElseThrow(() -> new IllegalArgumentException("Appointment not found with id: " + appointmentId));
+		if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+			throw new IllegalStateException("Only scheduled appointments can be rescheduled");
+		}
+		Owner owner = this.ownerRepository.findByPetId(appointment.getPet().getId())
+			.orElseThrow(() -> new IllegalStateException("Owner not found for appointment pet"));
+		List<Vet> vets = this.vetRepository.findAll();
+		ClinicSettings settings = this.clinicSettingsRepository.getClinicSettings();
+		Integer selectedVetId = vetId != null ? vetId : appointment.getVet().getId();
+		LocalDate today = LocalDate.now(settings.getZone());
+		LocalDate selectedDate = date != null ? date
+				: appointment.getStartInstant().atZone(settings.getZone()).toLocalDate();
+		int selectedDuration = settings.clampDuration(durationMin != null ? durationMin : appointment.getDurationMin());
+		List<SlotOption> slots = this.staffBookingService
+			.getAvailableSlotsExcluding(selectedVetId, selectedDate, selectedDuration, appointmentId)
+			.stream()
+			.map(start -> new SlotOption(start, selectedDuration, settings.getZone()))
+			.toList();
+
+		model.addAttribute("appointment", appointment);
+		model.addAttribute("owner", owner);
+		model.addAttribute("vets", vets);
+		model.addAttribute("selectedVetId", selectedVetId);
+		model.addAttribute("selectedDate", selectedDate);
+		model.addAttribute("durationMin", selectedDuration);
+		model.addAttribute("minDuration", settings.getMinVisitMin());
+		model.addAttribute("maxDuration", settings.getMaxVisitMin());
+		model.addAttribute("minDate", today);
+		model.addAttribute("maxDate", today.plusDays(settings.getBookingHorizonDays() - 1));
+		model.addAttribute("slots", slots);
+		return "staff/rescheduleAppointmentForm";
+	}
+
+	@PostMapping("/staff/appointments/{appointmentId}/reschedule")
+	public String processRescheduleForm(@PathVariable Integer appointmentId, @RequestParam int vetId,
+			@RequestParam String startInstant, @RequestParam(required = false) Integer durationMin,
+			@RequestParam String reason, RedirectAttributes redirectAttributes) {
+		try {
+			this.staffBookingService.reschedule(appointmentId, vetId, Instant.parse(startInstant), durationMin, reason);
+			redirectAttributes.addFlashAttribute("message", "Appointment rescheduled");
+		}
+		catch (RuntimeException ex) {
+			redirectAttributes.addFlashAttribute("error", ex.getMessage());
+		}
+		return "redirect:/staff/appointments";
 	}
 
 }

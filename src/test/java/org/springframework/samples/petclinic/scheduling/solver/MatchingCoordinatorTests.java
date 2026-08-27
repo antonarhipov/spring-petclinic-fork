@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
 import org.springframework.samples.petclinic.appointment.ExpiredHoldCleanupService;
+import org.springframework.samples.petclinic.appointment.FallbackReason;
 import org.springframework.samples.petclinic.appointment.SlotHold;
 import org.springframework.samples.petclinic.appointment.SlotHoldAcquisitionService;
 import org.springframework.samples.petclinic.appointment.SlotUnavailableException;
@@ -65,7 +66,7 @@ class MatchingCoordinatorTests {
 		SuggestionResult result = this.coordinator.suggest(10, this.criteria);
 
 		assertThat(result.status()).isEqualTo(SuggestionResult.Status.QUEUED_FOR_STAFF);
-		verify(this.workflowService).markNoFit(10);
+		verify(this.workflowService).markNoFit(10, FallbackReason.SOLVER_UNAVAILABLE);
 	}
 
 	@Test

@@ -8,6 +8,7 @@ package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import org.springframework.samples.petclinic.appointment.AppointmentRequestStatus;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
+import org.springframework.samples.petclinic.appointment.FallbackReason;
 import org.springframework.samples.petclinic.calendar.ClinicSettings;
 import org.springframework.samples.petclinic.calendar.ClinicSettingsRepository;
 import org.springframework.stereotype.Service;
@@ -43,15 +44,22 @@ public class AppointmentInterpretationService {
 
 	public InterpretationResult grantConsentAndInterpret(Integer requestId) {
 		String consentedText = this.workflowService.recordConsent(requestId);
+		AppointmentInterpretation interpreted;
+		try {
+			interpreted = this.interpreter.interpret(consentedText);
+		}
+		catch (RuntimeException ex) {
+			this.workflowService.markInterpretationFailed(requestId, FallbackReason.AI_UNAVAILABLE);
+			return new InterpretationResult(AppointmentRequestStatus.QUEUED_FOR_STAFF, null);
+		}
 		try {
 			ClinicSettings settings = this.settingsRepository.getClinicSettings();
-			AppointmentInterpretation interpreted = this.interpreter.interpret(consentedText);
 			AppointmentInterpretation normalized = this.normalizer.normalize(interpreted, settings);
 			this.workflowService.completeInterpretation(requestId, this.jsonMapper.writeValueAsString(normalized));
 			return new InterpretationResult(AppointmentRequestStatus.INTERPRETED, normalized);
 		}
 		catch (RuntimeException ex) {
-			this.workflowService.markInterpretationFailed(requestId);
+			this.workflowService.markInterpretationFailed(requestId, FallbackReason.INCOMPLETE_INTERPRETATION);
 			return new InterpretationResult(AppointmentRequestStatus.QUEUED_FOR_STAFF, null);
 		}
 	}

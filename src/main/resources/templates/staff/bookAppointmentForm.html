@@ -35,6 +35,7 @@
   <br />
   <h4 th:text="'Select Veterinarian, Date & Duration'">Select Veterinarian, Date &amp; Duration</h4>
   <form th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/appointments/new}" method="get" class="row g-3 align-items-end mb-4">
+	<input th:if="${requestId != null}" type="hidden" name="requestId" th:value="${requestId}" />
     <div class="col-md-4">
       <label for="vetSelect" class="form-label" th:text="'Veterinarian'">Veterinarian</label>
       <select id="vetSelect" name="vetId" class="form-select">
@@ -64,6 +65,7 @@
   </div>
 
   <form th:if="${!slots.empty}" th:action="@{/owners/__${owner.id}__/pets/__${pet.id}__/appointments/new}" method="post">
+	<input th:if="${requestId != null}" type="hidden" name="requestId" th:value="${requestId}" />
     <input type="hidden" name="vetId" th:value="${selectedVetId}" />
     <input type="hidden" name="durationMin" th:value="${durationMin}" />
 
@@ -80,8 +82,8 @@
     </div>
 
     <div class="mb-3">
-      <label for="reasonInput" class="form-label" th:text="'Reason / Notes (optional)'">Reason / Notes (optional)</label>
-      <input type="text" id="reasonInput" name="reason" class="form-control" placeholder="e.g. Annual vaccination checkup" />
+	  <label for="reasonInput" class="form-label"><span th:text="#{reasonNotes}">Reason / Notes</span><span th:if="${requestId == null}" th:text="#{optionalSuffix}"> (optional)</span></label>
+	  <input type="text" id="reasonInput" name="reason" class="form-control" placeholder="e.g. Annual vaccination checkup" th:required="${requestId != null}" />
     </div>
 
     <div class="mb-3">
