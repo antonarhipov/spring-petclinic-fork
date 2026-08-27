@@ -33,4 +33,7 @@ public interface SlotHoldRepository extends JpaRepository<SlotHold, Integer> {
 	@Query("SELECT h FROM SlotHold h WHERE h.request.id = :requestId")
 	List<SlotHold> findByRequestId(@Param("requestId") Integer requestId);
 
+	@Query("SELECT h FROM SlotHold h WHERE h.expiresAt <= :now")
+	List<SlotHold> findExpired(@Param("now") Instant now);
+
 }

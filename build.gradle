@@ -16,7 +16,7 @@ version = '4.0.0-SNAPSHOT'
 
 java {
   toolchain {
-    languageVersion = JavaLanguageVersion.of(17)
+    languageVersion = JavaLanguageVersion.of(21)
   }
 }
 
@@ -33,6 +33,7 @@ ext.webjarsBootstrapVersion = "5.3.8"
 dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-cache'
   implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'ai.timefold.solver:timefold-solver-spring-boot-starter:2.5.0'
   implementation 'org.springframework.boot:spring-boot-starter-flyway'
   implementation 'org.springframework.boot:spring-boot-starter-security'
   implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
@@ -56,6 +57,7 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
   testImplementation 'org.springframework.security:spring-security-test'
+  testImplementation 'net.bytebuddy:byte-buddy-agent'
   testImplementation 'org.springframework.boot:spring-boot-testcontainers'
   testImplementation 'org.springframework.boot:spring-boot-docker-compose'
   testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
@@ -67,6 +69,10 @@ dependencies {
 
 tasks.named('test') {
   useJUnitPlatform()
+  doFirst {
+    def byteBuddyAgent = configurations.testRuntimeClasspath.files.find { it.name.startsWith('byte-buddy-agent-') }
+    jvmArgs "-javaagent:${byteBuddyAgent}"
+  }
 }
 
 tasks.named("cyclonedxDirectBom").configure {

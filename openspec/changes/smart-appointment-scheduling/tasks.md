@@ -1,8 +1,8 @@
-## 0. Scope of this task list (slice 1 — foundation only)
+## 0. Scope and delivery sequence
 
 - [x] 0.1 Read `design.md` (D1–D20, Data Model, Migration Plan) and the six `specs/**` before starting; this checklist implements **slice 1 (walking-skeleton foundation) only**.
 - [x] 0.2 Confirm slice-1 boundary per `design.md` D20: Spring Security identity + demo seeding, core entities via a Flyway V1 baseline, the effective-availability resolver + fixed start-time grid, and **staff booking directly against the grid** — a runnable end-to-end vertical with **no Timefold and no AI**.
-- [x] 0.3 Do **not** archive this change when these tasks complete: per `design.md` "Full-spec / slice-1-tasks deviation", the specs describe the full target (slices 1–4); only slice 1 is actionable now.
+- [x] 0.3 Do **not** archive this change until all four slices complete: the specs describe the full target and implementation tasks are appended one slice at a time.
 
 ## 1. Build & dependencies (slice 1 only; `pom.xml` canonical, mirror to Gradle)
 
@@ -64,8 +64,19 @@
 - [x] 8.5 Add Spring Security access-control tests (e.g. `@WithMockUser`/MockMvc) for the newly secured controllers: anonymous access to owner/pet/vet/visit pages redirects to login; login/error/static/urgent-care guidance stay anonymous; an owner cannot reach another owner's data; staff can act on behalf via `ownerId`.
 - [x] 8.6 Add tests for forced first-login password change (staff-provisioned owner is forced; demo-seeded accounts skip it) and that demo seeding creates `george`/`george123` plus a staff account.
 
-## 9. Out of scope for now — slices 2–4 (documented, not implemented here)
+## 9. Slice 2 — solver + holds
 
-- [ ] 9.1 **Slice 2 (solver + holds):** Timefold single-slot solve, full hard-feasibility + ordered soft-score ranking, `slot_hold` acquire/lose-the-race/accept-revalidation transaction, and the Java 17→21 baseline bump — see `specs/scheduling/solver`, `specs/appointment`, and `design.md` D2–D5/D20.
-- [ ] 9.2 **Slice 3 (AI + consent):** consent gate, Spring AI 2.0.1 Ollama interpreter behind the `AppointmentInterpreter` port (model via `spring.ai.ollama.chat.model`, options via `mutate()` only), structured-output validation/clamping/normalization, and the full `AppointmentRequest` state-machine transitions — see `specs/scheduling/interpretation` and `design.md` D6–D8/D16–D17.
-- [ ] 9.3 **Slice 4 (staff fallback + lifecycle + emergencies):** `QUEUED_FOR_STAFF` fallback queue and staff-unblock-then-owner-resumes, reschedule/cancel with recorded reason, complete (→ records a `Visit`)/no-show lifecycle, owner self-service view/cancel (24h window), and advisory-only urgency + unconditional urgent-care guidance — see `specs/staff`, `specs/appointment`, and `design.md` D9–D10/D15.
+- [x] 9.1 Bump the canonical Maven build and mirrored Gradle toolchain from Java 17 to Java 21; add `ai.timefold.solver:timefold-solver-spring-boot-starter:2.5.0` to both builds and configure a bounded solve duration (D19/D20).
+- [x] 9.2 Add triple-vendor V2 migrations and JPA mappings for the request's persisted `suggested_vet_id`/`suggested_start_instant` snapshot and `slot_hold.duration_min`. The snapshot survives expired-hold cleanup so accept can revalidate the exact offered slot after its hold row is gone; hold duration enables variable-length interval-overlap checks (D4/D5).
+- [x] 9.3 Implement the app-owned solver input/output model and candidate enumeration across the booking horizon, enforcing continuous availability, appointment/active-hold overlap, excluded windows, rejected pairs, and required-specialty feasibility.
+- [x] 9.4 Implement the Timefold single-slot solve with lexicographic preferred-window, preferred-vet, and sooner ranking plus deterministic ascending `(vet id, start instant)` tie-break; return a definite no-fit outcome.
+- [x] 9.5 Implement atomic hold acquisition with the database unique constraint, configured TTL, lazy expired-row cleanup, and immediate re-solve when acquisition loses a race.
+- [x] 9.6 Implement guarded `CONFIRMED → SUGGESTING → HELD` suggestion, reject/ask-again with permanent `rejected_suggestion` persistence, and finite progression to a different slot or `QUEUED_FOR_STAFF`.
+- [x] 9.7 Implement transactional accept revalidation: confirm a valid hold; re-acquire and confirm an expired-but-free suggestion; or report loss and automatically offer the next slot when taken.
+- [x] 9.8 Add the five-minute expired-hold sweep and tests for ranking/feasibility, deterministic progression, hold TTL/lazy cleanup, unique-race recovery, accept recovery, guarded transitions, and persistence mappings.
+- [x] 9.9 Verify Maven and Gradle dependency resolution/compilation plus the complete Maven test suite on Java 21.
+
+## 10. Out of scope for now — slices 3–4
+
+- [ ] 10.1 **Slice 3 (AI + consent):** consent gate, Spring AI 2.0.1 Ollama interpreter behind the `AppointmentInterpreter` port (model via `spring.ai.ollama.chat.model`, options via `mutate()` only), structured-output validation/clamping/normalization, and the full `AppointmentRequest` state-machine transitions — see `specs/scheduling/interpretation` and `design.md` D6–D8/D16–D17.
+- [ ] 10.2 **Slice 4 (staff fallback + lifecycle + emergencies):** `QUEUED_FOR_STAFF` fallback queue and staff-unblock-then-owner-resumes, reschedule/cancel with recorded reason, complete (→ records a `Visit`)/no-show lifecycle, owner self-service view/cancel (24h window), and advisory-only urgency + unconditional urgent-care guidance — see `specs/staff`, `specs/appointment`, and `design.md` D9–D10/D15.

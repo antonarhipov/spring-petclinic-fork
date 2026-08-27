@@ -44,6 +44,9 @@ public class SlotHold extends BaseEntity {
 	@Column(name = "start_instant", nullable = false)
 	private Instant startInstant;
 
+	@Column(name = "duration_min", nullable = false)
+	private Integer durationMin;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "request_id", nullable = false)
 	private AppointmentRequest request;
@@ -65,6 +68,14 @@ public class SlotHold extends BaseEntity {
 
 	public void setStartInstant(Instant startInstant) {
 		this.startInstant = startInstant;
+	}
+
+	public Integer getDurationMin() {
+		return this.durationMin;
+	}
+
+	public void setDurationMin(Integer durationMin) {
+		this.durationMin = durationMin;
 	}
 
 	public AppointmentRequest getRequest() {

@@ -108,6 +108,7 @@ class AppointmentRepositoryTests {
 		hold.setVet(vet);
 		hold.setRequest(savedReq);
 		hold.setStartInstant(holdStart);
+		hold.setDurationMin(30);
 		hold.setExpiresAt(Instant.parse("2026-09-01T10:10:00Z"));
 		SlotHold savedHold = this.slotHoldRepository.save(hold);
 		assertThat(savedHold.getId()).isNotNull();

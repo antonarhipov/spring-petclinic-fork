@@ -130,10 +130,10 @@ New tables (all instants stored as UTC; local wall-clock fields are `LocalTime`/
 
 ### appointment
 
-- **`appointment_request`** — `id` PK; `owner_id` FK; `pet_id` FK; `free_text`; `status` (the state-machine state); `consent_flag` (bool); `consent_at` `◇` (timestamp); `consent_text_snapshot` `◇` (exact consented text); `interpretation_json` `◇`; `resulting_appointment_id` `◇` FK → `appointment(id)`; `active_hold_id` `◇` FK → `slot_hold(id)`.
+- **`appointment_request`** — `id` PK; `owner_id` FK; `pet_id` FK; `free_text`; `status` (the state-machine state); `consent_flag` (bool); `consent_at` `◇` (timestamp); `consent_text_snapshot` `◇` (exact consented text); `interpretation_json` `◇`; `resulting_appointment_id` `◇` FK → `appointment(id)`; `active_hold_id` `◇` FK → `slot_hold(id)`; `suggested_vet_id` `◇` FK → `vets(id)` and `suggested_start_instant` `◇` (UTC), which persist the exact offered slot across expired-hold cleanup until reject/accept completes.
 - **`rejected_suggestion`** — `id` PK; `request_id` FK → `appointment_request(id)`; `vet_id` FK; `start_instant` (UTC). Child rows recording every rejected `(vet, start)` for the request; the permanent-exclusion set.
 - **`appointment`** — `id` PK; `request_id` `◇` FK → `appointment_request(id)` (null for pure staff-direct bookings); `pet_id` FK; `vet_id` FK; `start_instant` (UTC); `duration_min`; `status` (`SCHEDULED | COMPLETED | NO_SHOW | CANCELLED`); `reason` `◇` (recorded on staff cancel/reschedule).
-- **`slot_hold`** — `id` PK; `vet_id` FK; `start_instant` (UTC); `request_id` FK; `expires_at` (UTC). **Unique constraint `⊤ (vet_id, start_instant)`** — the double-booking guard. Only rows with `expires_at > now` are treated as active; expired rows are swept and ignored on read.
+- **`slot_hold`** — `id` PK; `vet_id` FK; `start_instant` (UTC); `duration_min`; `request_id` FK; `expires_at` (UTC). **Unique constraint `⊤ (vet_id, start_instant)`** — the double-booking guard. The duration makes interval-overlap checks possible for variable-length visits. Only rows with `expires_at > now` are treated as active; expired rows are swept and ignored on read.
 
 ### Interpretation schema (Spring AI structured output → `interpretation_json`)
 
@@ -251,7 +251,7 @@ Given a `CONFIRMED` request with a validated interpretation:
    - **Still free** → re-acquire the hold via atomic INSERT, then confirm as in step 3.
    - **Taken** → do **not** error: report "no longer available," re-solve, and **auto-offer the next slot** (transition back toward `SUGGESTING`/`HELD`). `COMMIT` with no appointment. (`specs/appointment` — Accept re-validates and auto-recovers.)
 
-**Expiry cleanup.** A scheduled sweep runs **every 5 minutes** to delete rows with `expires_at <= now`; additionally, reads treat expired holds as absent (**lazy-on-read**), so an expired hold never blocks a slot even between sweeps. (`specs/appointment` — Expired holds are cleaned up.)
+**Expiry cleanup.** A scheduled sweep runs **every 5 minutes** to clear matching `active_hold_id` references and delete rows with `expires_at <= now`; additionally, reads lazily perform the same cleanup before considering active holds. The request's persisted suggestion snapshot retains the exact `(vet, start)` offered to the owner, so Accept can still revalidate and re-acquire that slot after the expired hold row is deleted. (`specs/appointment` — Expired holds are cleaned up.)
 
 ## Dependency & Config Plan
 
@@ -289,13 +289,13 @@ Given a `CONFIRMED` request with a validated interpretation:
 
 ### Full-spec / slice-1-tasks deviation (apply/archive implication)
 
-This change intentionally uses the "**full spec now, slice-1 tasks**" shape: `proposal.md`, all six `specs/**`, and this `design.md` describe the **entire** target feature, while `tasks.md` covers **slice 1 (foundation) only**.
+This change uses the "**full spec now, tasks appended by slice**" shape: `proposal.md`, all six `specs/**`, and this `design.md` describe the **entire** target feature, while actionable implementation tasks are appended one slice at a time.
 
 OpenSpec's normal apply/archive flow folds a change's spec deltas into the main specs when its `tasks.md` completes. Here that would be premature: completing slice-1 tasks does **not** mean slices 2–4 are built, yet the specs already describe their behavior. Therefore:
 
-- **Do not archive this change when slice-1 tasks complete.** The specs describe target behavior; implementation is incremental across slices 2–4.
-- Later slices are delivered either as **follow-up tasks appended to this change** or as **separate spin-off changes** that carry their own `tasks.md` (and can be archived independently).
-- This deviation is called out here (and in `proposal.md` — Delivery slicing) so reviewers and the validator treat the specs as forward-looking and the slice-1 `tasks.md` as the only currently-actionable checklist.
+- **Do not archive this change until all four slices complete.** The specs describe target behavior; implementation is incremental.
+- Later slices are delivered as **follow-up tasks appended to this change**.
+- This deviation is called out here (and in `proposal.md` — Delivery slicing) so reviewers and the validator treat unimplemented later-slice specs as forward-looking.
 
 ## Open Questions
 

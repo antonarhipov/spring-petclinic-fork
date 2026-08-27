@@ -20,6 +20,7 @@ import java.time.Instant;
 import org.springframework.samples.petclinic.model.BaseEntity;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.Pet;
+import org.springframework.samples.petclinic.vet.Vet;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +71,13 @@ public class AppointmentRequest extends BaseEntity {
 
 	@Column(name = "active_hold_id")
 	private Integer activeHoldId;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "suggested_vet_id")
+	private Vet suggestedVet;
+
+	@Column(name = "suggested_start_instant")
+	private Instant suggestedStartInstant;
 
 	public Owner getOwner() {
 		return this.owner;
@@ -149,6 +157,27 @@ public class AppointmentRequest extends BaseEntity {
 
 	public void setActiveHoldId(Integer activeHoldId) {
 		this.activeHoldId = activeHoldId;
+	}
+
+	public Vet getSuggestedVet() {
+		return this.suggestedVet;
+	}
+
+	public Instant getSuggestedStartInstant() {
+		return this.suggestedStartInstant;
+	}
+
+	public void offer(Vet vet, Instant startInstant, Integer holdId) {
+		this.suggestedVet = vet;
+		this.suggestedStartInstant = startInstant;
+		this.activeHoldId = holdId;
+		this.status = AppointmentRequestStatus.HELD;
+	}
+
+	public void clearSuggestion() {
+		this.suggestedVet = null;
+		this.suggestedStartInstant = null;
+		this.activeHoldId = null;
 	}
 
 }
