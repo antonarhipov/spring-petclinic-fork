@@ -16,6 +16,7 @@ import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class AppointmentRequestWorkflowService {
@@ -41,6 +42,97 @@ public class AppointmentRequestWorkflowService {
 		this.rejectedSuggestionRepository = rejectedSuggestionRepository;
 		this.vetRepository = vetRepository;
 		this.clock = clock;
+	}
+
+	@Transactional
+	public void submitFreeText(Integer requestId, String freeText) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.DRAFT
+				&& request.getStatus() != AppointmentRequestStatus.INTERPRETED) {
+			throw invalidTransition(request, "submit free text");
+		}
+		if (freeText == null || freeText.isBlank()) {
+			throw new IllegalArgumentException("Appointment request text must not be blank");
+		}
+		request.setFreeText(freeText.trim());
+		request.setConsentFlag(false);
+		request.setConsentAt(null);
+		request.setConsentTextSnapshot(null);
+		request.setInterpretationJson(null);
+		request.setStatus(AppointmentRequestStatus.AWAITING_CONSENT);
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public String recordConsent(Integer requestId) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.AWAITING_CONSENT) {
+			throw invalidTransition(request, "record consent");
+		}
+		if (request.getFreeText() == null || request.getFreeText().isBlank()) {
+			throw new IllegalStateException("Cannot record consent for blank request text");
+		}
+		request.setConsentFlag(true);
+		request.setConsentAt(this.clock.instant());
+		request.setConsentTextSnapshot(request.getFreeText());
+		this.requestRepository.saveAndFlush(request);
+		return request.getConsentTextSnapshot();
+	}
+
+	@Transactional
+	public void declineConsent(Integer requestId) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.AWAITING_CONSENT) {
+			throw invalidTransition(request, "decline consent");
+		}
+		request.setConsentFlag(false);
+		request.setConsentAt(null);
+		request.setConsentTextSnapshot(null);
+		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
+	}
+
+	@Transactional
+	public void completeInterpretation(Integer requestId, String interpretationJson) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.AWAITING_CONSENT || !request.isConsentFlag()
+				|| request.getConsentAt() == null || !request.getFreeText().equals(request.getConsentTextSnapshot())) {
+			throw invalidTransition(request, "complete interpretation");
+		}
+		if (interpretationJson == null || interpretationJson.isBlank()) {
+			throw new IllegalArgumentException("Interpretation JSON must not be blank");
+		}
+		request.setInterpretationJson(interpretationJson);
+		request.setStatus(AppointmentRequestStatus.INTERPRETED);
+	}
+
+	@Transactional
+	public void editInterpretation(Integer requestId, String interpretationJson) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.INTERPRETED) {
+			throw invalidTransition(request, "edit interpretation");
+		}
+		if (interpretationJson == null || interpretationJson.isBlank()) {
+			throw new IllegalArgumentException("Interpretation JSON must not be blank");
+		}
+		request.setInterpretationJson(interpretationJson);
+	}
+
+	@Transactional
+	public void confirmInterpretation(Integer requestId) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.INTERPRETED || request.getInterpretationJson() == null) {
+			throw invalidTransition(request, "confirm interpretation");
+		}
+		request.setStatus(AppointmentRequestStatus.CONFIRMED);
+	}
+
+	@Transactional
+	public void markInterpretationFailed(Integer requestId) {
+		AppointmentRequest request = getForUpdate(requestId);
+		if (request.getStatus() != AppointmentRequestStatus.AWAITING_CONSENT || !request.isConsentFlag()) {
+			throw invalidTransition(request, "queue failed interpretation");
+		}
+		request.setInterpretationJson(null);
+		request.setStatus(AppointmentRequestStatus.QUEUED_FOR_STAFF);
 	}
 
 	@Transactional

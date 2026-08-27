@@ -76,7 +76,7 @@
 - [x] 9.8 Add the five-minute expired-hold sweep and tests for ranking/feasibility, deterministic progression, hold TTL/lazy cleanup, unique-race recovery, accept recovery, guarded transitions, and persistence mappings.
 - [x] 9.9 Verify Maven and Gradle dependency resolution/compilation plus the complete Maven test suite on Java 21.
 
-## 10. Out of scope for now — slices 3–4
+## 10. Follow-up slices
 
-- [ ] 10.1 **Slice 3 (AI + consent):** consent gate, Spring AI 2.0.1 Ollama interpreter behind the `AppointmentInterpreter` port (model via `spring.ai.ollama.chat.model`, options via `mutate()` only), structured-output validation/clamping/normalization, and the full `AppointmentRequest` state-machine transitions — see `specs/scheduling/interpretation` and `design.md` D6–D8/D16–D17.
+- [x] 10.1 **Slice 3 (AI + consent):** consent gate, Spring AI 2.0.1 Ollama interpreter behind the `AppointmentInterpreter` port (model via `spring.ai.ollama.chat.model`, options via `mutate()` only), structured-output validation/clamping/normalization, and the full `AppointmentRequest` state-machine transitions — see `specs/scheduling/interpretation` and `design.md` D6–D8/D16–D17.
 - [ ] 10.2 **Slice 4 (staff fallback + lifecycle + emergencies):** `QUEUED_FOR_STAFF` fallback queue and staff-unblock-then-owner-resumes, reschedule/cancel with recorded reason, complete (→ records a `Visit`)/no-show lifecycle, owner self-service view/cancel (24h window), and advisory-only urgency + unconditional urgent-care guidance — see `specs/staff`, `specs/appointment`, and `design.md` D9–D10/D15.
