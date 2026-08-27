@@ -22,6 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.samples.petclinic.security.CustomAuthenticationFailureHandler;
+import org.springframework.samples.petclinic.security.CustomAuthenticationSuccessHandler;
+import org.springframework.samples.petclinic.security.WebMvcSecurityTestConfig;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
@@ -36,6 +40,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -48,6 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Colin But
  * @author Wick Dynex
  */
+@Import(WebMvcSecurityTestConfig.class)
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
 @DisabledInNativeImage
@@ -60,6 +67,12 @@ class PetControllerTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private CustomAuthenticationSuccessHandler successHandler;
+
+	@MockitoBean
+	private CustomAuthenticationFailureHandler failureHandler;
 
 	@MockitoBean
 	private OwnerRepository owners;
@@ -88,7 +101,7 @@ class PetControllerTests {
 
 	@Test
 	void initCreationForm() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
+		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(user("staff1").roles("STAFF")))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
 			.andExpect(model().attributeExists("pet"));
@@ -99,7 +112,9 @@ class PetControllerTests {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
 				.param("type", "hamster")
-				.param("birthDate", "2015-02-12"))
+				.param("birthDate", "2015-02-12")
+				.with(user("staff1").roles("STAFF"))
+				.with(csrf()))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
@@ -111,7 +126,9 @@ class PetControllerTests {
 		void processCreationFormWithBlankName() throws Exception {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "\t \n")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
@@ -124,7 +141,9 @@ class PetControllerTests {
 		void processCreationFormWithDuplicateName() throws Exception {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "petty")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
@@ -137,7 +156,9 @@ class PetControllerTests {
 		void processCreationFormWithMissingPetType() throws Exception {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "type"))
@@ -153,7 +174,9 @@ class PetControllerTests {
 
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
-					.param("birthDate", futureBirthDate))
+					.param("birthDate", futureBirthDate)
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "birthDate"))
@@ -169,7 +192,9 @@ class PetControllerTests {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
 					.param("type", "hamster")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
@@ -180,7 +205,9 @@ class PetControllerTests {
 
 		@Test
 		void initUpdateForm() throws Exception {
-			mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
+			mockMvc
+				.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID)
+					.with(user("staff1").roles("STAFF")))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("pet"))
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
@@ -193,7 +220,9 @@ class PetControllerTests {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).param("name", "Betty")
 				.param("type", "hamster")
-				.param("birthDate", "2015-02-12"))
+				.param("birthDate", "2015-02-12")
+				.with(user("staff1").roles("STAFF"))
+				.with(csrf()))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
@@ -206,9 +235,9 @@ class PetControllerTests {
 																														// existing
 																														// pet
 			.param("type", "hamster")
-			.param("birthDate", "2015-02-12"))
-			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+			.param("birthDate", "2015-02-12")
+			.with(user("staff1").roles("STAFF"))
+			.with(csrf())).andExpect(status().is3xxRedirection()).andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
 	@Nested
@@ -220,7 +249,9 @@ class PetControllerTests {
 				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID + 1)
 					.param("name", "petty")
 					.param("type", "hamster")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
@@ -233,7 +264,9 @@ class PetControllerTests {
 		void processUpdateFormWithInvalidBirthDate() throws Exception {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).param("name", " ")
-					.param("birthDate", "2015/02/12"))
+					.param("birthDate", "2015/02/12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "birthDate"))
@@ -245,7 +278,9 @@ class PetControllerTests {
 		void processUpdateFormWithBlankName() throws Exception {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).param("name", "  ")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
@@ -260,7 +295,9 @@ class PetControllerTests {
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).param("name", "Betty")
 					.param("type", "hamster")
-					.param("birthDate", "2015-02-12"))
+					.param("birthDate", "2015-02-12")
+					.with(user("staff1").roles("STAFF"))
+					.with(csrf()))
 				.andExpect(model().attributeHasNoErrors("owner"))
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))

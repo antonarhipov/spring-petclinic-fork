@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+
+<body>
+
+  <h2 th:text="#{directBooking}">Direct Appointment Booking</h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form th:action="@{/scheduling/staff/appointments}" method="post" th:object="${form}">
+        
+        <!-- Owner Selection -->
+        <div class="mb-3" th:if="${form.ownerId == null}">
+          <label for="ownerId" class="form-label"><strong th:text="#{owner}">Owner</strong> *</label>
+          <select name="ownerId" id="ownerId" class="form-select" required onchange="window.location.href='/scheduling/staff/appointments/new?ownerId=' + this.value;">
+            <option value="" th:text="#{selectOwner}">-- Select Owner --</option>
+            <option th:each="o : ${owners}" th:value="${o.id}" th:text="${o.firstName + ' ' + o.lastName + ' (' + o.telephone + ')'}">Joe Bloggs</option>
+          </select>
+        </div>
+        <div class="mb-3" th:if="${form.ownerId != null}">
+          <label class="form-label"><strong th:text="#{owner}">Owner</strong></label>
+          <input type="hidden" name="ownerId" th:value="${form.ownerId}" />
+          <p class="form-control-plaintext" th:if="${owners != null}">
+            <span th:each="o : ${owners}" th:if="${o.id == form.ownerId}" th:text="${o.firstName + ' ' + o.lastName}">Joe Bloggs</span>
+          </p>
+        </div>
+
+        <!-- Pet Selection -->
+        <div class="mb-3" th:if="${form.petId == null}">
+          <label for="petId" class="form-label"><strong th:text="#{pet}">Pet</strong> *</label>
+          <select name="petId" id="petId" class="form-select" required>
+            <option value="" th:text="#{selectPet}">-- Select Pet --</option>
+            <option th:each="p : ${pets}" th:value="${p.id}" th:text="${p.name + ' (' + (p.type != null ? p.type.name : 'Unknown') + ')'}">Leo</option>
+          </select>
+        </div>
+        <div class="mb-3" th:if="${form.petId != null}">
+          <label class="form-label"><strong th:text="#{pet}">Pet</strong></label>
+          <input type="hidden" name="petId" th:value="${form.petId}" />
+          <p class="form-control-plaintext">
+            <span th:each="p : ${pets}" th:if="${p.id == form.petId}" th:text="${p.name}">Leo</span>
+          </p>
+        </div>
+
+        <!-- Veterinarian Selection -->
+        <div class="mb-3">
+          <label for="vetId" class="form-label"><strong th:text="#{veterinarian}">Veterinarian</strong> *</label>
+          <select name="vetId" id="vetId" class="form-select" required>
+            <option value="" th:text="#{selectVet}">-- Select Veterinarian --</option>
+            <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Dr. James Carter</option>
+          </select>
+        </div>
+
+        <!-- Start Time -->
+        <div class="mb-3">
+          <label for="startDateTime" class="form-label"><strong th:text="#{startTime}">Start Time</strong> *</label>
+          <input type="datetime-local" name="startDateTime" id="startDateTime" class="form-control" required step="900" />
+          <small class="text-muted" th:text="#{startDateTimeHelp}">Must be in the future, 15-minute grid aligned (e.g. :00, :15, :30, :45), and within staff horizon.</small>
+        </div>
+
+        <!-- Duration -->
+        <div class="mb-3">
+          <label for="durationMinutes" class="form-label"><strong th:text="#{duration}">Duration (minutes)</strong> *</label>
+          <select name="durationMinutes" id="durationMinutes" class="form-select" required>
+            <option value="15" th:text="'15 ' + #{minutes}">15 minutes</option>
+            <option value="30" th:text="'30 ' + #{minutes}" selected>30 minutes</option>
+            <option value="45" th:text="'45 ' + #{minutes}">45 minutes</option>
+            <option value="60" th:text="'60 ' + #{minutes}">60 minutes</option>
+            <option value="90" th:text="'90 ' + #{minutes}">90 minutes</option>
+            <option value="120" th:text="'120 ' + #{minutes}">120 minutes</option>
+          </select>
+        </div>
+
+        <!-- Care Type -->
+        <div class="mb-3">
+          <label class="form-label"><strong th:text="#{careType}">Care Type</strong> *</label>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="careType" id="careTypeGeneral" value="GENERAL" checked onchange="document.getElementById('specialtyGroup').style.display = 'none'; document.getElementById('requiredSpecialtyId').value = '';" />
+            <label class="form-check-label" for="careTypeGeneral" th:text="#{generalCare}">General</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="careType" id="careTypeSpecialty" value="SPECIALTY" onchange="document.getElementById('specialtyGroup').style.display = 'block';" />
+            <label class="form-check-label" for="careTypeSpecialty" th:text="#{specialtyCare}">Specialty</label>
+          </div>
+        </div>
+
+        <!-- Required Specialty -->
+        <div class="mb-3" id="specialtyGroup" style="display: none;">
+          <label for="requiredSpecialtyId" class="form-label"><strong th:text="#{requiredSpecialty}">Required Specialty</strong></label>
+          <select name="requiredSpecialtyId" id="requiredSpecialtyId" class="form-select">
+            <option value="" th:text="#{selectSpecialty}">-- Select Specialty --</option>
+            <option th:each="s : ${specialties}" th:value="${s.id}" th:text="${s.name}">radiology</option>
+          </select>
+        </div>
+
+        <!-- Offline Reason -->
+        <div class="mb-3">
+          <label for="offlineReason" class="form-label"><strong th:text="#{offlineReason}">Offline Coordination Reason</strong> *</label>
+          <textarea name="offlineReason" id="offlineReason" class="form-control" rows="3" required th:placeholder="#{offlineReasonHelper}"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" th:text="#{directBookButton}">Book Appointment Directly</button>
+        <a th:href="@{/scheduling/calendar}" class="btn btn-secondary ms-2" th:text="#{cancel}">Cancel</a>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

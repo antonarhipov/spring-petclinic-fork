@@ -32,6 +32,8 @@ Smart Appointment Scheduling adds a production-shaped, single-clinic scheduling 
 - Timestamps are stored as absolute instants. A single application property supplies the clinic time zone, defaults to UTC, and causes startup to fail when invalid. Staff cannot edit the time zone.
 - Nonexistent and ambiguous local times at daylight-saving transitions are not bookable.
 - General care may be assigned to any active veterinarian. Specialty care requires an active veterinarian with the explicit specialty.
+- Owner availability may use bounded calendar language: explicit dates; weekdays; this, next, or a numbered future week; the end of a working week; this, next, numbered future, or named months; and the first, second, third, fourth, or last calendar week of a month. Relative expressions are anchored when the owner confirms the interpretation and are clipped to the configured owner horizon.
+- Calendar weeks run Monday through Sunday. Ordinal weeks of a month are the visible Monday-through-Sunday calendar rows intersecting that month and are clipped at month boundaries.
 
 ### Request state model
 

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'staff-queue')}">
+
+<body>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 th:text="#{staffRequestManagement}">Staff Request Management</h2>
+    <a th:href="@{/scheduling/staff/queue}" class="btn btn-outline-secondary" th:text="#{backToQueue}">Back to Queue</a>
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" role="alert">
+    <span th:text="${successMessage}">Success</span>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <!-- Claim Banner -->
+  <div class="card mb-4" th:classappend="${claim != null ? 'border-primary' : 'border-warning'}">
+    <div class="card-header d-flex justify-content-between align-items-center" th:classappend="${claim != null ? 'bg-primary text-white' : 'bg-warning text-dark'}">
+      <h5 class="mb-0" th:text="#{claimStatusHeader}">Claim Status</h5>
+      <span th:if="${claim != null}" class="badge bg-light text-dark" th:text="#{claimedBadge}">Claimed</span>
+      <span th:if="${claim == null}" class="badge bg-secondary text-white" th:text="#{unclaimedBadge}">Unclaimed</span>
+    </div>
+    <div class="card-body">
+      <div th:if="${claim != null}" class="d-flex justify-content-between align-items-center">
+        <div>
+          <p class="mb-1"><strong th:text="#{claimant}">Claimant</strong>: <span th:text="${claim.staffUsername}">admin</span></p>
+          <p class="mb-1 text-muted"><strong th:text="#{lastActivity}">Last Activity</strong>: <span th:text="${claim.lastActivityAt}">2026-08-27T10:00:00Z</span></p>
+          <p class="mb-0 text-muted"><strong th:text="#{reclaimableAfter}">Reclaimable After</strong>: <span th:text="${claim.reclaimableAfter}">2026-08-27T10:30:00Z</span></p>
+        </div>
+        <div>
+          <form th:if="${claim.staffUsername == currentUsername}" th:action="@{/scheduling/staff/queue/{id}/release(id=${request.id})}" method="post">
+            <button type="submit" class="btn btn-outline-secondary" th:text="#{releaseClaimButton}">Release Claim</button>
+          </form>
+          <form th:if="${claim.staffUsername != currentUsername}" th:action="@{/scheduling/staff/queue/{id}/claim(id=${request.id})}" method="post">
+            <button type="submit" class="btn btn-outline-primary" th:text="#{reclaimButton}">Reclaim Request</button>
+          </form>
+        </div>
+      </div>
+      <div th:if="${claim == null}" class="d-flex justify-content-between align-items-center">
+        <p class="mb-0 text-muted" th:text="#{unclaimedDescription}">This request is currently unclaimed. Claim it to perform actions.</p>
+        <form th:action="@{/scheduling/staff/queue/{id}/claim(id=${request.id})}" method="post">
+          <button type="submit" class="btn btn-primary" th:text="#{claimButton}">Claim Request</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Overview -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0" th:text="#{requestDetailsHeader}">Request Details</h5>
+    </div>
+    <div class="card-body">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <p><strong th:text="#{owner}">Owner</strong>: <span th:text="${request.owner.firstName + ' ' + request.owner.lastName}">George Franklin</span></p>
+          <p><strong th:text="#{pet}">Pet</strong>: <span th:text="${request.pet.name}">Leo</span> (<span th:text="${request.pet.type != null ? request.pet.type.name : '-'}">cat</span>)</p>
+          <p><strong th:text="#{status}">Status</strong>: <span class="badge bg-info" th:text="${request.status}">STAFF_QUEUED</span></p>
+          <p><strong th:text="#{urgent}">Urgent</strong>: <span th:if="${request.urgent}" class="badge bg-danger" th:text="#{yes}">Yes</span><span th:if="${!request.urgent}" class="badge bg-secondary" th:text="#{no}">No</span></p>
+        </div>
+        <div class="col-md-6">
+          <p><strong th:text="#{fallbackReason}">Reason</strong>: <code th:text="${request.lastClarificationReason != null ? request.lastClarificationReason : '-'}">AI_UNAVAILABLE</code></p>
+          <p><strong th:text="#{firstQueuedAt}">Queued At</strong>: <span th:text="${request.firstQueuedAt}">2026-08-27T10:00:00Z</span></p>
+          <p><strong th:text="#{fallbackDeadline}">Fallback Deadline</strong>: <span th:text="${request.fallbackDeadline}">2026-09-03T10:00:00Z</span></p>
+          <p><strong th:text="#{ownerHorizonEnd}">Horizon End</strong>: <span th:text="${request.ownerHorizonEnd != null ? request.ownerHorizonEnd : '-'}">-</span></p>
+        </div>
+      </div>
+      <div>
+        <h6 th:text="#{originalRequest}">Original Request</h6>
+        <div class="p-3 bg-light rounded" style="white-space: pre-wrap;" th:text="${request.originalText}">Request text</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Staff Offer Display -->
+  <div th:if="${activeOffer != null}" class="card mb-4 border-success">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0" th:text="#{activeStaffOffer}">Active Staff Offer</h5>
+      <span class="badge bg-light text-dark" th:text="#{offerPending}">Pending Owner Response</span>
+    </div>
+    <div class="card-body">
+      <p><strong th:text="#{veterinarian}">Veterinarian</strong>: <span th:text="${activeOffer.vet.firstName + ' ' + activeOffer.vet.lastName}">Dr. James Carter</span></p>
+      <p><strong th:text="#{startTime}">Start Time</strong>: <span th:text="${activeOffer.startTime}">2026-08-28T14:00:00Z</span></p>
+      <p><strong th:text="#{offerExpiresAt}">Offer Expires At</strong>: <span th:text="${activeOffer.expiresAt}">2026-08-28T14:00:00Z</span></p>
+      <form th:action="@{/scheduling/staff/requests/{id}/revoke-offer(id=${request.id})}" method="post">
+        <input type="hidden" name="reservationId" th:value="${activeOffer.id}" />
+        <button type="submit" class="btn btn-outline-danger btn-sm" th:text="#{revokeOfferButton}">Revoke Offer</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Staff Actions (Claimant Only) -->
+  <div th:if="${claim != null and claim.staffUsername == currentUsername}" class="row mb-4">
+
+    <!-- 1. Edit Structured Facts -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-light">
+          <h5 class="mb-0" th:text="#{editStructuredFacts}">1. Edit Structured Facts</h5>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/scheduling/staff/requests/{id}/edit-interpretation(id=${request.id})}" method="post">
+            <div class="mb-3">
+              <label class="form-label" th:text="#{careType}">Care Type</label>
+              <select name="careType" class="form-select">
+                <option value="GENERAL" th:selected="${request.careType != null and request.careType.name() == 'GENERAL'}" th:text="#{generalCare}">General</option>
+                <option value="SPECIALTY" th:selected="${request.careType != null and request.careType.name() == 'SPECIALTY'}" th:text="#{specialtyCare}">Specialty</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{requiredSpecialty}">Required Specialty</label>
+              <select name="requiredSpecialtyId" class="form-select">
+                <option value="" th:text="#{noneOption}">-- None --</option>
+                <option th:each="spec : ${specialties}" th:value="${spec.id}" th:text="${spec.name}" th:selected="${request.requiredSpecialty != null and request.requiredSpecialty.id == spec.id}">radiology</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{preferredVet}">Preferred Veterinarian</label>
+              <select name="preferredVetId" class="form-select">
+                <option value="" th:text="#{noneOption}">-- None --</option>
+                <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}" th:selected="${request.preferredVet != null and request.preferredVet.id == v.id}">Dr. James Carter</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{duration}">Duration (Minutes)</label>
+              <input type="number" name="durationMinutes" class="form-control" th:value="${request.durationMinutes != null ? request.durationMinutes : 30}" step="15" min="15" max="240" />
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{updateFactsButton}">Update Structured Facts</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Issue Staff Offer -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-light">
+          <h5 class="mb-0" th:text="#{issueStaffOfferHeader}">2. Issue Staff Offer (24-Hour Hold)</h5>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/scheduling/staff/requests/{id}/offer(id=${request.id})}" method="post">
+            <div class="mb-3">
+              <label class="form-label" th:text="#{veterinarian}">Veterinarian</label>
+              <select name="vetId" class="form-select" required>
+                <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Dr. James Carter</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{startTime}">Start Time (UTC / ISO Instant)</label>
+              <input type="text" name="startTime" class="form-control" placeholder="2026-08-28T14:00:00Z" required />
+              <div class="form-text" th:text="#{startTimeHelper}">Must align to 15-minute grid and fall within clinic operating hours.</div>
+            </div>
+            <button type="submit" class="btn btn-success" th:text="#{issueOfferButton}">Issue 24-Hour Offer</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Direct Booking -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 border-primary">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0" th:text="#{directBookingHeader}">3. Direct Staff Booking</h5>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/scheduling/staff/requests/{id}/direct-book(id=${request.id})}" method="post">
+            <div class="mb-3">
+              <label class="form-label" th:text="#{veterinarian}">Veterinarian</label>
+              <select name="vetId" class="form-select" required>
+                <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Dr. James Carter</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{startTime}">Start Time (UTC / ISO Instant)</label>
+              <input type="text" name="startTime" class="form-control" placeholder="2026-08-28T14:00:00Z" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label" th:text="#{offlineReason}">Offline Coordination Reason</label>
+              <input type="text" name="offlineReason" class="form-control" required placeholder="Phone coordination with owner" />
+              <div class="form-text" th:text="#{offlineReasonHelper}">Mandatory note detailing how this booking was agreed with the owner.</div>
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{directBookButton}">Book Appointment Directly</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Staff Cancellation -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0" th:text="#{staffCancelHeader}">4. Cancel Request</h5>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/scheduling/staff/requests/{id}/cancel(id=${request.id})}" method="post">
+            <div class="mb-3">
+              <label class="form-label" th:text="#{cancellationReason}">Cancellation Reason</label>
+              <textarea name="reason" class="form-control" rows="3" required placeholder="Unable to reach owner after multiple attempts"></textarea>
+            </div>
+            <button type="submit" class="btn btn-outline-danger" th:text="#{cancelRequestButton}">Cancel Request</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

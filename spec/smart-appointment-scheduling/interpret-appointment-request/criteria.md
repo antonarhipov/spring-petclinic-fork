@@ -398,6 +398,108 @@ While a request has an active guided hold, when its owner replaces the original 
 
 When an owner cancels a nonterminal request, the system shall remove its staff claim in the cancellation transaction.
 
+### UC3-AC67: Accept bounded calendar expressions
+
+**Covers:** UC3-B58
+
+When AI output represents an explicit date, bare weekday, supported relative week, end of the working week, supported relative or named month, or supported ordinal week of a month, the system shall accept the calendar expression for deterministic resolution.
+
+### UC3-AC68: Clarify unsupported calendar language
+
+**Covers:** UC3-B58
+
+If AI output cannot represent the owner's calendar language with the bounded vocabulary or omits a required calendar component, then the system shall move the request to `CLARIFICATION_REQUIRED` without guessing a date.
+
+### UC3-AC69: Anchor relative expressions at confirmation
+
+**Covers:** UC3-B59
+
+When the owner confirms an interpretation containing a relative calendar expression, the system shall resolve that expression from the clinic-local confirmation date.
+
+### UC3-AC70: Resolve relative calendar weeks
+
+**Covers:** UC3-B60
+
+When an interpretation contains next week or a numbered future week, the system shall resolve it to the complete Monday-through-Sunday calendar week at the requested offset from the confirmation week before horizon clipping.
+
+### UC3-AC71: Resolve the end of the working week
+
+**Covers:** UC3-B61
+
+When an interpretation contains end of the working week, the system shall resolve its date range from Thursday through Sunday of the applicable calendar week.
+
+### UC3-AC72: Exclude closed weekend time
+
+**Covers:** UC3-B61
+
+While an end-of-working-week range includes Saturday or Sunday, when the clinic has no effective veterinarian availability then, the system shall produce no weekend suggestion.
+
+### UC3-AC73: Permit open weekend time
+
+**Covers:** UC3-B61
+
+While an end-of-working-week range includes Saturday or Sunday, when an otherwise-feasible veterinarian has effective availability then, the system shall treat that weekend time as eligible.
+
+### UC3-AC74: Resolve relative calendar months
+
+**Covers:** UC3-B62
+
+When an interpretation contains next month or a numbered future month, the system shall resolve it to the complete requested calendar month before horizon clipping.
+
+### UC3-AC75: Resolve a named current or future month
+
+**Covers:** UC3-B63
+
+When an interpretation names a month whose final day is not before the confirmation date, the system shall resolve it to that month in the confirmation year before horizon clipping.
+
+### UC3-AC76: Roll a past named month into the next year
+
+**Covers:** UC3-B63
+
+When an interpretation names a month whose final day precedes the confirmation date, the system shall resolve it to that month in the next year before horizon clipping.
+
+### UC3-AC77: Resolve an ordinal calendar row within a month
+
+**Covers:** UC3-B64
+
+When an interpretation selects the first, second, third, fourth, or last week of a referenced month, the system shall resolve the corresponding Monday-through-Sunday calendar row and clip it to the month's first and last dates.
+
+### UC3-AC78: Intersect calendar and time concepts
+
+**Covers:** UC3-B65
+
+When one positive window contains multiple date, weekday, or named-time concepts, the system shall retain only instants satisfying all of those concepts.
+
+### UC3-AC79: Enforce unqualified availability
+
+**Covers:** UC3-B66
+
+When an owner states a positive date or time window without preferential wording, the system shall exclude every candidate outside that window.
+
+### UC3-AC80: Rank explicitly preferred availability
+
+**Covers:** UC3-B66
+
+When an owner marks a positive window as preferred within a broader allowed range, the system shall keep the broader allowed candidates eligible and rank candidates inside the preferred window first.
+
+### UC3-AC81: Preserve the future portion at the lower boundary
+
+**Covers:** UC3-B67, UC3-B69
+
+When a resolved hard window begins before the next future grid boundary and ends after it, the system shall clip the window start to that boundary and preserve its remaining future portion.
+
+### UC3-AC82: Clip an overlapping upper boundary
+
+**Covers:** UC3-B67
+
+When a resolved hard window begins before the exclusive owner-horizon end and ends after it, the system shall clip the window end to the exclusive owner-horizon end.
+
+### UC3-AC83: Clarify a range at or beyond the horizon
+
+**Covers:** UC3-B68
+
+If every resolved hard window begins at or after the exclusive owner-horizon end, then the system shall move the request to `CLARIFICATION_REQUIRED`, explain that the requested period is outside the bookable horizon, and shall not start matching or staff fallback.
+
 ## Coverage exclusions
 
 - Accessibility: the specification requires localization but defines no measurable accessibility contract for intake, consent, clarification, or review screens.

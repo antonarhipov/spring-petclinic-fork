@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'urgent-care')}">
+
+<body>
+
+  <h2 th:text="#{urgentCare}">Urgent Care Guidance</h2>
+
+  <div class="alert alert-warning mt-4" role="alert">
+    <h4 class="alert-heading" th:text="#{emergencyInstructions}">Emergency Instructions</h4>
+    <p th:text="#{urgentCareGuidance}">If your pet is experiencing a medical emergency, please visit the emergency hospital immediately or call our clinic directly at (608) 555-1023.</p>
+    <hr>
+    <p class="mb-0" th:text="#{doNotWaitForOnlineAppointments}">Do not wait for online appointment requests in life-threatening situations.</p>
+  </div>
+
+</body>
+</html>

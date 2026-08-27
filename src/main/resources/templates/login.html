@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'login')}">
+
+<body>
+
+  <div class="row">
+    <div class="col-md-6 offset-md-3">
+      <h2 th:text="#{login}">Login</h2>
+
+      <div th:if="${isDemo}" class="alert alert-warning" role="alert">
+        <strong th:text="#{demoModeWarning}">Demo Mode: Using pre-seeded demonstration data.</strong>
+      </div>
+
+      <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+        <span th:text="#{loginError}">Invalid username or password.</span>
+      </div>
+
+      <div th:if="${logoutMessage}" class="alert alert-info" role="alert">
+        <span th:text="#{logout}">You have been logged out.</span>
+      </div>
+
+      <form th:action="@{/login}" method="post">
+        <div class="form-group mb-3">
+          <label for="username" th:text="#{username}">Username</label>
+          <input type="text" id="username" name="username" class="form-control" required autofocus />
+        </div>
+        <div class="form-group mb-3">
+          <label for="password" th:text="#{password}">Password</label>
+          <input type="password" id="password" name="password" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary" th:text="#{login}">Login</button>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

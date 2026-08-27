@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'settings')}">
+
+<body>
+
+  <h2 th:text="#{clinicSettings}">Clinic Settings</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" role="alert">
+    <span th:text="${successMessage}">Success</span>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <form th:action="@{/scheduling/admin/settings}" th:object="${settingsForm}" method="post" class="mt-4">
+    <input type="hidden" th:field="*{version}" />
+
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0" th:text="#{durationSettings}">Duration Settings (Minutes)</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{minDurationMinutes}">Minimum Duration</label>
+            <input type="number" class="form-control" th:field="*{minDurationMinutes}" step="15" min="15" max="120" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{defaultDurationMinutes}">Default Duration</label>
+            <input type="number" class="form-control" th:field="*{defaultDurationMinutes}" step="15" min="15" max="120" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{maxDurationMinutes}">Maximum Duration</label>
+            <input type="number" class="form-control" th:field="*{maxDurationMinutes}" step="15" min="15" max="120" required />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0" th:text="#{horizonAndHoldSettings}">Horizon & Hold Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{ownerBookingHorizonDays}">Owner Horizon (Days)</label>
+            <input type="number" class="form-control" th:field="*{ownerBookingHorizonDays}" min="1" max="365" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{staffBookingHorizonDays}">Staff Horizon (Days)</label>
+            <input type="number" class="form-control" th:field="*{staffBookingHorizonDays}" min="1" max="730" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{guidedHoldDurationMinutes}">Guided Hold (Minutes)</label>
+            <input type="number" class="form-control" th:field="*{guidedHoldDurationMinutes}" min="1" max="60" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{staffOfferHoldDurationHours}">Staff Offer Hold (Hours)</label>
+            <input type="number" class="form-control" th:field="*{staffOfferHoldDurationHours}" min="1" max="168" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{staffClaimInactivityMinutes}">Staff Claim Inactivity (Minutes)</label>
+            <input type="number" class="form-control" th:field="*{staffClaimInactivityMinutes}" min="5" max="240" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{fallbackDeadlineDays}">Fallback Deadline (Days)</label>
+            <input type="number" class="form-control" th:field="*{fallbackDeadlineDays}" min="1" max="30" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" th:text="#{sensitiveDataRetentionDays}">Data Retention (Days)</label>
+            <input type="number" class="form-control" th:field="*{sensitiveDataRetentionDays}" min="1" max="365" required />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0" th:text="#{namedPeriods}">Named Periods</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-2">
+          <div class="col-md-4">
+            <strong th:text="#{morningPeriod}">Morning (08:00 - 12:00)</strong>
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{morningStartTime}" step="900" required />
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{morningEndTime}" step="900" required />
+          </div>
+        </div>
+        <div class="row g-3 mb-2">
+          <div class="col-md-4">
+            <strong th:text="#{afternoonPeriod}">Afternoon (12:00 - 17:00)</strong>
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{afternoonStartTime}" step="900" required />
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{afternoonEndTime}" step="900" required />
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <strong th:text="#{eveningPeriod}">Evening (17:00 - 20:00)</strong>
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{eveningStartTime}" step="900" required />
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" th:field="*{eveningEndTime}" step="900" required />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0" th:text="#{urgentCareSettings}">Urgent Care & Contact Guidance</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label" th:text="#{emergencyPhone}">Emergency Contact Phone</label>
+          <input type="text" class="form-control" th:field="*{emergencyPhone}" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" th:text="#{urgentCareGuidanceLabel}">Urgent Care Guidance Text</label>
+          <textarea class="form-control" th:field="*{urgentCareGuidance}" rows="3" required></textarea>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" th:text="#{saveSettings}">Save Settings</button>
+  </form>
+
+</body>
+</html>

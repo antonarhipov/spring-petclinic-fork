@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org">
+<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/thymeleaf-extras-springsecurity6">
 
 <head>
 
@@ -43,14 +43,68 @@
             <span th:text="#{home}">Home</span>
           </li>
 
-          <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
             <span class="fa fa-search" aria-hidden="true"></span>
             <span th:text="#{findOwners}">Find owners</span>
+          </li>
+
+          <li sec:authorize="hasRole('OWNER')"
+            th:replace="~{::menuItem ('/my-profile','my-profile','my profile','user',#{myProfile})}">
+            <span class="fa fa-user" aria-hidden="true"></span>
+            <span th:text="#{myProfile}">My Profile</span>
+          </li>
+
+          <li sec:authorize="hasRole('OWNER')"
+            th:replace="~{::menuItem ('/scheduling/notifications','notifications','notifications','bell',#{notifications} + (${unreadNotificationCount != null && unreadNotificationCount > 0} ? ' (' + ${unreadNotificationCount} + ')' : ''))}">
+            <span class="fa fa-bell" aria-hidden="true"></span>
+            <span th:text="#{notifications}">Notifications</span>
           </li>
 
           <li th:replace="~{::menuItem ('/vets.html','vets','veterinarians','th-list',#{vets})}">
             <span class="fa fa-th-list" aria-hidden="true"></span>
             <span th:text="#{vets}">Veterinarians</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/guidance/urgent-care','urgent-care','urgent care','heartbeat',#{urgentCare})}">
+            <span class="fa fa-heartbeat" aria-hidden="true"></span>
+            <span th:text="#{urgentCare}">Urgent Care</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/scheduling/staff/calendar','calendar','calendar','calendar',#{calendar})}">
+            <span class="fa fa-calendar" aria-hidden="true"></span>
+            <span th:text="#{calendar}">Calendar</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/scheduling/staff/queue','staff-queue','fallback queue','inbox',#{fallbackQueue})}">
+            <span class="fa fa-inbox" aria-hidden="true"></span>
+            <span th:text="#{fallbackQueue}">Fallback Queue</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/scheduling/admin/settings','settings','settings','cogs',#{clinicSettings})}">
+            <span class="fa fa-cogs" aria-hidden="true"></span>
+            <span th:text="#{clinicSettings}">Clinic Settings</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/admin/accounts','accounts','accounts','users',#{accounts})}">
+            <span class="fa fa-users" aria-hidden="true"></span>
+            <span th:text="#{accounts}">Accounts</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/scheduling/staff/audit','audit','audit log','list-alt',#{auditLog})}">
+            <span class="fa fa-list-alt" aria-hidden="true"></span>
+            <span th:text="#{auditLog}">Audit Log</span>
+          </li>
+
+          <li sec:authorize="hasRole('STAFF')"
+            th:replace="~{::menuItem ('/scheduling/staff/diagnostics','diagnostics','diagnostics','stethoscope',#{diagnostics})}">
+            <span class="fa fa-stethoscope" aria-hidden="true"></span>
+            <span th:text="#{diagnostics}">Diagnostics</span>
           </li>
 
           <li
@@ -60,11 +114,32 @@
           </li>
 
         </ul>
+
+        <ul class="nav navbar-nav navbar-right">
+          <li sec:authorize="!isAuthenticated()">
+            <a class="nav-link" th:href="@{/login}">
+              <span class="fa fa-sign-in"></span>
+              <span th:text="#{login}">Login</span>
+            </a>
+          </li>
+          <li sec:authorize="isAuthenticated()" class="nav-item">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+              <button type="submit" class="btn btn-link nav-link">
+                <span class="fa fa-sign-out"></span>
+                <span sec:authentication="name">User</span> (<span th:text="#{logout}">Logout</span>)
+              </button>
+            </form>
+          </li>
+        </ul>
       </div>
     </div>
   </nav>
   <div class="container-fluid">
     <div class="container xd-container">
+
+      <div th:if="${@environment.matchesProfiles('demo-data')}" class="alert alert-warning text-center" role="alert">
+        <strong th:text="#{demoModeWarning}">Demo Mode: Using pre-seeded demonstration data.</strong>
+      </div>
 
       <th:block th:insert="${template}" />
 

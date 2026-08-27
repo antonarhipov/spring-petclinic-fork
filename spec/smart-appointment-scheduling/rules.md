@@ -80,14 +80,19 @@ The existing package-by-domain style, constructor injection, MVC form handling, 
 **MUST** make commands idempotent by checking the locked aggregate's current state, version, operation token, and current reservation before applying effects. Expected stale, conflict, exhausted, clarification, fallback, and not-found outcomes MUST be returned as typed application outcomes rather than converted to unhandled exceptions.
 **Reason:** Polling, browser retries, deadline processing, and concurrent staff/owner actions are normal workflow inputs, not exceptional infrastructure failures.
 
+### RULE-13
+**Covers:** UC3-AC67–UC3-AC83, UC4-AC22, UC4-AC24
+**MUST** persist each structured owner window as normalized request-owned symbolic rows and persist its confirmation-time expansion as normalized request-owned half-open `Instant` interval rows classified as `ALLOWED`, `PREFERRED`, or `EXCLUDED`. UC3 MUST replace materialized rows transactionally whenever confirmation or a correctable availability edit changes their meaning; UC4 MUST consume the materialized rows as the sole owner-window authority for solver and live feasibility. JSON columns and the legacy single preferred-start/preferred-end columns MUST NOT be authoritative for structured availability.
+**Reason:** Multiple recurring, disjoint, preferred, and excluded ranges must remain portable across H2, MySQL, and PostgreSQL and must reach every feasibility check without lossy scalar projection.
+
 ## Cross-Reference
 
 | AC area | Shared rules |
 |---|---|
 | UC1 access, identity, and sessions | RULE-1, RULE-7, RULE-8, RULE-10, RULE-12 |
 | UC2 time, calendar, and settings | RULE-2, RULE-5, RULE-9, RULE-11 |
-| UC3 intake and interpretation | RULE-1, RULE-2, RULE-4, RULE-6, RULE-8, RULE-10, RULE-12 |
-| UC4 matching and guided holds | RULE-1–RULE-6, RULE-8, RULE-12 |
+| UC3 intake and interpretation | RULE-1, RULE-2, RULE-4, RULE-6, RULE-8, RULE-10, RULE-12, RULE-13 |
+| UC4 matching and guided holds | RULE-1–RULE-6, RULE-8, RULE-12, RULE-13 |
 | UC5 staff fallback | RULE-1–RULE-5, RULE-7, RULE-8, RULE-12 |
 | UC6 appointment lifecycle | RULE-1–RULE-5, RULE-7, RULE-8, RULE-12 |
 | UC7 notification, audit, retention, and recovery | RULE-1–RULE-4, RULE-6–RULE-8, RULE-10, RULE-12 |
@@ -99,6 +104,7 @@ Detailed AC-by-AC mappings are in each use case's `rules.md`.
 - No whole-clinic Timefold plan, reoptimization of confirmed appointments, or solver use for staff-selected slots
 - No Spring Statemachine, Quartz, external broker, durable job queue, transactional outbox, or Spring Session JDBC
 - No provisional Appointment status for holds and no database-vendor-specific exclusion-lock design
+- No JSON availability document, model-calculated relative date, or single start/end projection as the owner-window source of truth
 - No external notification transport or public scheduling API
 
 ## External Dependencies

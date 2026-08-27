@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'my-profile')}">
+
+<body>
+
+  <h2 th:text="#{ownerInformation}">Owner Information</h2>
+
+  <table class="table table-striped" th:object="${owner}">
+    <tr>
+      <th th:text="#{name}">Name</th>
+      <td><b th:text="*{firstName + ' ' + lastName}">Joe Bloggs</b></td>
+    </tr>
+    <tr>
+      <th th:text="#{address}">Address</th>
+      <td th:text="*{address}">123 Maple St.</td>
+    </tr>
+    <tr>
+      <th th:text="#{city}">City</th>
+      <td th:text="*{city}">Madison</td>
+    </tr>
+    <tr>
+      <th th:text="#{telephone}">Telephone</th>
+      <td th:text="*{telephone}">6085551023</td>
+    </tr>
+  </table>
+
+  <a th:href="@{/my-profile/edit}" class="btn btn-primary" th:text="#{editOwner}">Edit Owner</a>
+  <a th:href="@{/my-pets/new}" class="btn btn-success" th:text="#{addNewPet}">Add New Pet</a>
+  <a th:href="@{/scheduling/appointments}" class="btn btn-info ms-2" th:text="#{myAppointments}">My Appointments</a>
+
+  <br />
+  <br />
+  <br />
+  <h2 th:text="#{pets}">Pets</h2>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="#{name}">Name</th>
+        <th th:text="#{birthDate}">Birth Date</th>
+        <th th:text="#{type}">Type</th>
+        <th th:text="#{actions}">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="pet : ${pets}">
+        <td th:text="${pet.name}">Leo</td>
+        <td th:text="${#temporals.format(pet.birthDate, 'yyyy-MM-dd')}">2010-09-07</td>
+        <td th:text="${pet.type != null ? pet.type.name : '-'}">cat</td>
+        <td>
+          <a th:href="@{/my-pets/{petId}/edit(petId=${pet.id})}" class="btn btn-sm btn-outline-primary" th:text="#{editPet}">Edit Pet</a>
+          <a th:href="@{/scheduling/requests/new(petId=${pet.id})}" class="btn btn-sm btn-outline-success" th:text="#{scheduleAppointment}">Schedule Appointment</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>

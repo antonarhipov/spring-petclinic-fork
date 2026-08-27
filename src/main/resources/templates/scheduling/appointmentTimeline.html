@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'my-profile')}">
+
+<body>
+
+  <h2><span th:text="#{appointmentTimeline}">Appointment Timeline</span> (Appointment #<span th:text="${appointmentId}">1</span>)</h2>
+
+  <div th:if="${#lists.isEmpty(auditRecords)}" class="alert alert-info" role="alert">
+    <span th:text="#{noTimelineEvents}">No timeline events recorded.</span>
+  </div>
+
+  <table th:if="${not #lists.isEmpty(auditRecords)}" class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="#{date}">Date</th>
+        <th th:text="#{event}">Event</th>
+        <th th:text="#{actor}">Actor</th>
+        <th th:text="#{reason}">Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="r : ${auditRecords}">
+        <td th:text="${r.occurredAt}">2026-08-27T10:00:00Z</td>
+        <td><span class="badge bg-secondary" th:text="${r.eventType}">APPOINTMENT_BOOKED</span></td>
+        <td th:text="${r.actorUsername}">owner1</td>
+        <td th:text="${r.reasonCode}">-</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="mt-4">
+    <a th:href="@{/scheduling/appointments/{id}(id=${appointmentId})}" class="btn btn-secondary" th:text="#{backToAppointment}">Back to Appointment</a>
+  </div>
+
+</body>
+</html>

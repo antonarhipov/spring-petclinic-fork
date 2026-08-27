@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'my-profile')}">
+
+<body>
+
+  <h2 th:text="#{requestStatus}">Request Status</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" role="alert">
+    <span th:text="${successMessage}">Success</span>
+  </div>
+
+  <div th:if="${!#lists.isEmpty(availabilityWindows)}" class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0" th:text="#{capturedAvailability}">Captured availability</h5>
+    </div>
+    <div class="card-body table-responsive">
+      <table class="table table-bordered table-sm mb-0">
+        <thead>
+          <tr>
+            <th th:text="#{windowKind}">Window type</th>
+            <th th:text="#{dateExpression}">Date expression</th>
+            <th th:text="#{calendarParameters}">Calendar parameters</th>
+            <th th:text="#{timeParameters}">Time parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="window : ${availabilityWindows}">
+            <td th:text="${window.kind}">ALLOWED</td>
+            <td th:text="${window.dateExpression}">RELATIVE_WEEK</td>
+            <td th:text="${#strings.isEmpty(window.calendarParameters) ? '-' : window.calendarParameters}">weekOffset=1, THURSDAY</td>
+            <td th:text="${#strings.isEmpty(window.timeParameters) ? '-' : window.timeParameters}">AFTERNOON, 12:00-17:00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div th:if="${!#lists.isEmpty(availabilityIntervals)}" class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0" th:text="#{resolvedAvailability}">Resolved availability</h5>
+    </div>
+    <div class="card-body table-responsive">
+      <table class="table table-bordered table-sm mb-0">
+        <thead>
+          <tr>
+            <th th:text="#{windowKind}">Window type</th>
+            <th th:text="#{startTime}">Start time</th>
+            <th th:text="#{endTime}">End time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="interval : ${availabilityIntervals}">
+            <td th:text="${interval.kind}">ALLOWED</td>
+            <td th:text="${interval.startLocal}">2026-09-03 12:00 Europe/Tallinn</td>
+            <td th:text="${interval.endLocal}">2026-09-03 17:00 Europe/Tallinn</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <div th:if="${request.urgent}" class="alert alert-danger" role="alert">
+    <h5 th:text="#{emergencyInstructions}">Emergency Instructions</h5>
+    <p class="mb-0" th:text="#{urgentCareGuidance}">If your pet is experiencing a medical emergency, please visit the emergency hospital immediately or call our clinic directly at (608) 555-1023.</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><strong th:text="#{pet}">Pet</strong>: <span th:text="${request.pet.name}">Leo</span></span>
+      <span class="badge bg-primary" th:text="${request.status}">AWAITING_CONSENT</span>
+    </div>
+    <div class="card-body">
+      <h6 class="card-subtitle mb-2 text-muted" th:text="#{originalRequest}">Original Request</h6>
+      <p class="card-text" style="white-space: pre-wrap;" th:text="${request.originalText}">Sample text</p>
+    </div>
+  </div>
+
+  <!-- AWAITING_CONSENT Section -->
+  <div th:if="${request.status.name() == 'AWAITING_CONSENT'}" class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0" th:text="#{consentRequired}">AI Interpretation Consent Required</h5>
+    </div>
+    <div class="card-body">
+      <p th:text="#{consentExplanation}">To quickly match you with available appointment slots, our AI assistant can interpret your request description into structured requirements.</p>
+      <div class="alert alert-info" role="alert">
+        <strong th:text="#{consentDataSent}">Data sent to AI:</strong>
+        <span th:text="#{consentDataDetails}">Your request description, pet species/type (excluding name and medical history), clinic time zone, and veterinarian specialties.</span>
+      </div>
+      <form th:action="@{/scheduling/requests/{id}/consent(id=${request.id})}" method="post" class="d-inline">
+        <button type="submit" name="consent" value="true" class="btn btn-success me-2" th:text="#{grantConsent}">I consent to AI interpretation</button>
+        <button type="submit" name="consent" value="false" class="btn btn-outline-secondary" th:text="#{declineConsent}">I decline (send to clinic staff)</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- INTERPRETING Section -->
+  <div th:if="${request.status.name() == 'INTERPRETING'}" class="card mb-4 text-center py-4">
+    <div class="card-body">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden" th:text="#{loading}">Loading...</span>
+      </div>
+      <h5 th:text="#{interpretingProgress}">Interpreting your request...</h5>
+      <p class="text-muted" th:text="#{interpretingExplanation}">Please wait while our system analyzes your request. This page will update automatically.</p>
+    </div>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const requestId = /*[[${request.id}]]*/ 0;
+      const interval = setInterval(function() {
+        fetch('/scheduling/requests/' + requestId + '/status')
+          .then(res => res.json())
+          .then(data => {
+            if (data.status !== 'INTERPRETING') {
+              clearInterval(interval);
+              window.location.reload();
+            }
+          })
+          .catch(err => console.error(err));
+      }, 2000);
+      /*]]>*/
+    </script>
+  </div>
+
+  <!-- MATCHING Section -->
+  <div th:if="${request.status.name() == 'MATCHING'}" class="card mb-4 text-center py-4">
+    <div class="card-body">
+      <div class="spinner-border text-success mb-3" role="status">
+        <span class="visually-hidden" th:text="#{loading}">Loading...</span>
+      </div>
+      <h5 th:text="#{matchingProgress}">Searching for available appointment options...</h5>
+      <p class="text-muted" th:text="#{matchingExplanation}">We are matching your request against veterinarian schedules.</p>
+      <form th:action="@{/scheduling/requests/{id}/ask-again(id=${request.id})}" method="post" class="mt-2">
+        <button type="submit" class="btn btn-outline-primary btn-sm" th:text="#{askAgain}">Ask for Suggestion</button>
+      </form>
+    </div>
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const matchReqId = /*[[${request.id}]]*/ 0;
+      const matchInterval = setInterval(function() {
+        fetch('/scheduling/requests/' + matchReqId + '/status')
+          .then(res => res.json())
+          .then(data => {
+            if (data.status !== 'MATCHING') {
+              clearInterval(matchInterval);
+              window.location.reload();
+            }
+          })
+          .catch(err => console.error(err));
+      }, 2000);
+      /*]]>*/
+    </script>
+  </div>
+
+  <!-- SLOT_HELD Suggestion Section -->
+  <div th:if="${request.status.name() == 'SLOT_HELD' and suggestion != null}" class="card mb-4 border-success">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0" th:text="#{suggestedAppointment}">Suggested Appointment</h5>
+      <span class="badge bg-light text-dark" th:text="#{holdActive}">Hold Active</span>
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered mb-3">
+        <tbody>
+          <tr>
+            <th th:text="#{veterinarian}">Veterinarian</th>
+            <td th:text="${suggestion.vetName}">Dr. Helen Learner</td>
+          </tr>
+          <tr th:if="${!suggestion.specialties.isEmpty()}">
+            <th th:text="#{specialties}">Specialties</th>
+            <td th:text="${#strings.listJoin(suggestion.specialties, ', ')}">radiology</td>
+          </tr>
+          <tr>
+            <th th:text="#{startTime}">Start Time</th>
+            <td th:text="${suggestion.startTime}">2026-08-28T10:00:00Z</td>
+          </tr>
+          <tr>
+            <th th:text="#{duration}">Duration</th>
+            <td><span th:text="${suggestion.durationMinutes}">30</span> <span th:text="#{minutes}">minutes</span></td>
+          </tr>
+          <tr>
+            <th th:text="#{holdExpiresAt}">Hold Expires At</th>
+            <td th:text="${suggestion.expiresAt}">2026-08-27T10:05:00Z</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="d-flex gap-2">
+        <form th:action="@{/scheduling/requests/{id}/accept-suggestion(id=${request.id})}" method="post">
+          <input type="hidden" name="reservationId" th:value="${suggestion.reservationId}" />
+          <input type="hidden" name="requestVersion" th:value="${suggestion.requestVersion}" />
+          <button type="submit" class="btn btn-success" th:text="#{acceptSuggestion}">Accept Appointment</button>
+        </form>
+
+        <form th:action="@{/scheduling/requests/{id}/reject-suggestion(id=${request.id})}" method="post">
+          <input type="hidden" name="reservationId" th:value="${suggestion.reservationId}" />
+          <input type="hidden" name="requestVersion" th:value="${suggestion.requestVersion}" />
+          <button type="submit" class="btn btn-outline-danger" th:text="#{rejectSuggestion}">Reject & Try Another</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLARIFICATION_REQUIRED Section -->
+  <div th:if="${request.status.name() == 'CLARIFICATION_REQUIRED'}" class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+      <h5 class="mb-0" th:text="#{clarificationNeeded}">Clarification Required</h5>
+    </div>
+    <div class="card-body">
+      <p><strong th:text="#{clarificationReason}">Reason</strong>:
+        <span th:if="${request.lastClarificationReason == 'OUTSIDE_BOOKING_HORIZON'}" th:text="#{outsideBookingHorizon}">The requested period is outside the current booking horizon.</span>
+        <span th:unless="${request.lastClarificationReason == 'OUTSIDE_BOOKING_HORIZON'}" th:text="${request.lastClarificationReason}">UNKNOWN_PREFERRED_VET</span>
+      </p>
+      <p th:text="#{clarificationExplanation}">Please update your request details below or replace the request text to proceed.</p>
+    </div>
+  </div>
+
+  <!-- AWAITING_CONFIRMATION Section -->
+  <div th:if="${request.status.name() == 'AWAITING_CONFIRMATION'}" class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0" th:text="#{reviewInterpretation}">Review Interpreted Requirements</h5>
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered">
+        <tbody>
+          <tr>
+            <th th:text="#{clinicalSummary}">Summary</th>
+            <td th:text="${request.aiSummary != null ? request.aiSummary : '-'}">Summary</td>
+          </tr>
+          <tr>
+            <th th:text="#{careType}">Care Type</th>
+            <td th:text="${request.careType != null ? request.careType : '-'}">GENERAL</td>
+          </tr>
+          <tr>
+            <th th:text="#{specialty}">Required Specialty</th>
+            <td th:text="${request.requiredSpecialty != null ? request.requiredSpecialty.name : '-'}">none</td>
+          </tr>
+          <tr>
+            <th th:text="#{duration}">Duration (minutes)</th>
+            <td th:text="${request.durationMinutes}">30</td>
+          </tr>
+          <tr>
+            <th th:text="#{preferredVet}">Preferred Veterinarian</th>
+            <td th:text="${request.preferredVet != null ? request.preferredVet.firstName + ' ' + request.preferredVet.lastName : '-'}">none</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <form th:action="@{/scheduling/requests/{id}/confirm(id=${request.id})}" method="post" class="mt-3">
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="confirmUnrestricted" id="confirmUnrestricted" value="true" />
+          <label class="form-check-label" for="confirmUnrestricted" th:text="#{confirmUnrestrictedHorizon}">Confirm searching across the entire scheduling horizon</label>
+        </div>
+        <button type="submit" class="btn btn-success me-2" th:text="#{confirmAndFindSlots}">Confirm & Find Slots</button>
+      </form>
+
+      <hr class="my-4" />
+
+      <h6 th:text="#{disputeClinicalFacts}">Dispute Clinical Facts</h6>
+      <form th:action="@{/scheduling/requests/{id}/dispute(id=${request.id})}" method="post" class="mt-2">
+        <div class="mb-3">
+          <input type="text" name="reason" class="form-control" th:placeholder="#{disputeReasonPlaceholder}" />
+        </div>
+        <button type="submit" class="btn btn-outline-warning btn-sm" th:text="#{sendToStaffQueue}">Send to Staff Queue</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- STAFF_QUEUED / STAFF_OFFERED Section -->
+  <div th:if="${request.status.name() == 'STAFF_QUEUED' or request.status.name() == 'STAFF_OFFERED'}" class="card mb-4 border-info">
+    <div class="card-header bg-info text-white">
+      <h5 class="mb-0" th:text="#{staffQueuedHeader}">Sent to Staff Queue</h5>
+    </div>
+    <div class="card-body">
+      <p th:text="#{staffQueuedNotice}">Your request has been sent to our clinic staff queue. A staff member will assist you shortly.</p>
+      <p th:if="${request.lastClarificationReason != null}"><strong th:text="#{reason}">Reason</strong>: <span th:text="${request.lastClarificationReason}">Reason</span></p>
+
+      <!-- Active Staff Offer -->
+      <div th:if="${offer != null}" class="card mt-3 border-primary">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0" th:text="#{staffOfferHeader}">Special Offer from Clinic Staff</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-bordered mb-3">
+            <tbody>
+              <tr>
+                <th th:text="#{veterinarian}">Veterinarian</th>
+                <td th:text="${offer.vetName}">Dr. James Carter</td>
+              </tr>
+              <tr>
+                <th th:text="#{startTime}">Start Time</th>
+                <td th:text="${offer.startTime}">2026-08-28T14:00:00Z</td>
+              </tr>
+              <tr>
+                <th th:text="#{duration}">Duration</th>
+                <td><span th:text="${offer.durationMinutes}">30</span> <span th:text="#{minutes}">minutes</span></td>
+              </tr>
+              <tr>
+                <th th:text="#{offerExpiresAt}">Offer Expires At</th>
+                <td th:text="${offer.expiresAt}">2026-08-28T14:00:00Z</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="d-flex gap-2">
+            <form th:action="@{/scheduling/requests/{id}/accept-offer(id=${request.id})}" method="post">
+              <input type="hidden" name="reservationId" th:value="${offer.reservationId}" />
+              <input type="hidden" name="requestVersion" th:value="${offer.requestVersion}" />
+              <button type="submit" class="btn btn-success" th:text="#{acceptOffer}">Accept Offer</button>
+            </form>
+
+            <form th:action="@{/scheduling/requests/{id}/reject-offer(id=${request.id})}" method="post">
+              <input type="hidden" name="reservationId" th:value="${offer.reservationId}" />
+              <input type="hidden" name="requestVersion" th:value="${offer.requestVersion}" />
+              <button type="submit" class="btn btn-outline-danger" th:text="#{rejectOffer}">Decline Offer</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRMED Section -->
+  <div th:if="${request.status.name() == 'CONFIRMED'}" class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0" th:text="#{appointmentConfirmedHeader}">Appointment Confirmed</h5>
+    </div>
+    <div class="card-body">
+      <p class="lead text-success" th:text="#{appointmentConfirmedMessage}">Your appointment has been successfully booked!</p>
+      <a th:href="@{/my-profile}" class="btn btn-primary" th:text="#{viewAppointments}">View Appointments in Profile</a>
+    </div>
+  </div>
+
+  <!-- Replace Text Form (if allowed) -->
+  <div th:if="${request.status.name() != 'STAFF_QUEUED' and request.status.name() != 'STAFF_OFFERED' and request.status.name() != 'CONFIRMED' and request.status.name() != 'CANCELLED' and request.status.name() != 'EXPIRED'}" class="card mb-4">
+    <div class="card-header bg-light">
+      <h6 class="mb-0" th:text="#{replaceRequestText}">Replace Request Description</h6>
+    </div>
+    <div class="card-body">
+      <form th:action="@{/scheduling/requests/{id}/replace-text(id=${request.id})}" method="post">
+        <div class="mb-3">
+          <textarea name="newText" class="form-control" rows="4" maxlength="2000" required th:placeholder="#{newTextPlaceholder}"></textarea>
+        </div>
+        <button type="submit" class="btn btn-outline-primary btn-sm" th:text="#{replaceTextButton}">Update Request Description</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cancel Request Form (if non-terminal) -->
+  <div th:if="${request.status.name() != 'CANCELLED' and request.status.name() != 'CONFIRMED' and request.status.name() != 'EXPIRED'}" class="mb-4">
+    <form th:action="@{/scheduling/requests/{id}/cancel(id=${request.id})}" method="post" onsubmit="return confirm('Are you sure you want to cancel this request?');">
+      <button type="submit" class="btn btn-danger" th:text="#{cancelRequest}">Cancel Request</button>
+      <a th:href="@{/my-profile}" class="btn btn-outline-secondary ms-2" th:text="#{backToProfile}">Back to Profile</a>
+    </form>
+  </div>
+
+</body>
+</html>

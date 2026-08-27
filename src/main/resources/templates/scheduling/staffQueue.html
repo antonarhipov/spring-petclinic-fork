@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'staff-queue')}">
+
+<body>
+
+  <h2 th:text="#{staffFallbackQueue}">Staff Fallback Queue</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" role="alert">
+    <span th:text="${successMessage}">Success</span>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0" th:text="#{pendingFallbackRequests}">Pending Fallback Requests</h5>
+      <span class="badge bg-light text-dark" th:text="${queue.size()} + ' ' + #{requestsCount}">0 requests</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-striped table-hover mb-0">
+        <thead>
+          <tr>
+            <th th:text="#{id}">ID</th>
+            <th th:text="#{priority}">Priority</th>
+            <th th:text="#{owner}">Owner</th>
+            <th th:text="#{pet}">Pet</th>
+            <th th:text="#{fallbackReason}">Reason</th>
+            <th th:text="#{queuedAt}">Queued At</th>
+            <th th:text="#{actions}">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:if="${queue.isEmpty()}">
+            <td colspan="7" class="text-center py-4 text-muted" th:text="#{noFallbackRequests}">No requests currently in fallback queue.</td>
+          </tr>
+          <tr th:each="req : ${queue}" th:classappend="${req.urgent} ? 'table-danger' : ''">
+            <td th:text="${req.id}">1</td>
+            <td>
+              <span th:if="${req.urgent}" class="badge bg-danger" th:text="#{urgentBadge}">URGENT</span>
+              <span th:if="${!req.urgent}" class="badge bg-secondary" th:text="#{standardBadge}">Standard</span>
+            </td>
+            <td th:text="${req.owner.firstName + ' ' + req.owner.lastName}">George Franklin</td>
+            <td th:text="${req.pet.name}">Leo</td>
+            <td>
+              <code th:text="${req.lastClarificationReason != null ? req.lastClarificationReason : '-'}">AI_UNAVAILABLE</code>
+            </td>
+            <td th:text="${req.firstQueuedAt}">2026-08-27T10:00:00Z</td>
+            <td>
+              <div class="d-flex gap-2">
+                <a th:href="@{/scheduling/staff/requests/{id}(id=${req.id})}" class="btn btn-primary btn-sm" th:text="#{viewDetails}">View Details</a>
+                <form th:action="@{/scheduling/staff/queue/{id}/claim(id=${req.id})}" method="post">
+                  <button type="submit" class="btn btn-outline-success btn-sm" th:text="#{claimButton}">Claim</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -56,6 +56,21 @@ A versioned SchedulingRequest aggregate stores normalized text, its consent meta
 **MUST** implement owner cancellation by locking Owner, Pet, every affected Vet, SchedulingRequest, and active Reservations in RULE-4 order, moving any owned nonterminal request to `CANCELLED`, releasing every active reservation, and removing its staff claim under the locked request in one transaction.
 **Reason:** Cancellation must release capacity and staff ownership immediately without leaving side effects attached to terminal work.
 
+### UC3-RULE11
+**Covers:** UC3-AC67–UC3-AC80
+**MUST** extend the closed AI window schema with strict enums for window classification, date-expression kind, weekday, month, and ordinal week plus bounded non-negative integer offsets and nullable explicit date/time fields. The adapter MUST provide the clinic-local current date and zone in the prompt, MUST require the model to return symbolic relative expressions rather than calculated relative dates, and MUST reject unknown fields, enums, invalid field combinations, and negative offsets.
+**Reason:** AI identifies bounded language concepts, while a closed symbolic contract keeps calendar arithmetic deterministic and prevents unsupported language from silently becoming an arbitrary date.
+
+### UC3-RULE12
+**Covers:** UC3-AC69–UC3-AC78, UC3-AC81–UC3-AC82
+**MUST** resolve symbolic dates with `java.time` from the injected Clock and clinic ZoneId at confirmation: weeks use Monday through Sunday; end-of-week uses Thursday through Sunday; relative months use complete `YearMonth` values; named months select the nearest occurrence whose end is not before the anchor; and ordinal month weeks use Monday-through-Sunday calendar rows clipped to `YearMonth.atDay(1)` and `YearMonth.atEndOfMonth()`. The resolver MUST intersect an optional weekday and captured local-time or named-period bounds, convert only unique local offsets to half-open `Instant` intervals, and clip results to the next future grid boundary and exclusive captured owner horizon.
+**Reason:** One deterministic resolver makes month boundaries, year rollover, DST, confirmation anchoring, and combined date/time constraints reproducible without trusting model arithmetic.
+
+### UC3-RULE13
+**Covers:** UC3-AC68, UC3-AC79–UC3-AC83
+**MUST** write valid symbolic windows after schema and named-period validation, then replace all materialized intervals in the same locked confirmation transaction before entering `MATCHING`. At least one `ALLOWED` interval MUST contain every eligible candidate when hard positive availability exists; any overlap with `EXCLUDED` MUST make a candidate ineligible; `PREFERRED` MUST affect only the first soft rank. If every hard allowed interval is empty after clipping, confirmation MUST leave the request in `CLARIFICATION_REQUIRED` with a deterministic outside-horizon or incomplete-calendar reason and MUST NOT dispatch a solver operation.
+**Reason:** Transactional materialization and explicit interval classes preserve the owner's hard limits, preference order, and correction path from review through solving.
+
 ## Cross-Reference
 
 | AC | Rules |
@@ -126,12 +141,30 @@ A versioned SchedulingRequest aggregate stores normalized text, its consent meta
 | UC3-AC64 | RULE-1, RULE-3, RULE-4, RULE-12, UC3-RULE10 |
 | UC3-AC65 | RULE-1, RULE-3, RULE-4, RULE-12, UC3-RULE9 |
 | UC3-AC66 | RULE-1, RULE-4, RULE-12, UC3-RULE10 |
+| UC3-AC67 | RULE-10, RULE-13, UC3-RULE11 |
+| UC3-AC68 | RULE-12, RULE-13, UC3-RULE11, UC3-RULE13 |
+| UC3-AC69 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC70 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC71 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC72 | RULE-5, RULE-13, UC3-RULE12, UC3-RULE13 |
+| UC3-AC73 | RULE-5, RULE-13, UC3-RULE12, UC3-RULE13 |
+| UC3-AC74 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC75 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC76 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC77 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC78 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC79 | RULE-5, RULE-13, UC3-RULE13 |
+| UC3-AC80 | RULE-5, RULE-13, UC3-RULE13 |
+| UC3-AC81 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC82 | RULE-2, RULE-13, UC3-RULE12 |
+| UC3-AC83 | RULE-1, RULE-12, RULE-13, UC3-RULE13 |
 
 ## Design Exclusions
 
 - No raw Ollama client, permissive map binding, automatic retry, second validation call, or semantic server guess for AI issue categories
 - No IP-based rate limit and no in-memory-only dispatch counter
 - No owner editing of duration, care type, specialty, or urgency
+- No model-calculated relative dates, permissive free-form date expressions, JSON availability source of truth, or authoritative legacy single-window projection
 
 ## External Dependencies
 

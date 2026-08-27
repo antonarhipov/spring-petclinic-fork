@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'accounts')}">
+
+<body>
+
+  <h2 th:text="#{accounts}">Accounts</h2>
+
+  <div th:if="${message}" class="alert alert-success" role="alert">
+    <span th:text="${message}">Message</span>
+  </div>
+  <div th:if="${error}" class="alert alert-danger" role="alert">
+    <span th:text="${error}">Error</span>
+  </div>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="#{id}">ID</th>
+        <th th:text="#{username}">Username</th>
+        <th th:text="#{role}">Role</th>
+        <th th:text="#{status}">Status</th>
+        <th th:text="#{ownerId}">Owner ID</th>
+        <th th:text="#{locked}">Locked</th>
+        <th th:text="#{actions}">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="account : ${accounts}">
+        <td th:text="${account.id}">1</td>
+        <td th:text="${account.username}">admin</td>
+        <td th:text="${account.role}">STAFF</td>
+        <td>
+          <span th:if="${account.active}" class="badge bg-success" th:text="#{active}">Active</span>
+          <span th:unless="${account.active}" class="badge bg-danger" th:text="#{inactive}">Inactive</span>
+        </td>
+        <td th:text="${account.owner != null ? account.owner.id : '-'}">-</td>
+        <td>
+          <span th:if="${account.lockedUntil != null}" class="badge bg-warning" th:text="#{locked}">Locked</span>
+          <span th:unless="${account.lockedUntil != null}" th:text="#{no}">No</span>
+        </td>
+        <td>
+          <form th:if="${account.lockedUntil != null}" th:action="@{/admin/accounts/{id}/unlock(id=${account.id})}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline-warning" th:text="#{unlock}">Unlock</button>
+          </form>
+          <form th:if="${account.active}" th:action="@{/admin/accounts/{id}/deactivate(id=${account.id})}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline-danger" th:text="#{deactivate}">Deactivate</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h4 th:text="#{createStaffAccount}">Create Staff Account</h4>
+      <form th:action="@{/admin/accounts/staff}" method="post">
+        <div class="form-group mb-2">
+          <label th:text="#{username}">Username</label>
+          <input type="text" name="username" class="form-control" required />
+        </div>
+        <div class="form-group mb-2">
+          <label th:text="#{temporaryPassword}">Temporary Password</label>
+          <input type="password" name="password" class="form-control" minlength="8" required />
+        </div>
+        <button type="submit" class="btn btn-primary" th:text="#{createStaff}">Create Staff</button>
+      </form>
+    </div>
+
+    <div class="col-md-6">
+      <h4 th:text="#{createOwnerAccount}">Create Owner Account</h4>
+      <form th:action="@{/admin/accounts/owner}" method="post">
+        <div class="form-group mb-2">
+          <label th:text="#{username}">Username</label>
+          <input type="text" name="username" class="form-control" required />
+        </div>
+        <div class="form-group mb-2">
+          <label th:text="#{temporaryPassword}">Temporary Password</label>
+          <input type="password" name="password" class="form-control" minlength="8" required />
+        </div>
+        <div class="form-group mb-2">
+          <label th:text="#{ownerId}">Owner ID</label>
+          <input type="number" name="ownerId" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary" th:text="#{createOwner}">Create Owner Account</button>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

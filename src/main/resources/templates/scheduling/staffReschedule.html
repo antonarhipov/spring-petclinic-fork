@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+
+<body>
+
+  <h2 th:text="#{rescheduleAppointment}">Reschedule Appointment</h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <span th:text="#{appointment}">Appointment</span> #<span th:text="${appointment.id}">1</span> - <span th:text="${appointment.petName}">Leo</span> (<span th:text="${appointment.ownerName}">Joe Bloggs</span>)
+      </h5>
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered mb-4">
+        <tbody>
+          <tr>
+            <th th:text="#{careType}">Care Type</th>
+            <td th:text="${appointment.careType}">GENERAL</td>
+          </tr>
+          <tr>
+            <th th:text="#{specialty}">Specialty</th>
+            <td th:text="${appointment.requiredSpecialtyName != null ? appointment.requiredSpecialtyName : '-'}">-</td>
+          </tr>
+          <tr>
+            <th th:text="#{currentStartTime}">Current Start Time</th>
+            <td th:text="${appointment.startTime}">2026-08-28T14:00:00Z</td>
+          </tr>
+          <tr>
+            <th th:text="#{currentVet}">Current Veterinarian</th>
+            <td th:text="${appointment.vetName}">Dr. James Carter</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <form th:action="@{/scheduling/staff/appointments/{id}/reschedule(id=${appointment.id})}" method="post" th:object="${form}">
+        
+        <!-- Veterinarian Selection -->
+        <div class="mb-3">
+          <label for="vetId" class="form-label"><strong th:text="#{veterinarian}">Veterinarian</strong> *</label>
+          <select name="vetId" id="vetId" class="form-select" required>
+            <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}" th:selected="${v.id == form.vetId}">Dr. James Carter</option>
+          </select>
+        </div>
+
+        <!-- Start Time -->
+        <div class="mb-3">
+          <label for="startDateTime" class="form-label"><strong th:text="#{newStartTime}">New Start Time</strong> *</label>
+          <input type="datetime-local" name="startDateTime" id="startDateTime" class="form-control" required step="900" />
+          <small class="text-muted" th:text="#{startDateTimeHelp}">Must be in the future, 15-minute grid aligned (e.g. :00, :15, :30, :45), and within staff horizon.</small>
+        </div>
+
+        <!-- Duration -->
+        <div class="mb-3">
+          <label for="durationMinutes" class="form-label"><strong th:text="#{duration}">Duration (minutes)</strong> *</label>
+          <select name="durationMinutes" id="durationMinutes" class="form-select" required>
+            <option value="15" th:text="'15 ' + #{minutes}" th:selected="${form.durationMinutes == 15}">15 minutes</option>
+            <option value="30" th:text="'30 ' + #{minutes}" th:selected="${form.durationMinutes == 30}">30 minutes</option>
+            <option value="45" th:text="'45 ' + #{minutes}" th:selected="${form.durationMinutes == 45}">45 minutes</option>
+            <option value="60" th:text="'60 ' + #{minutes}" th:selected="${form.durationMinutes == 60}">60 minutes</option>
+            <option value="90" th:text="'90 ' + #{minutes}" th:selected="${form.durationMinutes == 90}">90 minutes</option>
+            <option value="120" th:text="'120 ' + #{minutes}" th:selected="${form.durationMinutes == 120}">120 minutes</option>
+          </select>
+        </div>
+
+        <!-- Reschedule Reason -->
+        <div class="mb-3">
+          <label for="rescheduleReason" class="form-label"><strong th:text="#{rescheduleReason}">Reschedule Reason</strong> *</label>
+          <textarea name="rescheduleReason" id="rescheduleReason" class="form-control" rows="3" required th:placeholder="#{rescheduleReasonPlaceholder}"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-warning" th:text="#{rescheduleAppointment}">Confirm Reschedule</button>
+        <a th:href="@{/scheduling/staff/appointments/{id}(id=${appointment.id})}" class="btn btn-secondary ms-2" th:text="#{cancel}">Cancel</a>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>

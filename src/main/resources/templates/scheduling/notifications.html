@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'notifications')}">
+
+<body>
+
+  <h2 th:text="#{notifications}">Notifications</h2>
+
+  <div th:if="${#lists.isEmpty(notifications)}" class="alert alert-info" role="alert">
+    <span th:text="#{notification.noNotifications}">You have no notifications.</span>
+  </div>
+
+  <table th:if="${not #lists.isEmpty(notifications)}" class="table table-striped">
+    <thead>
+      <tr>
+        <th th:text="#{date}">Date</th>
+        <th th:text="#{title}">Title</th>
+        <th th:text="#{message}">Message</th>
+        <th th:text="#{status}">Status</th>
+        <th th:text="#{actions}">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="n : ${notifications}">
+        <td th:text="${n.createdAt}">2026-08-27T10:00:00Z</td>
+        <td>
+          <strong th:text="#{__${n.titleKey}__}">Notification Title</strong>
+        </td>
+        <td>
+          <span th:text="#{__${n.messageKey}__}">Notification Message</span>
+        </td>
+        <td>
+          <span th:if="${n.read}" class="badge bg-secondary" th:text="#{notification.read}">Read</span>
+          <span th:if="${not n.read}" class="badge bg-primary" th:text="#{notification.unread}">Unread</span>
+        </td>
+        <td>
+          <div class="btn-group" role="group">
+            <a th:if="${n.authorized and n.targetUrl != null}" th:href="@{__${n.targetUrl}__}" class="btn btn-sm btn-outline-primary" th:text="#{notification.viewTarget}">View Details</a>
+            <span th:if="${not n.authorized and n.targetUrl == null and not #strings.isEmpty(n.messageKey)}" class="text-muted small align-self-center me-2" th:text="#{notification.unauthorizedTarget}">Details are no longer available.</span>
+            <form th:if="${not n.read}" th:action="@{/scheduling/notifications/{id}/read(id=${n.id})}" method="post" class="d-inline ms-1">
+              <button type="submit" class="btn btn-sm btn-outline-secondary" th:text="#{notification.markAsRead}">Mark as Read</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="mt-4">
+    <a th:href="@{/my-profile}" class="btn btn-secondary" th:text="#{backToProfile}">Back to Profile</a>
+  </div>
+
+</body>
+</html>

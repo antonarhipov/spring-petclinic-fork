@@ -28,9 +28,14 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - The request is persisted as `INTERPRETING`; a status page polls without starting additional work.
 - AI dispatch uses the interpretation settings captured for the current text version at intake or replacement. A later staff settings edit does not change the interpretation the owner reviews.
 - AI execution is one attempt with a 60-second hard timeout. Missing configuration, connection failure, timeout, or execution failure creates `STAFF_QUEUED(AI_UNAVAILABLE)`.
-- Output binds to a versioned closed schema containing: factual summary, duration, care type (`GENERAL` or `SPECIALTY`), optional specialty, preferred/allowed/excluded symbolic windows, optional preferred veterinarian, urgency indication, and zero or more issue codes from the fixed set `INCOMPLETE_AVAILABILITY`, `CONTRADICTORY_CLINICAL_ROUTING`, and `UNSAFE_CONTENT`.
+- Output binds to a versioned closed schema containing: factual summary, duration, care type (`GENERAL` or `SPECIALTY`), optional specialty, preferred/allowed/excluded symbolic windows, optional preferred veterinarian, urgency indication, and zero or more issue codes from the fixed set `INCOMPLETE_AVAILABILITY`, `CONTRADICTORY_CLINICAL_ROUTING`, and `UNSAFE_CONTENT`. A symbolic window can carry a concrete date or a bounded calendar expression without asking AI to choose a slot.
 - The server resolves veterinarian and specialty names against the live active catalog and resolves named periods against the interpretation settings captured for the current text version.
 - A weekday without a concrete date represents every matching weekday in the concrete owner horizon materialized at confirmation. Named periods retain the definitions captured for the current text version.
+- The bounded calendar vocabulary consists of explicit dates; bare weekdays; this week, next week, and a numbered future week; end of the working week; this month, next month, and a numbered future month; named months; and the first, second, third, fourth, or last week of a referenced month. Unsupported or incomplete calendar language requires clarification rather than a guessed date.
+- Relative calendar expressions are anchored to the clinic-local date at owner confirmation. A named month means the nearest occurrence whose final day is not before that anchor; when it is the current month, only its remaining bookable portion can survive horizon clipping.
+- A calendar week is Monday through Sunday. `NEXT_WEEK` is the Monday-through-Sunday week following the anchor's week, and a numbered future week is the whole calendar week that many weeks after the anchor's week. `END_OF_WEEK` begins on Thursday and includes Friday; Saturday and Sunday can produce suggestions only when the clinic has effective availability on those days.
+- `NEXT_MONTH` is the entire next calendar month, and a numbered future month is the entire calendar month that many months after the anchor's month. An ordinal week of a month means the corresponding Monday-through-Sunday calendar row that intersects the month, clipped at the month boundaries; the first partial row counts as the first week and the row containing the month's final day is the last week.
+- Multiple date, weekday, and time concepts in one positive window are intersected. An unqualified positive window is an allowed hard constraint; wording such as `prefer` or `preferably` marks a preferred window inside the allowed space.
 - Missing duration uses the snapshot default. A supplied duration is clamped to the snapshot minimum/maximum and rounded upward to the next valid 15-minute increment without exceeding the maximum.
 - A valid result that requires neither clarification nor fallback moves the request from `INTERPRETING` to `AWAITING_CONFIRMATION`.
 
@@ -41,6 +46,7 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - Excluded windows override allowed and preferred windows. Preferred windows rank within the allowed space.
 - No positive windows means the entire owner horizon is allowed only after the owner explicitly confirms having no time restriction.
 - When exclusions remove every possible owner window, clarification is required before solving.
+- Concrete windows are clipped to the next future grid boundary and the exclusive owner-horizon end. If a hard requested range has no overlap with that horizon, the request enters clarification with an owner-visible explanation instead of entering matching or staff fallback.
 - Urgency stops automation and creates `STAFF_QUEUED(URGENCY)` at emergency priority.
 - The owner reviews the complete structured interpretation before matching. The owner may edit availability windows, preferred veterinarian, and factual summary without AI.
 - After a clarification edit, deterministic validation moves the request to `AWAITING_CONFIRMATION` only when every clarification issue is resolved; otherwise it remains `CLARIFICATION_REQUIRED` with the remaining issues.
@@ -67,6 +73,10 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - Editing structured facts after a slot was offered invalidates that offer and its rejection history.
 - A late AI result cannot move a request forward after the owner has cancelled it.
 - A late AI or solver result for a replaced text version cannot move the request out of `AWAITING_CONSENT`.
+- A relative range that begins before the confirmation instant remains usable only for its future portion.
+- A month beginning or ending midweek uses a clipped partial calendar row when resolving an ordinal week.
+- A named month that has already ended in the anchor year resolves to that month in the next year, subject to the configured horizon.
+- A weekend in an end-of-week range never creates a suggestion unless effective veterinarian availability makes that time bookable.
 
 ## Behaviors to verify
 
@@ -127,6 +137,18 @@ An authenticated owner submits an English free-text request for one owned pet, k
 - UC3-B55: The system keeps a rate-limited request in `AWAITING_CONSENT`.
 - UC3-B56: The system releases a guided hold when permitted original text is replaced.
 - UC3-B57: The system removes any staff claim when an owner cancels a nonterminal request.
+- UC3-B58: The system accepts only the bounded calendar-expression vocabulary in a structured AI window and requires clarification for unsupported or incomplete calendar language.
+- UC3-B59: The system anchors relative calendar expressions to the clinic-local confirmation date.
+- UC3-B60: The system resolves next week and numbered future weeks as whole Monday-through-Sunday calendar weeks.
+- UC3-B61: The system resolves end of the working week from Thursday through Sunday while allowing weekend suggestions only when the clinic has effective weekend availability.
+- UC3-B62: The system resolves next month and numbered future months as whole calendar months.
+- UC3-B63: The system resolves a named month to the nearest occurrence whose final day is not before the confirmation date.
+- UC3-B64: The system resolves first, second, third, fourth, and last weeks of a month as Monday-through-Sunday calendar rows clipped to that month.
+- UC3-B65: The system intersects date, weekday, and time concepts that occur in the same availability window.
+- UC3-B66: The system treats an unqualified positive date or time window as allowed hard availability and treats explicitly preferential wording as a soft preference inside allowed availability.
+- UC3-B67: The system clips resolved windows to the next future grid boundary and exclusive owner-horizon end.
+- UC3-B68: The system enters `CLARIFICATION_REQUIRED` with an owner-visible horizon explanation when a hard requested range has no overlap with the booking horizon.
+- UC3-B69: The system preserves a relative range's future portion when its beginning precedes confirmation.
 
 ## Out of scope
 

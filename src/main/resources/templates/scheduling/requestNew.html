@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'my-profile')}">
+
+<body>
+
+  <h2 th:text="#{newSchedulingRequest}">New Appointment Request</h2>
+
+  <div class="alert alert-warning" role="alert">
+    <h5 th:text="#{emergencyInstructions}">Emergency Instructions</h5>
+    <p class="mb-0" th:text="#{urgentCareGuidance}">If your pet is experiencing a medical emergency, please visit the emergency hospital immediately or call our clinic directly at (608) 555-1023.</p>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <form th:action="@{/scheduling/requests}" method="post" class="mt-4">
+    <input type="hidden" name="petId" th:value="${pet.id}" />
+
+    <div class="mb-3">
+      <label class="form-label" th:text="#{pet}">Pet</label>
+      <div><strong th:text="${pet.name}">Leo</strong> (<span th:text="${pet.type != null ? pet.type.name : '-'}">cat</span>)</div>
+    </div>
+
+    <div class="mb-3">
+      <label for="language" class="form-label" th:text="#{language}">Language</label>
+      <select id="language" name="language" class="form-select" style="max-width: 300px;">
+        <option value="en" th:text="#{english}" selected>English</option>
+        <option value="es" th:text="#{spanish}">Spanish</option>
+        <option value="de" th:text="#{german}">German</option>
+        <option value="ru" th:text="#{russian}">Russian</option>
+        <option value="pt" th:text="#{portuguese}">Portuguese</option>
+        <option value="tr" th:text="#{turkish}">Turkish</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="originalText" class="form-label" th:text="#{originalText}">Request Description</label>
+      <textarea id="originalText" name="originalText" class="form-control" rows="6" maxlength="2000" required></textarea>
+      <div class="form-text" th:text="#{originalTextHelp}">Please describe in plain English what your pet needs and your preferred days or times (1 to 2000 characters).</div>
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary" th:text="#{submitRequest}">Submit Request</button>
+      <a th:href="@{/my-profile}" class="btn btn-outline-secondary" th:text="#{cancel}">Cancel</a>
+    </div>
+  </form>
+
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+
+<body>
+
+  <h2 th:text="#{staffCalendar}">Staff Calendar</h2>
+
+  <form method="get" th:action="@{/scheduling/staff/calendar}" class="row g-3 my-3">
+    <div class="col-auto">
+      <label for="startDate" class="col-form-label" th:text="#{startDate}">Start Date</label>
+    </div>
+    <div class="col-auto">
+      <input type="date" id="startDate" name="startDate" class="form-control" th:value="${startDate}" />
+    </div>
+
+    <div class="col-auto">
+      <label for="endDate" class="col-form-label" th:text="#{endDate}">End Date</label>
+    </div>
+    <div class="col-auto">
+      <input type="date" id="endDate" name="endDate" class="form-control" th:value="${endDate}" />
+    </div>
+
+    <div class="col-auto">
+      <label for="vetId" class="col-form-label" th:text="#{filterByVet}">Veterinarian</label>
+    </div>
+    <div class="col-auto">
+      <select id="vetId" name="vetId" class="form-select">
+        <option value="" th:text="#{allVets}">All Veterinarians</option>
+        <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}" th:selected="${vet.id == selectedVetId}">Dr. Name</option>
+      </select>
+    </div>
+
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary" th:text="#{filter}">Filter</button>
+    </div>
+  </form>
+
+  <div class="table-responsive mt-4">
+    <table class="table table-striped table-hover">
+      <thead>
+        <tr>
+          <th th:text="#{type}">Type</th>
+          <th th:text="#{status}">Status</th>
+          <th th:text="#{vets}">Veterinarian</th>
+          <th th:text="#{owner}">Owner</th>
+          <th th:text="#{pet}">Pet</th>
+          <th th:text="#{startTime}">Start Time</th>
+          <th th:text="#{endTime}">End Time</th>
+          <th th:text="#{details}">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:if="${#lists.isEmpty(calendarItems)}">
+          <td colspan="8" class="text-center text-muted" th:text="#{noCalendarItems}">No scheduled items found for the selected period.</td>
+        </tr>
+        <tr th:each="item : ${calendarItems}">
+          <td>
+            <span th:if="${item.itemCategory == 'APPOINTMENT'}" class="badge bg-primary" th:text="#{appointmentBadge}">Appointment</span>
+            <span th:if="${item.itemCategory == 'GUIDED_HOLD'}" class="badge bg-warning text-dark" th:text="#{holdBadge}">Guided Hold</span>
+            <span th:if="${item.itemCategory == 'STAFF_OFFER'}" class="badge bg-info text-dark" th:text="#{offerBadge}">Staff Offer</span>
+          </td>
+          <td>
+            <span class="badge bg-secondary" th:text="${item.status}">BOOKED</span>
+          </td>
+          <td th:text="${item.vetName}">Dr. Name</td>
+          <td th:text="${item.ownerName != null ? item.ownerName : '-'}">Owner</td>
+          <td th:text="${item.petName != null ? item.petName : '-'}">Pet</td>
+          <td th:text="${item.startTime}">2026-08-27T10:00:00Z</td>
+          <td th:text="${item.endTime}">2026-08-27T10:30:00Z</td>
+          <td th:text="${item.details != null ? item.details : '-'}">Details</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

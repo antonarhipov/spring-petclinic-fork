@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+
+<body>
+
+  <h2 th:text="#{appointmentDetails}">Appointment Details</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" role="alert">
+    <span th:text="${successMessage}">Success</span>
+  </div>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+    <span th:text="${errorMessage}">Error</span>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <span th:text="#{appointment}">Appointment</span> #<span th:text="${appointment.id}">1</span>
+      </h5>
+      <span class="badge" th:classappend="${appointment.status.name() == 'BOOKED' ? 'bg-success' : (appointment.status.name() == 'COMPLETED' ? 'bg-primary' : (appointment.status.name() == 'CANCELLED' ? 'bg-danger' : 'bg-warning'))}" th:text="${appointment.status}">BOOKED</span>
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered mb-4">
+        <tbody>
+          <tr>
+            <th th:text="#{owner}">Owner</th>
+            <td>
+              <a th:href="@{/owners/{id}(id=${appointment.ownerId})}" th:text="${appointment.ownerName}">Joe Bloggs</a>
+            </td>
+          </tr>
+          <tr>
+            <th th:text="#{pet}">Pet</th>
+            <td th:text="${appointment.petName}">Leo</td>
+          </tr>
+          <tr>
+            <th th:text="#{veterinarian}">Veterinarian</th>
+            <td th:text="${appointment.vetName}">Dr. James Carter</td>
+          </tr>
+          <tr>
+            <th th:text="#{careType}">Care Type</th>
+            <td th:text="${appointment.careType}">GENERAL</td>
+          </tr>
+          <tr>
+            <th th:text="#{specialty}">Specialty</th>
+            <td th:text="${appointment.requiredSpecialtyName != null ? appointment.requiredSpecialtyName : '-'}">-</td>
+          </tr>
+          <tr>
+            <th th:text="#{startTime}">Start Time</th>
+            <td th:text="${appointment.startTime}">2026-08-28T14:00:00Z</td>
+          </tr>
+          <tr>
+            <th th:text="#{endTime}">End Time</th>
+            <td th:text="${appointment.endTime}">2026-08-28T14:30:00Z</td>
+          </tr>
+          <tr>
+            <th th:text="#{duration}">Duration</th>
+            <td><span th:text="${appointment.durationMinutes}">30</span> <span th:text="#{minutes}">minutes</span></td>
+          </tr>
+          <tr>
+            <th th:text="#{bookingSource}">Booking Source</th>
+            <td th:text="${appointment.bookingSource}">STAFF_DIRECT</td>
+          </tr>
+          <tr th:if="${appointment.offlineReason != null}">
+            <th th:text="#{offlineReason}">Offline Reason</th>
+            <td th:text="${appointment.offlineReason}">Reason</td>
+          </tr>
+          <tr th:if="${appointment.cancellationReason != null}">
+            <th th:text="#{cancellationReason}">Cancellation Reason</th>
+            <td th:text="${appointment.cancellationReason}">Reason</td>
+          </tr>
+          <tr th:if="${appointment.completedAt != null}">
+            <th th:text="#{completedAt}">Completed At</th>
+            <td th:text="${appointment.completedAt}">2026-08-28T15:00:00Z</td>
+          </tr>
+          <tr th:if="${appointment.completionNotes != null}">
+            <th th:text="#{clinicalNotes}">Clinical Description</th>
+            <td th:text="${appointment.completionNotes}">Notes</td>
+          </tr>
+          <tr th:if="${appointment.visitId != null}">
+            <th th:text="#{linkedVisit}">Linked Visit</th>
+            <td><span th:text="#{visit}">Visit</span> #<span th:text="${appointment.visitId}">1</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Staff Actions for BOOKED appointment -->
+      <div th:if="${appointment.status.name() == 'BOOKED'}" class="row g-3">
+        <!-- Reschedule Link -->
+        <div class="col-12 mb-2">
+          <a th:href="@{/scheduling/staff/appointments/{id}/reschedule(id=${appointment.id})}" class="btn btn-warning me-2" th:text="#{rescheduleAppointment}">Reschedule Appointment</a>
+        </div>
+
+        <!-- Complete Appointment Form -->
+        <div class="col-md-6">
+          <div class="card border-primary h-100">
+            <div class="card-header bg-primary text-white">
+              <h6 class="mb-0" th:text="#{completeAppointment}">Complete Appointment</h6>
+            </div>
+            <div class="card-body">
+              <p class="small text-muted" th:text="#{completeAppointmentHelp}">Only available at or after scheduled end time. Creates a permanent clinical Visit record.</p>
+              <form th:action="@{/scheduling/staff/appointments/{id}/complete(id=${appointment.id})}" method="post">
+                <div class="mb-3">
+                  <label for="completionNotes" class="form-label"><strong th:text="#{clinicalNotes}">Clinical Description</strong> *</label>
+                  <textarea name="completionNotes" id="completionNotes" class="form-control" rows="3" required th:placeholder="#{clinicalNotesPlaceholder}"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success" th:text="#{completeAppointment}">Record Completion & Create Visit</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancel / No-Show Forms -->
+        <div class="col-md-6">
+          <div class="card border-danger mb-3">
+            <div class="card-header bg-danger text-white">
+              <h6 class="mb-0" th:text="#{cancelAppointment}">Cancel Appointment</h6>
+            </div>
+            <div class="card-body">
+              <form th:action="@{/scheduling/staff/appointments/{id}/cancel(id=${appointment.id})}" method="post">
+                <div class="mb-3">
+                  <label for="staffCancelReason" class="form-label"><strong th:text="#{cancellationReason}">Cancellation Reason</strong> *</label>
+                  <input type="text" name="cancellationReason" id="staffCancelReason" class="form-control" required th:placeholder="#{cancellationReasonRequired}" />
+                </div>
+                <button type="submit" class="btn btn-danger" th:text="#{cancelAppointment}">Cancel Appointment</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+              <h6 class="mb-0" th:text="#{markNoShow}">Mark No-Show</h6>
+            </div>
+            <div class="card-body">
+              <p class="small text-muted" th:text="#{markNoShowHelp}">Available after scheduled end time if the pet owner did not attend.</p>
+              <form th:action="@{/scheduling/staff/appointments/{id}/no-show(id=${appointment.id})}" method="post">
+                <button type="submit" class="btn btn-outline-secondary" th:text="#{markNoShow}">Mark as No-Show</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Staff Actions for NO_SHOW appointment (Correct to Complete) -->
+      <div th:if="${appointment.status.name() == 'NO_SHOW'}" class="card border-primary mt-3">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0" th:text="#{correctToComplete}">Correct No-Show to Completed</h6>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/scheduling/staff/appointments/{id}/complete(id=${appointment.id})}" method="post">
+            <div class="mb-3">
+              <label for="noShowCompletionNotes" class="form-label"><strong th:text="#{clinicalNotes}">Clinical Description</strong> *</label>
+              <textarea name="completionNotes" id="noShowCompletionNotes" class="form-control" rows="3" required th:placeholder="#{clinicalNotesPlaceholder}"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" th:text="#{completeAppointment}">Mark Completed & Create Visit</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a th:href="@{/scheduling/calendar}" class="btn btn-outline-primary" th:text="#{backToCalendar}">Back to Calendar</a>
+    <a th:href="@{/owners/{id}(id=${appointment.ownerId})}" class="btn btn-secondary ms-2" th:text="#{ownerInformation}">Owner Profile</a>
+  </div>
+
+</body>
+</html>

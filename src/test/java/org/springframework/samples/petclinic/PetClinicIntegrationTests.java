@@ -50,17 +50,40 @@ public class PetClinicIntegrationTests {
 	}
 
 	@Test
-	void ownerDetails() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+	void ownerDetailsRequiresAuthentication() {
+		RestTemplate template = nonRedirectingTemplate();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		// Staff-only route: unauthenticated callers are redirected to the login form.
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+		assertThat(result.getHeaders().getLocation()).isNotNull();
+		assertThat(result.getHeaders().getLocation().toString()).contains("/login");
 	}
 
 	@Test
-	void ownerList() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+	void ownerListRequiresAuthentication() {
+		RestTemplate template = nonRedirectingTemplate();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners?lastName=").build(), String.class);
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+		assertThat(result.getHeaders().getLocation()).isNotNull();
+		assertThat(result.getHeaders().getLocation().toString()).contains("/login");
+	}
+
+	@Test
+	void publicHomeIsAccessible() {
+		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
+		ResponseEntity<String> result = template.exchange(RequestEntity.get("/").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	private RestTemplate nonRedirectingTemplate() {
+		java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+			.followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+			.build();
+		org.springframework.http.client.JdkClientHttpRequestFactory requestFactory = new org.springframework.http.client.JdkClientHttpRequestFactory(
+				httpClient);
+		RestTemplate template = new RestTemplate(requestFactory);
+		template.setUriTemplateHandler(builder.baseUri("http://localhost:" + port).build().getUriTemplateHandler());
+		return template;
 	}
 
 	public static void main(String[] args) {

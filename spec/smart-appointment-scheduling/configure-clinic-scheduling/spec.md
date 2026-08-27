@@ -37,7 +37,7 @@ Staff maintain the clinic rules, veterinarian catalog, recurring availability, d
 
 ### Effects of configuration changes
 
-- Confirmed appointments stay pinned when a new closure, leave period, or reduced schedule conflicts with them. The system flags each conflict for staff resolution.
+- **Confirmed appointments stay** `pinned` when a new closure, leave period, or reduced schedule conflicts with them. The system flags each conflict for staff resolution.
 - A configuration change that conflicts with a pinned appointment requires a reason. Other configuration changes record their before/after values without mandatory prose.
 - Every valid request captures duration rules, named-period definitions, owner-horizon length, and guided-hold duration before language and consent routing. Later setting changes do not alter those captured values or a horizon materialized at owner confirmation or initial staff fallback.
 - Every new solve uses the live veterinarian catalog, appointments, holds, leave, exceptions, and closures.

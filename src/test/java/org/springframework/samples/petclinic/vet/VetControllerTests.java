@@ -22,6 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.samples.petclinic.security.CustomAuthenticationFailureHandler;
+import org.springframework.samples.petclinic.security.CustomAuthenticationSuccessHandler;
+import org.springframework.samples.petclinic.security.WebMvcSecurityTestConfig;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -33,6 +37,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -40,6 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test class for the {@link VetController}
  */
 
+@Import(WebMvcSecurityTestConfig.class)
 @WebMvcTest(VetController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
@@ -47,6 +54,12 @@ class VetControllerTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private CustomAuthenticationSuccessHandler successHandler;
+
+	@MockitoBean
+	private CustomAuthenticationFailureHandler failureHandler;
 
 	@MockitoBean
 	private VetRepository vets;
@@ -82,7 +95,7 @@ class VetControllerTests {
 	@Test
 	void showVetListHtml() throws Exception {
 
-		mockMvc.perform(MockMvcRequestBuilders.get("/vets.html?page=1"))
+		mockMvc.perform(MockMvcRequestBuilders.get("/vets.html?page=1").with(user("staff1").roles("STAFF")))
 			.andExpect(status().isOk())
 			.andExpect(model().attributeExists("listVets"))
 			.andExpect(view().name("vets/vetList"));
@@ -91,7 +104,8 @@ class VetControllerTests {
 
 	@Test
 	void showResourcesVetList() throws Exception {
-		ResultActions actions = mockMvc.perform(get("/vets").accept(MediaType.APPLICATION_JSON))
+		ResultActions actions = mockMvc
+			.perform(get("/vets").accept(MediaType.APPLICATION_JSON).with(user("staff1").roles("STAFF")))
 			.andExpect(status().isOk());
 		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.vetList[0].id").value(1));

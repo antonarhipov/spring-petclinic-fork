@@ -860,3 +860,94 @@ tasks:
           - "Retention, deadline processing, and startup recovery are idempotent and never extend deadlines or redispatch interrupted automation."
           - "Detailed diagnostics are staff-only and Ollama remains an optional runtime dependency."
           - "Maven passes the H2/MySQL/PostgreSQL migration and concurrency matrix; Gradle passes the equivalent unit and MVC suite on Java 21."
+
+    - id: phase-6
+      name: "Deterministic relative-calendar availability"
+      description: "Carry bounded week and month expressions from the AI contract through normalized persistence and confirmation-time materialization into shared solver and live feasibility."
+      covers:
+        - UC3-AC67
+        - UC3-AC68
+        - UC3-AC69
+        - UC3-AC70
+        - UC3-AC71
+        - UC3-AC72
+        - UC3-AC73
+        - UC3-AC74
+        - UC3-AC75
+        - UC3-AC76
+        - UC3-AC77
+        - UC3-AC78
+        - UC3-AC79
+        - UC3-AC80
+        - UC3-AC81
+        - UC3-AC82
+        - UC3-AC83
+
+      tasks:
+        - id: task-6.1
+          name: "Persist symbolic and materialized availability windows"
+          description: "Add portable V3 migrations, request-owned symbolic-window and concrete-interval aggregates, ordered repositories, lifecycle cleanup, and mappings for ALLOWED, PREFERRED, and EXCLUDED availability. Keep legacy scalar window columns non-authoritative."
+          artifact: "src/main/resources/db/migration/{h2,mysql,postgres}/V3__relative_calendar_windows.sql; scheduling availability entities/repositories and migration tests"
+          covers:
+            acs: []
+            rules: [RULE-9, RULE-13]
+          depends_on: [task-1.2, task-1.3]
+          complexity: "M"
+          validation: "Run H2 migration/mapping tests plus repository tests for ordered multiple windows, half-open intervals, request ownership, replacement, and cascade cleanup."
+          risk: "Review hotspots 3 and 5: lifecycle replacement and equivalent schemas must remain transactional and portable across all three database dialects."
+
+        - id: task-6.2
+          name: "Extend and validate the bounded AI calendar contract"
+          description: "Send clinic-local current date and zone, replace the lossy window shape with strict symbolic enums and parameters, validate allowed field combinations and offsets, map unqualified wording to ALLOWED and explicit preference wording to PREFERRED, resolve captured named-period times, and persist valid symbolic windows."
+          artifact: "AIInterpretationClient DTO/schema/prompt, SchedulingRequestService interpretation mapping, symbolic-window validation, and adapter/service tests"
+          covers:
+            acs: [UC3-AC67, UC3-AC68, UC3-AC79, UC3-AC80]
+            rules: [RULE-2, RULE-10, RULE-12, RULE-13, UC3-RULE4, UC3-RULE6, UC3-RULE11, UC3-RULE13]
+          depends_on: [task-6.1]
+          complexity: "L"
+          validation: "Parse representative explicit-date, weekday, relative-week, end-of-week, relative/named-month, ordinal-week, allowed/preferred/excluded, and named-period JSON; reject unknown or invalid combinations; verify the original next-Thursday-after-lunch response persists as ALLOWED NEXT_WEEK Thursday AFTERNOON."
+          risk: "Review hotspot 1: the closed schema changes incompatibly and must fail explicitly rather than accepting old or partially populated model output."
+
+        - id: task-6.3
+          name: "Resolve calendar expressions at confirmation"
+          description: "Implement one java.time resolver for confirmation-local anchoring, Monday-Sunday week offsets, Thursday-Sunday end-of-week ranges, whole relative and named months, clipped ordinal month rows, weekday/time intersection, unique DST offsets, next-grid/horizon clipping, and atomic interval materialization with outside-horizon clarification."
+          artifact: "scheduling availability resolver/materializer service and table-driven unit/application-service tests"
+          covers:
+            acs: [UC3-AC69, UC3-AC70, UC3-AC71, UC3-AC74, UC3-AC75, UC3-AC76, UC3-AC77, UC3-AC78, UC3-AC81, UC3-AC82, UC3-AC83]
+            rules: [RULE-1, RULE-2, RULE-12, RULE-13, UC3-RULE7, UC3-RULE12, UC3-RULE13]
+          depends_on: [task-6.1, task-6.2]
+          complexity: "L"
+          validation: "Use a fixed Clock to assert exact intervals for week/month/year rollover, partial first/last calendar rows, combined Thursday afternoon, DST gaps/overlaps, lower and upper horizon clipping, and no solver dispatch when the hard range lies outside the horizon."
+          risk: "Review hotspot 2: every combined calendar component must intersect rather than accidentally broaden the owner's allowed space."
+
+        - id: task-6.4
+          name: "Enforce materialized windows in matching and live feasibility"
+          description: "Load materialized intervals into immutable planning snapshots, compute CandidateSlot allowed/excluded/preferred flags from half-open containment/overlap, preserve Timefold hard and soft ordering, and use the same interval policy during guided-hold live revalidation."
+          artifact: "SchedulingProblemFactory, shared owner-window feasibility policy, ReservationService/LiveFeasibility integration, and solver tests"
+          covers:
+            acs: [UC3-AC72, UC3-AC73, UC3-AC79, UC3-AC80]
+            rules: [RULE-4, RULE-5, RULE-13, UC3-RULE12, UC3-RULE13]
+          depends_on: [task-6.3, task-3.1, task-3.3]
+          complexity: "L"
+          validation: "Prove candidates outside ALLOWED or overlapping EXCLUDED are hard-infeasible, PREFERRED wins before later ranks, live hold checks use the same intervals, closed weekends yield no candidate, and effective open-weekend availability remains eligible."
+          risk: "Review hotspot 4: solver selection and transactional hold revalidation must not diverge on owner-window semantics."
+
+        - id: task-6.5
+          name: "Expose resolved availability and verify the end-to-end examples"
+          description: "Render symbolic and resolved availability during owner review/status, localize outside-horizon clarification, add the original next-week-Thursday-after-lunch regression plus month and ordinal-week flows, and run accumulated Maven/Gradle and migration validation."
+          artifact: "request status projection/template/messages, end-to-end scheduling tests, and build verification"
+          covers:
+            acs: [UC3-AC68, UC3-AC69, UC3-AC70, UC3-AC71, UC3-AC72, UC3-AC73, UC3-AC74, UC3-AC75, UC3-AC76, UC3-AC77, UC3-AC78, UC3-AC79, UC3-AC80, UC3-AC81, UC3-AC82, UC3-AC83]
+            rules: [RULE-2, RULE-5, RULE-8, RULE-9, RULE-11, RULE-13, UC3-RULE8, UC3-RULE11, UC3-RULE12, UC3-RULE13]
+          depends_on: [task-6.2, task-6.3, task-6.4]
+          complexity: "M"
+          validation: "Verify the August 27 request resolves only to September 3 afternoon in clinic time, whole next-month and in-N-month ranges, second/last clipped month rows, end-of-week weekend behavior, horizon clarification, localized rendering, git diff checks, and both Java 21 build suites."
+
+      checkpoint:
+        id: cp-6
+        description: "Review deterministic relative-calendar interpretation and enforcement across AI, persistence, confirmation, matching, and live reservation."
+        criteria:
+          - "The original next-week Thursday after-lunch request cannot produce an August 27 or morning suggestion."
+          - "Week, month, ordinal-week, named-month, intersection, DST, and horizon semantics match UC3-AC67 through UC3-AC83."
+          - "Normalized symbolic/materialized rows migrate and behave equivalently across H2, MySQL, and PostgreSQL."
+          - "Timefold and live hold revalidation enforce the same allowed, preferred, and excluded intervals."

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'audit')}">
+
+<body>
+
+  <h2 th:text="#{auditLog}">Audit Log</h2>
+
+  <div th:if="${#lists.isEmpty(auditRecords)}" class="alert alert-info" role="alert">
+    <span th:text="#{noAuditRecords}">No audit records found.</span>
+  </div>
+
+  <table th:if="${not #lists.isEmpty(auditRecords)}" class="table table-striped table-sm">
+    <thead>
+      <tr>
+        <th th:text="#{id}">ID</th>
+        <th th:text="#{date}">Date</th>
+        <th th:text="#{event}">Event</th>
+        <th th:text="#{actor}">Actor</th>
+        <th th:text="#{role}">Role</th>
+        <th th:text="#{targetType}">Target Type</th>
+        <th th:text="#{targetId}">Target ID</th>
+        <th th:text="#{reason}">Reason</th>
+        <th th:text="#{metadata}">Metadata</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="r : ${auditRecords}">
+        <td th:text="${r.id}">1</td>
+        <td th:text="${r.occurredAt}">2026-08-27T10:00:00Z</td>
+        <td><span class="badge bg-secondary" th:text="${r.eventType}">REQUEST_SUBMITTED</span></td>
+        <td th:text="${r.actorUsername}">owner1</td>
+        <td th:text="${r.actorRole}">OWNER</td>
+        <td th:text="${r.targetEntityType}">SCHEDULING_REQUEST</td>
+        <td th:text="${r.targetEntityId}">101</td>
+        <td th:text="${r.reasonCode}">-</td>
+        <td><code class="small" th:text="${r.metadataJson}">{}</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="d-flex justify-content-between mt-3">
+    <div>
+      <a th:if="${currentPage > 0}" th:href="@{/scheduling/staff/audit(page=${currentPage - 1}, size=${pageSize})}" class="btn btn-outline-secondary btn-sm" th:text="#{previous}">&laquo; Previous</a>
+      <a th:if="${#lists.size(auditRecords) == pageSize}" th:href="@{/scheduling/staff/audit(page=${currentPage + 1}, size=${pageSize})}" class="btn btn-outline-secondary btn-sm" th:text="#{next}">Next &raquo;</a>
+    </div>
+    <div>
+      <a th:href="@{/}" class="btn btn-secondary" th:text="#{home}">Home</a>
+    </div>
+  </div>
+
+</body>
+</html>

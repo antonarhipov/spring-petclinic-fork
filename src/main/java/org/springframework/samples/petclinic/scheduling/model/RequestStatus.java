@@ -1,0 +1,8 @@
+package org.springframework.samples.petclinic.scheduling.model;
+
+public enum RequestStatus {
+
+	AWAITING_CONSENT, INTERPRETING, CLARIFICATION_REQUIRED, AWAITING_CONFIRMATION, MATCHING, SLOT_HELD, STAFF_QUEUED,
+	STAFF_OFFERED, CONFIRMED, CANCELLED, EXPIRED
+
+}
