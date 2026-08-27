@@ -302,8 +302,8 @@ public class StaffFallbackService {
 				String.valueOf(offer.getId()), "OFFER_ISSUED", Map.of("requestId", String.valueOf(requestId), "vetId",
 						String.valueOf(vetId), "startTime", startTime.toString(), "expiresAt", expiresAt.toString()));
 
-		notificationService.sendNotification(request.getOwner(), "notification.staff.offer.title",
-				"notification.staff.offer.message", startTime.toString(), "/scheduling/requests/" + requestId);
+		notificationService.sendNotification(request.getOwner(), "notification.staffOffer.title",
+				"notification.staffOffer.message", startTime.toString(), "/scheduling/requests/" + requestId);
 
 		return offer;
 	}
@@ -394,8 +394,8 @@ public class StaffFallbackService {
 		auditService.recordEvent(AuditEventType.REQUEST_CONFIRMED, staffUsername, "STAFF", "SCHEDULING_REQUEST",
 				String.valueOf(requestId), "CONFIRMED", Map.of("appointmentId", String.valueOf(appointment.getId())));
 
-		notificationService.sendNotification(request.getOwner(), "notification.appointment.confirmed.title",
-				"notification.appointment.confirmed.message", appointment.getStartTime().toString(),
+		notificationService.sendNotification(request.getOwner(), "notification.appointmentConfirmed.title",
+				"notification.appointmentConfirmed.message", appointment.getStartTime().toString(),
 				"/appointments/" + appointment.getId());
 
 		return appointment;

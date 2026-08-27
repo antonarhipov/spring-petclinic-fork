@@ -128,6 +128,38 @@ class FlywayMigrationTests {
 	}
 
 	@Test
+	void testExistingNotificationMessageKeysAreNormalized() throws Exception {
+		JdbcDataSource ds = createDataSource();
+		Flyway flywayToV3 = Flyway.configure().dataSource(ds).locations("classpath:db/migration/h2").target("3").load();
+		flywayToV3.migrate();
+
+		try (Connection conn = ds.getConnection(); Statement stmt = conn.createStatement()) {
+			stmt.executeUpdate(
+					"INSERT INTO notifications " + "(owner_id, title_key, message_key, is_read, created_at) VALUES "
+							+ "(1, 'notification.appointment.confirmed.title', "
+							+ "'notification.appointment.confirmed.message', FALSE, CURRENT_TIMESTAMP)");
+			stmt.executeUpdate(
+					"INSERT INTO notifications " + "(owner_id, title_key, message_key, is_read, created_at) VALUES "
+							+ "(1, 'notification.staff.offer.title', "
+							+ "'notification.staff.offer.message', FALSE, CURRENT_TIMESTAMP)");
+		}
+
+		Flyway.configure().dataSource(ds).locations("classpath:db/migration/h2").load().migrate();
+
+		try (Connection conn = ds.getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT title_key, message_key FROM notifications ORDER BY id")) {
+			assertThat(rs.next()).isTrue();
+			assertThat(rs.getString("title_key")).isEqualTo("notification.appointmentConfirmed.title");
+			assertThat(rs.getString("message_key")).isEqualTo("notification.appointmentConfirmed.message");
+			assertThat(rs.next()).isTrue();
+			assertThat(rs.getString("title_key")).isEqualTo("notification.staffOffer.title");
+			assertThat(rs.getString("message_key")).isEqualTo("notification.staffOffer.message");
+			assertThat(rs.next()).isFalse();
+		}
+	}
+
+	@Test
 	void testUnknownNonEmptySchemaFailsWithoutBaseline() throws Exception {
 		JdbcDataSource ds = createDataSource();
 

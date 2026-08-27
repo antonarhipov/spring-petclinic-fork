@@ -309,7 +309,8 @@ class ReservationServiceTests {
 		assertThat(appt.getStartTime()).isEqualTo(hold.getStartTime());
 
 		verify(appointmentRepository).save(any(Appointment.class));
-		verify(notificationService).sendNotification(eq(owner), anyString(), anyString(), anyString(), anyString());
+		verify(notificationService).sendNotification(eq(owner), eq("notification.appointmentConfirmed.title"),
+				eq("notification.appointmentConfirmed.message"), anyString(), anyString());
 	}
 
 	@Test

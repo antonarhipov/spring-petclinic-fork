@@ -36,6 +36,9 @@ public class I18nPropertiesSyncTest {
 
 	private static final Pattern HAS_TH_TEXT_ATTRIBUTE = Pattern.compile("th:(u)?text\\s*=\\s*\"[^\"]+\"");
 
+	private static final Pattern NOTIFICATION_MESSAGE_KEY = Pattern
+		.compile("\"(notification\\.[^\"]+\\.(?:title|message))\"");
+
 	@Test
 	void checkNonInternationalizedStrings() throws Exception {
 		Path root = Path.of("src/main");
@@ -132,6 +135,31 @@ public class I18nPropertiesSyncTest {
 
 		if (!report.isEmpty()) {
 			fail("Translation files are not in sync:\n" + report);
+		}
+	}
+
+	@Test
+	void checkNotificationMessageKeysExist() throws Exception {
+		Properties baseProps = new Properties();
+		try (var reader = Files.newBufferedReader(Path.of(I18N_DIR, "messages", BASE_NAME + PROPERTIES))) {
+			baseProps.load(reader);
+		}
+
+		Set<String> referencedKeys = new TreeSet<>();
+		try (Stream<Path> stream = Files.walk(Path.of("src/main/java"))) {
+			for (Path path : stream.filter(p -> p.toString().endsWith(".java")).toList()) {
+				for (String line : Files.readAllLines(path)) {
+					var matcher = NOTIFICATION_MESSAGE_KEY.matcher(line);
+					while (matcher.find()) {
+						referencedKeys.add(matcher.group(1));
+					}
+				}
+			}
+		}
+
+		referencedKeys.removeAll(baseProps.stringPropertyNames());
+		if (!referencedKeys.isEmpty()) {
+			fail("Notification message keys missing from the base bundle:\n  " + String.join("\n  ", referencedKeys));
 		}
 	}
 

@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.scheduling;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -26,6 +27,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -126,8 +128,8 @@ class NotificationControllerTests {
 		Notification n1 = new Notification();
 		n1.setId(101);
 		n1.setOwner(owner);
-		n1.setTitleKey("notification.staffOffer.title");
-		n1.setMessageKey("notification.staffOffer.message");
+		n1.setTitleKey("notification.appointmentConfirmed.title");
+		n1.setMessageKey("notification.appointmentConfirmed.message");
 		n1.setTargetUrl("/requests/1");
 		n1.setRead(false);
 		n1.setCreatedAt(Instant.now());
@@ -153,7 +155,9 @@ class NotificationControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(view().name("scheduling/notifications"))
 			.andExpect(model().attributeExists("notifications"))
-			.andExpect(model().attribute("notifications", hasSize(2)));
+			.andExpect(model().attribute("notifications", hasSize(2)))
+			.andExpect(content().string(containsString("Appointment Confirmed")))
+			.andExpect(content().string(containsString("Your appointment has been successfully booked.")));
 	}
 
 	@Test

@@ -355,7 +355,8 @@ class StaffFallbackServiceTests {
 		assertThat(offer.getExpiresAt()).isEqualTo(fixedNow.plus(Duration.ofHours(24)));
 
 		verify(reservationRepository).save(offer);
-		verify(notificationService).sendNotification(eq(owner), anyString(), anyString(), anyString(), anyString());
+		verify(notificationService).sendNotification(eq(owner), eq("notification.staffOffer.title"),
+				eq("notification.staffOffer.message"), anyString(), anyString());
 	}
 
 	@Test
@@ -434,7 +435,8 @@ class StaffFallbackServiceTests {
 
 		verify(appointmentRepository).save(appt);
 		verify(staffClaimRepository).delete(claim);
-		verify(notificationService).sendNotification(eq(owner), anyString(), anyString(), anyString(), anyString());
+		verify(notificationService).sendNotification(eq(owner), eq("notification.appointmentConfirmed.title"),
+				eq("notification.appointmentConfirmed.message"), anyString(), anyString());
 	}
 
 	@Test

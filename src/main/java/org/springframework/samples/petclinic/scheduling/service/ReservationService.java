@@ -299,8 +299,8 @@ public class ReservationService {
 				"SCHEDULING_REQUEST", String.valueOf(requestId), "CONFIRMED",
 				Map.of("appointmentId", String.valueOf(appointment.getId())));
 
-		notificationService.sendNotification(lockedRequest.getOwner(), "notification.appointment.confirmed.title",
-				"notification.appointment.confirmed.message", appointment.getStartTime().toString(),
+		notificationService.sendNotification(lockedRequest.getOwner(), "notification.appointmentConfirmed.title",
+				"notification.appointmentConfirmed.message", appointment.getStartTime().toString(),
 				"/appointments/" + appointment.getId());
 
 		return appointment;
