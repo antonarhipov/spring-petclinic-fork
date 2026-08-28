@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import org.springframework.samples.petclinic.security.OwnerAccessService;
 
 @Service
 public class SchedulingRequestService {
+
+	private static final Logger logger = LoggerFactory.getLogger(SchedulingRequestService.class);
 
 	private final SchedulingRequestRepository requests;
 
@@ -76,19 +80,28 @@ public class SchedulingRequestService {
 				"INTERPRETATION_REVIEW", null);
 		this.audit.record(actor, correlationId, AuditAction.CONSENT_RECORDED, "revision", revision.getId(), null,
 				Boolean.toString(consent), null);
+		logger.debug(
+				"Scheduling request submitted correlationId={} requestId={} revisionId={} petId={} consent={} emergencyPriority={}",
+				correlationId, request.getId(), revision.getId(), petId, consent, request.isEmergencyPriority());
 		if (request.isEmergencyPriority() || !consent) {
+			logger.debug("Scheduling request routed to staff correlationId={} reason={}", correlationId,
+					request.isEmergencyPriority() ? "EMERGENCY_SCREENING" : "CONSENT_DECLINED");
 			revision.requireStaffReview();
 			this.fallback.route(request);
 			return request;
 		}
 		InterpretationPort.InterpretationResult result = this.interpretation.interpret(sourceText, correlationId);
 		if (!result.isSuccessful()) {
+			logger.debug("Scheduling request routed to staff correlationId={} reason={}", correlationId,
+					result.failure());
 			revision.requireStaffReview();
 			this.fallback.route(request);
 			this.audit.record(actor, correlationId, AuditAction.INTERPRETATION_FALLBACK, "request", request.getId(),
 					null, "STAFF_HANDLING", result.failure().name());
 			return request;
 		}
+		logger.debug("Scheduling request interpretation accepted correlationId={} response={}", correlationId,
+				result.response());
 		applyInterpretation(revision, result.response());
 		return request;
 	}

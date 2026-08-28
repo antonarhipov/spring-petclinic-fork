@@ -58,21 +58,51 @@ public class CandidateSelectionService {
 		Instant limit = first.plus(Duration.ofDays(clinic.getBookingHorizonDays()));
 		List<AppointmentOffer> prior = this.offers.findByRevisionId(revision.getId());
 		List<Vet> sortedVets = this.vets.findAll().stream().sorted(Comparator.comparing(Vet::getId)).toList();
+		long evaluated = 0;
+		long specialtyRejected = 0;
+		long priorOfferRejected = 0;
+		long unavailableRejected = 0;
+		long vetReservedRejected = 0;
+		long petReservedRejected = 0;
+		logger.debug(
+				"Candidate search started correlationId={} strategy=EARLIEST_SLOT_THEN_VET_ID timefoldInvoked=false revisionId={} durationMinutes={} requiredSpecialty={} firstSlot={} limit={} vetCount={} priorOfferCount={}",
+				revision.getCorrelationId(), revision.getId(), duration, revision.getRequiredSpecialty(), first, limit,
+				sortedVets.size(), prior.size());
 		for (Instant slot = first; slot.isBefore(limit); slot = slot.plus(Duration.ofMinutes(15))) {
 			for (Vet vet : sortedVets) {
-				if (requiresUnavailableSpecialty(revision, vet) || excluded(prior, vet, slot)
-						|| !this.availability.isAvailable(vet.getId(), slot, duration)
-						|| !isFree("VETERINARIAN", vet.getId(), slot, duration)
-						|| !isFree("PET", revision.getRequest().getPet().getId(), slot, duration)) {
+				evaluated++;
+				if (requiresUnavailableSpecialty(revision, vet)) {
+					specialtyRejected++;
 					continue;
 				}
-				logger.debug("Candidate selected correlationId={} candidateCount={} score=0 elapsedMs={}",
-						revision.getCorrelationId(), 1, Duration.between(started, this.clock.instant()).toMillis());
+				if (excluded(prior, vet, slot)) {
+					priorOfferRejected++;
+					continue;
+				}
+				if (!this.availability.isAvailable(vet.getId(), slot, duration)) {
+					unavailableRejected++;
+					continue;
+				}
+				if (!isFree("VETERINARIAN", vet.getId(), slot, duration)) {
+					vetReservedRejected++;
+					continue;
+				}
+				if (!isFree("PET", revision.getRequest().getPet().getId(), slot, duration)) {
+					petReservedRejected++;
+					continue;
+				}
+				logger.debug(
+						"Candidate selected correlationId={} timefoldInvoked=false evaluatedCount={} selectedVetId={} selectedStart={} rejectedSpecialty={} rejectedPriorOffer={} rejectedUnavailable={} rejectedVetReserved={} rejectedPetReserved={} elapsedMs={}",
+						revision.getCorrelationId(), evaluated, vet.getId(), slot, specialtyRejected,
+						priorOfferRejected, unavailableRejected, vetReservedRejected, petReservedRejected,
+						Duration.between(started, this.clock.instant()).toMillis());
 				return Optional.of(new CandidateSlot(vet, slot));
 			}
 		}
-		logger.debug("No candidate correlationId={} candidateCount=0 elapsedMs={}", revision.getCorrelationId(),
-				Duration.between(started, this.clock.instant()).toMillis());
+		logger.debug(
+				"No candidate correlationId={} evaluatedCount={} rejectedSpecialty={} rejectedPriorOffer={} rejectedUnavailable={} rejectedVetReserved={} rejectedPetReserved={} elapsedMs={}",
+				revision.getCorrelationId(), evaluated, specialtyRejected, priorOfferRejected, unavailableRejected,
+				vetReservedRejected, petReservedRejected, Duration.between(started, this.clock.instant()).toMillis());
 		return Optional.empty();
 	}
 

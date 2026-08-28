@@ -6,6 +6,8 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +33,7 @@ public class OllamaInterpretationService implements InterpretationPort {
 	public InterpretationResult interpret(String sourceText, String correlationId) {
 		Instant started = Instant.now();
 		try {
-			InterpretationResponse response = this.chatClient.mutate()
+			ResponseEntity<ChatResponse, InterpretationResponse> exchange = this.chatClient.mutate()
 				.build()
 				.prompt()
 				.system("""
@@ -41,21 +43,27 @@ public class OllamaInterpretationService implements InterpretationPort {
 						""")
 				.user(sourceText)
 				.call()
-				.entity(InterpretationResponse.class,
+				.responseEntity(InterpretationResponse.class,
 						specification -> specification.useProviderStructuredOutput().validateSchema());
+			InterpretationResponse response = exchange.entity();
+			logger.debug("AI interpretation mapped correlationId={} model={} response={} metadata={}", correlationId,
+					this.model, response, exchange.response().getMetadata());
 			this.validator.validate(response);
 			logger.debug("AI interpretation completed correlationId={} model={} elapsedMs={} validation=passed",
 					correlationId, this.model, Duration.between(started, Instant.now()).toMillis());
 			return InterpretationResult.success(response);
 		}
 		catch (IllegalArgumentException ex) {
-			logger.debug("AI interpretation rejected correlationId={} model={} validation=failed", correlationId,
-					this.model);
+			logger.debug(
+					"AI interpretation rejected correlationId={} model={} elapsedMs={} validation=failed reason={}",
+					correlationId, this.model, Duration.between(started, Instant.now()).toMillis(), ex.getMessage(),
+					ex);
 			return InterpretationResult.failed(InterpretationFailure.SEMANTIC_VALIDATION);
 		}
 		catch (Exception ex) {
-			logger.debug("AI interpretation unavailable correlationId={} model={} elapsedMs={}", correlationId,
-					this.model, Duration.between(started, Instant.now()).toMillis());
+			logger.debug("AI interpretation unavailable correlationId={} model={} elapsedMs={} reason={}",
+					correlationId, this.model, Duration.between(started, Instant.now()).toMillis(), ex.getMessage(),
+					ex);
 			return InterpretationResult.failed(InterpretationFailure.UNAVAILABLE);
 		}
 	}

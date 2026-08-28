@@ -75,8 +75,20 @@ ollama serve
 ```
 
 Set `spring.ai.ollama.chat.model` (or
-`SPRING_AI_OLLAMA_CHAT_MODEL`) to use another installed model. Test all
-scheduling and baseline behavior with:
+`SPRING_AI_OLLAMA_CHAT_MODEL`) to use another installed model.
+
+The interpretation call disables model thinking, caps the response at 128
+tokens, and keeps the model loaded for ten minutes. These settings keep the
+structured extraction bounded when the selected model supports thinking by
+default. A Spring RestClient customizer uses the JDK request factory with a
+10-second connect timeout and a 120-second read timeout for local inference.
+
+The AI and candidate-selection DEBUG loggers are enabled for local diagnostics.
+AI exchange logs contain the complete owner prompt and Ollama response; disable
+`org.springframework.samples.petclinic.scheduling.ai` DEBUG logging anywhere
+those values must not be retained.
+
+Test all scheduling and baseline behavior with:
 
 ```bash
 ./mvnw test

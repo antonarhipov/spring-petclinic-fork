@@ -18,7 +18,8 @@ public class InterpretationValidator {
 			throw new IllegalArgumentException("Interpretation duration is not configured");
 		}
 		if ("UNCERTAIN".equalsIgnoreCase(response.urgency()) || "UNCERTAIN".equalsIgnoreCase(response.careType())) {
-			throw new IllegalArgumentException("Safety-critical interpretation uncertainty requires staff review");
+			throw new IllegalArgumentException("Safety-critical interpretation uncertainty requires staff review"
+					+ " (careType=" + response.careType() + ", urgency=" + response.urgency() + ")");
 		}
 	}
 
