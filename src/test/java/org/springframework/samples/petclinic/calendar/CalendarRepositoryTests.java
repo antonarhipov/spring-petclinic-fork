@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.calendar;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -53,6 +54,9 @@ class CalendarRepositoryTests {
 	@Autowired
 	private EffectiveAvailabilityResolver resolver;
 
+	@Autowired
+	private GridGenerator gridGenerator;
+
 	@Test
 	void clinicSettingsLoadsFromSeed() {
 		ClinicSettings settings = this.clinicSettingsRepository.getClinicSettings();
@@ -85,6 +89,29 @@ class CalendarRepositoryTests {
 
 		List<InstantInterval> afterClosure = this.resolver.resolve(vet.getId(), monday, settings);
 		assertThat(afterClosure).isEmpty();
+	}
+
+	@Test
+	void weekdayAvailabilityLoadsFromSeedAndProducesFridayCandidates() {
+		List<Vet> vets = this.vetRepository.findAll();
+
+		assertThat(vets).isNotEmpty().allSatisfy(vet -> {
+			List<VetWeeklyShift> shifts = this.shiftRepository.findByVetId(vet.getId());
+			assertThat(shifts).hasSize(5)
+				.extracting(VetWeeklyShift::getDayOfWeek)
+				.containsExactlyInAnyOrder(1, 2, 3, 4, 5);
+			assertThat(shifts).allSatisfy(shift -> {
+				assertThat(shift.getStartLocal()).isEqualTo(LocalTime.of(9, 0));
+				assertThat(shift.getEndLocal()).isEqualTo(LocalTime.of(17, 0));
+			});
+		});
+
+		Vet vet = vets.getFirst();
+		ClinicSettings settings = this.clinicSettingsRepository.getClinicSettings();
+		List<Instant> candidates = this.gridGenerator.generateCandidateStarts(vet.getId(), LocalDate.of(2026, 9, 4), 30,
+				settings);
+
+		assertThat(candidates).hasSize(31).first().isEqualTo(Instant.parse("2026-09-04T07:00:00Z"));
 	}
 
 }

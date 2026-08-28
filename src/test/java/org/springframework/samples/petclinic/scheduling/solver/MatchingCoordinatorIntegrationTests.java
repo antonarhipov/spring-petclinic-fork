@@ -47,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = { PetClinicApplication.class, MatchingCoordinatorIntegrationTests.FixedClockConfig.class },
-		properties = { "petclinic.demo-seeding=false", "timefold.solver.termination.spent-limit=50ms" })
+		properties = { "petclinic.demo-seeding=false", "timefold.solver.termination.spent-limit=2s" })
 @Execution(ExecutionMode.SAME_THREAD)
 class MatchingCoordinatorIntegrationTests {
 

@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService;
 import org.springframework.samples.petclinic.appointment.AppointmentRequestWorkflowService.CurrentOffer;
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MatchingCoordinator {
+
+	private static final Logger logger = LoggerFactory.getLogger(MatchingCoordinator.class);
 
 	private final SchedulingCandidateService candidateService;
 
@@ -114,6 +118,8 @@ public class MatchingCoordinator {
 				best = this.slotSolver.solve(candidates);
 			}
 			catch (RuntimeException ex) {
+				logger.error("Slot solver failed for scheduling request {} with {} candidates", requestId,
+						candidates.size(), ex);
 				this.workflowService.markNoFit(requestId, FallbackReason.SOLVER_UNAVAILABLE);
 				return SuggestionResult.queued(requestId, "Scheduling is unavailable; clinic staff will help");
 			}
@@ -137,6 +143,8 @@ public class MatchingCoordinator {
 						hold.getExpiresAt(), message);
 			}
 			catch (SlotUnavailableException ex) {
+				logger.debug("Selected slot {} was lost while acquiring it for scheduling request {}", best.get(),
+						requestId);
 				lostRaces.add(best.get());
 			}
 		}
