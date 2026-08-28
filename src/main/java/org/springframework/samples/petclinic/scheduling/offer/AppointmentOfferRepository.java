@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -18,6 +19,7 @@ public interface AppointmentOfferRepository extends JpaRepository<AppointmentOff
 			""", nativeQuery = true)
 	Optional<AppointmentOffer> findOwnedById(Integer id, Integer ownerId);
 
+	@EntityGraph(attributePaths = "vet")
 	Optional<AppointmentOffer> findFirstByRevisionIdAndStateOrderByOfferedAtDesc(Integer revisionId, OfferState state);
 
 	List<AppointmentOffer> findByStateAndExpiresAtBefore(OfferState state, Instant instant);

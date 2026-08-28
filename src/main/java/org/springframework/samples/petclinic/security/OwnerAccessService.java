@@ -16,7 +16,7 @@ public class OwnerAccessService {
 
 	@Transactional(readOnly = true)
 	public AuthenticatedOwner currentOwner(Authentication authentication) {
-		Account account = this.accounts.findByUsername(authentication.getName())
+		Account account = this.accounts.findOwnerAccessByUsername(authentication.getName())
 			.orElseThrow(() -> new AccessDeniedException("Account is not available"));
 		if (account.getRole() != AccountRole.OWNER || account.getOwner() == null) {
 			throw new AccessDeniedException("Owner access is required");

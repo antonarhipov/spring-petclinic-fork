@@ -42,6 +42,12 @@ class SecurityConfigurationTests {
 			.andExpect(redirectedUrl("/my/appointments"));
 	}
 
+	@Test
+	void ownerCanOpenTheNewSchedulingRequestPage() throws Exception {
+		this.mvc.perform(get("/my/scheduling/requests/new").session(signIn("george", "george123")))
+			.andExpect(status().isOk());
+	}
+
 	private MockHttpSession signIn(String username, String password) throws Exception {
 		MvcResult result = this.mvc
 			.perform(post("/login").with(csrf()).param("username", username).param("password", password))
