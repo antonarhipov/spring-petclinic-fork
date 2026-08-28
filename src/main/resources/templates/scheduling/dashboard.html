@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+  <h2 th:text="#{appointment.dashboard.title}">My appointments</h2>
+  <a th:href="@{/my/scheduling/requests/new}" th:text="#{appointment.request.link}">Request an appointment</a>
+  <p th:if="${error}" th:text="${error}">Error</p>
+  <h3 th:text="#{appointment.upcoming}">Upcoming appointments</h3>
+  <ul><li th:each="appointment : ${appointments}" th:text="${appointment.startAt + ' - ' + appointment.status}">Appointment</li></ul>
+  <h3 th:text="#{appointment.requests}">Requests</h3>
+  <ul><li th:each="request : ${requests}"><span th:text="${request.state}">Status</span> <a th:if="${request.state.name() == 'OFFER_HELD'}" th:href="@{/my/scheduling/requests/{id}/offer(id=${request.id})}">View offer</a></li></ul>
+</body>
+</html>

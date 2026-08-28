@@ -46,3 +46,8 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Local tooling ###
+.DS_Store
+*.log
+.env*

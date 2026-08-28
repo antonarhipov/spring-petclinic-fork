@@ -1,0 +1,4 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body><h2>Appointment</h2><p th:text="${appointment.status}">Status</p></body>
+</html>

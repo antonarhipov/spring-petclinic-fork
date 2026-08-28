@@ -47,8 +47,9 @@ import org.springframework.http.ResponseEntity;
  * @author Alex Lutz
  */
 // NOT Waiting https://github.com/spring-projects/spring-boot/issues/5574
-@SpringBootTest(webEnvironment = RANDOM_PORT,
-		properties = { "spring.web.error.include-message=ALWAYS", "management.endpoints.access.default=none" })
+@SpringBootTest(webEnvironment = RANDOM_PORT, properties = { "spring.web.error.include-message=ALWAYS",
+		"management.endpoints.access.default=none",
+		"spring.autoconfigure.exclude=org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration,org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration,org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration" })
 @AutoConfigureTestRestTemplate
 class CrashControllerIntegrationTests {
 

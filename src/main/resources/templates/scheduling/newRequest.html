@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+  <h2 th:text="#{appointment.request.title}">Request an appointment</h2>
+  <p class="alert alert-warning" th:text="${guidance}">Urgent care guidance</p>
+  <p th:if="${error}" th:text="${error}">Error</p>
+  <form th:action="@{/my/scheduling/requests}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <label>Pet <select name="petId" required><option th:each="pet : ${pets}" th:value="${pet.id}" th:text="${pet.name}">Pet</option></select></label>
+    <label><span th:text="#{appointment.request.text}">Tell us what your pet needs</span> <textarea name="sourceText" minlength="10" maxlength="2000" required></textarea></label>
+    <label><input type="checkbox" name="consent" value="true"> <span th:text="#{appointment.request.consent.label}">I consent to automated interpretation of this text.</span></label>
+    <button type="submit" th:text="#{appointment.continue}">Continue</button>
+  </form>
+</body>
+</html>

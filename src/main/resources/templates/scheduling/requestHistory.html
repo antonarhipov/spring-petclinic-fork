@@ -1,0 +1,4 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body><h2>Request history</h2><ul><li th:each="request : ${requests}" th:text="${request.state}">Request</li></ul></body>
+</html>

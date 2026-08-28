@@ -14,7 +14,7 @@ See the presentation here:
 ## Run Petclinic locally
 
 Spring Petclinic is a [Spring Boot](https://spring.io/guides/gs/spring-boot) application built using [Maven](https://spring.io/guides/gs/maven/) or [Gradle](https://spring.io/guides/gs/gradle/).
-Java 17 or later is required for the build, and the application can run with Java 17 or newer.
+Java 21 or later is required for the build and application runtime.
 
 You first need to clone the project locally:
 
@@ -57,6 +57,31 @@ docker run -p 8080:8080 docker.io/library/spring-petclinic:latest
 Our issue tracker is available [here](https://github.com/spring-projects/spring-petclinic/issues).
 
 ## Database configuration
+
+### Smart appointment scheduling
+
+Scheduling schema and Petclinic reference data are managed by vendor-specific
+Flyway migrations. The default H2 profile is ready to use; use the `mysql` or
+`postgres` profile for persistent database validation. Local and default
+profiles seed `george/george123` and `admin/admin123` demo accounts.
+
+Automated interpretation uses a local Ollama model. Pull and run the default
+model before exercising the consented owner flow:
+
+```bash
+ollama pull gemma4:latest
+ollama serve
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Set `spring.ai.ollama.chat.model` (or
+`SPRING_AI_OLLAMA_CHAT_MODEL`) to use another installed model. Test all
+scheduling and baseline behavior with:
+
+```bash
+./mvnw test
+./gradlew test
+```
 
 In its default configuration, Petclinic uses an in-memory database (H2) which
 gets populated at startup with data. The h2 console is exposed at `http://localhost:8080/h2-console`,

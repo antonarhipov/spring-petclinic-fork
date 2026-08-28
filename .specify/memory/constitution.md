@@ -1,50 +1,101 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: unversioned scaffold -> 1.0.0
+- Modified principles:
+  - Template principle 1 -> I. Specification-Driven Delivery
+  - Template principle 2 -> II. Domain and Access Integrity
+  - Template principle 3 -> III. Testable Behavior and Regression Coverage
+  - Template principle 4 -> IV. Transactional Scheduling and Persistent Data
+  - Template principle 5 -> V. Safe, Operable Simplicity
+- Added sections: Technology and Security Constraints; Development Workflow
+- Removed sections: none
+- Follow-up TODOs: none
+-->
+# Spring PetClinic Fork Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Specification-Driven Delivery
+Every feature or behavior change MUST have a written specification with
+testable acceptance criteria and explicit scope boundaries before implementation
+begins. Plans and tasks MUST trace to those criteria. Changes outside the
+approved scope require an explicit specification amendment. This prevents
+accidental product expansion and keeps behavior reviewable.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Domain and Access Integrity
+Domain invariants, ownership checks, authorization, and state transitions MUST
+be enforced on the server, not only in views or clients. A user MUST access or
+mutate only records they are authorized to handle; staff actions that affect
+appointments, availability, or account state MUST be attributable. This
+protects clinic data and makes scheduling outcomes trustworthy.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Testable Behavior and Regression Coverage
+Every changed behavior MUST have automated regression coverage at the narrowest
+appropriate layer. Controller changes require MVC tests, persistence rules
+require data tests, and cross-layer, transaction, or database-specific behavior
+requires integration tests. Tests MUST cover authorization, validation, failure,
+and concurrency paths whenever the changed behavior has them. This preserves
+the PetClinic application's established test-first feedback loop.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Transactional Scheduling and Persistent Data
+Booking, cancellation, rescheduling, and hold transitions MUST be atomic and
+must preserve calendar consistency under concurrent requests. Persistent schema
+changes MUST be versioned through Flyway once migration-based schema management
+is introduced; migrations and scheduling behavior MUST remain compatible with
+H2, MySQL, and PostgreSQL. This prevents double booking, data loss, and
+environment-specific correctness defects.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Safe, Operable Simplicity
+Implement the smallest solution that satisfies the specified behavior. New
+external services MUST have explicit timeouts, observable failures, and a
+user-safe fallback; sensitive owner, pet, credential, and AI-request data MUST
+not be exposed in logs or unauthorized views. New configuration MUST use
+documented defaults and validation. This keeps a POC reliable without turning
+it into an unbounded platform.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technology and Security Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+The application MUST remain compatible with Java 17+ and the established Spring
+Boot, Spring MVC, Thymeleaf, and Spring Data JPA architecture unless a versioned
+design decision explicitly replaces part of that stack. Maven and Gradle remain
+supported build paths.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Credentials, tokens, and other secrets MUST be supplied through secure runtime
+configuration and MUST NOT be committed. Passwords MUST be stored only as
+one-way hashes. Authentication, session protection, CSRF protection, and
+server-side authorization are mandatory for authenticated capabilities.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Database behavior MUST be portable across supported profiles. H2 may support
+fast local feedback but MUST NOT be the sole proof of persistence or
+concurrency-sensitive behavior.
+
+## Development Workflow
+
+Feature work MUST begin with a specification, then a plan and dependency-ordered
+tasks when the change is substantial. Design review MUST identify affected
+roles, state transitions, persistence, failure handling, and test strategy.
+
+Implementers MUST run the smallest existing relevant test command before
+expanding validation to broader suites when needed. A change that modifies
+database semantics, authorization, request lifecycles, or external integration
+failure behavior MUST include focused tests for those contracts.
+
+Reviews MUST reject unrelated refactors, unversioned schema changes after
+Flyway adoption, exposed sensitive data, and behavior that bypasses domain or
+authorization rules. Contributions MUST follow repository formatting and
+contribution requirements, including the required Signed-off-by trailer.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes conflicting development practices for this
+repository. Amendments require a documented rationale, impact assessment,
+updated version, and review of affected specifications, plans, tasks, tests, and
+documentation.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Constitution versions use semantic versioning: MAJOR for incompatible principle
+removal or redefinition, MINOR for a new principle or materially expanded
+governance, and PATCH for non-semantic clarifications. Every feature plan and
+code review MUST assess compliance with these principles. Exceptions require a
+documented, time-bounded rationale and explicit approval before implementation.
+
+**Version**: 1.0.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28

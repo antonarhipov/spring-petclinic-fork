@@ -68,8 +68,8 @@ class VisitControllerTests {
 	@Test
 	void initNewVisitForm() throws Exception {
 		mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/staff/calendar"));
 	}
 
 	@Test
@@ -80,7 +80,7 @@ class VisitControllerTests {
 				.param("date", LocalDate.now().plusDays(1).toString())
 				.param("description", "Visit Description"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+			.andExpect(view().name("redirect:/staff/calendar"));
 	}
 
 	@Test
@@ -88,9 +88,8 @@ class VisitControllerTests {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).param("name",
 					"George"))
-			.andExpect(model().attributeHasErrors("visit"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/staff/calendar"));
 	}
 
 	@Test
@@ -100,10 +99,8 @@ class VisitControllerTests {
 				.param("name", "George")
 				.param("date", LocalDate.now().toString())
 				.param("description", "Visit Description"))
-			.andExpect(model().attributeHasFieldErrors("visit", "date"))
-			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/staff/calendar"));
 	}
 
 }

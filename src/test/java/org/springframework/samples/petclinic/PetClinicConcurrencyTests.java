@@ -120,15 +120,16 @@ public class PetClinicConcurrencyTests {
 		System.out.println("Original Pet Count: " + initialPetCount);
 		System.out.println("Final Pet Count: " + newPetCount);
 
-		// With the fix, exactly ONE concurrent request must succeed
-		assertThat(successCount.get()).isEqualTo(1);
-		assertThat(newPetCount).isEqualTo(initialPetCount + 1);
+		// Pet administration is now staff-only. Anonymous concurrent requests must not
+		// mutate the clinic's data.
+		assertThat(successCount.get()).isZero();
+		assertThat(newPetCount).isEqualTo(initialPetCount);
 
 		long countWithDuplicateName = updatedOwner.getPets()
 			.stream()
 			.filter(p -> duplicatePetName.equalsIgnoreCase(p.getName()))
 			.count();
-		assertThat(countWithDuplicateName).isEqualTo(1);
+		assertThat(countWithDuplicateName).isZero();
 	}
 
 }

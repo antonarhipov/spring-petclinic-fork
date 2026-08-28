@@ -1,0 +1,4 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'audit')}">
+<body><h2>Scheduling audit</h2><ul><li th:each="record : ${records}" th:text="${record.action + ' ' + record.targetId}">Audit record</li></ul></body>
+</html>

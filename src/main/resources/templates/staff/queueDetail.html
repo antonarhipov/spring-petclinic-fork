@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
+<body>
+  <h2>Queue item</h2><p th:text="${item.state}">State</p>
+  <form th:action="@{/staff/queue/{id}/claim(id=${item.id})}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><button th:text="#{appointment.queue.claim}">Claim</button></form>
+  <form th:action="@{/staff/queue/{id}/interpretation(id=${item.id})}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><input name="visitReason" required><select name="duration"><option th:text="#{appointment.duration.15}">15</option><option th:text="#{appointment.duration.30}">30</option><option th:text="#{appointment.duration.45}">45</option><option th:text="#{appointment.duration.60}">60</option></select><input name="careType" value="GENERAL" required><input name="specialty"><button th:text="#{appointment.interpretation.save}">Save interpretation</button></form>
+  <form th:action="@{/staff/queue/{id}/offers(id=${item.id})}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><button th:text="#{appointment.offer.make}">Make offer</button></form>
+</body>
+</html>

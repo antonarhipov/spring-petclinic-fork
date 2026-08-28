@@ -16,7 +16,7 @@ version = '4.0.0-SNAPSHOT'
 
 java {
   toolchain {
-    languageVersion = JavaLanguageVersion.of(17)
+    languageVersion = JavaLanguageVersion.of(21)
   }
 }
 
@@ -31,11 +31,21 @@ ext.webjarsFontawesomeVersion = "4.7.0"
 ext.webjarsBootstrapVersion = "5.3.8"
 
 dependencies {
+  implementation platform('org.springframework.ai:spring-ai-bom:2.0.1')
+  implementation platform('ai.timefold.solver:timefold-solver-bom:2.5.0')
   implementation 'org.springframework.boot:spring-boot-starter-cache'
   implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
   implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+  implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
   implementation 'org.springframework.boot:spring-boot-starter-webmvc'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
+  implementation 'org.flywaydb:flyway-core'
+  runtimeOnly 'org.flywaydb:flyway-mysql'
+  runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+  implementation 'org.springframework.boot:spring-boot-flyway'
+  implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+  implementation 'ai.timefold.solver:timefold-solver-spring-boot-starter'
   implementation 'javax.cache:cache-api'
   implementation 'jakarta.xml.bind:jakarta.xml.bind-api'
   runtimeOnly 'org.springframework.boot:spring-boot-starter-actuator'
@@ -54,6 +64,8 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-docker-compose'
   testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
   testImplementation 'org.testcontainers:testcontainers-mysql'
+  testImplementation 'org.testcontainers:testcontainers-postgresql'
+  testImplementation 'org.springframework.security:spring-security-test'
   checkstyle "io.spring.javaformat:spring-javaformat-checkstyle:${springJavaformatCheckstyleVersion}"
   checkstyle "com.puppycrawl.tools:checkstyle:${checkstyleVersion}"
 }

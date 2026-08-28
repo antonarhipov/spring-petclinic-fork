@@ -89,7 +89,7 @@ class VisitController {
 	// called
 	@GetMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String initNewVisitForm() {
-		return "pets/createOrUpdateVisitForm";
+		return "redirect:/staff/calendar";
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before processNewVisitForm is
@@ -97,18 +97,9 @@ class VisitController {
 	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
 			BindingResult result, RedirectAttributes redirectAttributes) {
-		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now())) {
-			result.rejectValue("date", "typeMismatch.visitDate");
-		}
-
-		if (result.hasErrors()) {
-			return "pets/createOrUpdateVisitForm";
-		}
-
-		owner.addVisit(petId, visit);
-		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
-		return "redirect:/owners/{ownerId}";
+		redirectAttributes.addFlashAttribute("message",
+				"Future care is scheduled through appointments; visits are retained as completed-care history.");
+		return "redirect:/staff/calendar";
 	}
 
 }

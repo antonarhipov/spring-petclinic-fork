@@ -16,12 +16,18 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.time.LocalDate;
+import java.time.Instant;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.samples.petclinic.model.BaseEntity;
+import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.vet.Vet;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 
@@ -41,6 +47,20 @@ public class Visit extends BaseEntity {
 
 	@NotBlank
 	private String description;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "appointment_id")
+	private Appointment appointment;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "vet_id")
+	private Vet veterinarian;
+
+	@Column(name = "completed_at")
+	private Instant completedAt;
+
+	@Column(name = "clinical_notes")
+	private String clinicalNotes;
 
 	/**
 	 * Creates a new instance of Visit for tomorrow
@@ -63,6 +83,19 @@ public class Visit extends BaseEntity {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public Integer getAppointmentId() {
+		return this.appointment == null ? null : this.appointment.getId();
+	}
+
+	public void completeFor(Appointment appointment, Vet veterinarian, Instant completedAt, String clinicalNotes) {
+		this.appointment = appointment;
+		this.veterinarian = veterinarian;
+		this.completedAt = completedAt;
+		this.clinicalNotes = clinicalNotes;
+		this.date = completedAt.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+		this.description = "Completed appointment";
 	}
 
 }
