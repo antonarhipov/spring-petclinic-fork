@@ -89,6 +89,7 @@ public class OwnerSchedulingController {
 	@GetMapping("/my/scheduling/requests/{requestId}/offer")
 	public String offer(@PathVariable Integer requestId, Authentication actor, Model model) {
 		SchedulingRequest request = this.query.ownedRequest(requestId, actor);
+		model.addAttribute("request", request);
 		model.addAttribute("offer",
 				this.offerRepository
 					.findFirstByRevisionIdAndStateOrderByOfferedAtDesc(request.getCurrentRevision().getId(),

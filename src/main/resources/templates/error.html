@@ -1,21 +1,19 @@
 <!DOCTYPE html>
 
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'error')}">
-
 <body>
-  <img src="../static/resources/images/pets.png" th:src="@{/resources/images/pets.png}" />
-  <!-- Title: Something happened -->
-  <h2 th:text="#{somethingHappened}">Something happened...</h2>
-
-  <!-- Status-specific error message -->
-  <p th:switch="${status}">
-    <span th:case="404" th:text="#{error.404}">The requested page was not found.</span>
-    <span th:case="500" th:text="#{error.500}">An internal server error occurred.</span>
-    <span th:case="*" th:text="#{error.general}">An unexpected error occurred.</span>
-  </p>
-
-  <!-- Exception message (for developers) -->
-  <p th:text="${message}">Exception message</p>
+  <section class="auth-shell">
+    <div class="auth-card text-center">
+      <span class="brand-mark mb-3" aria-hidden="true"><span class="fa fa-heartbeat"></span></span>
+      <h1 th:text="#{somethingHappened}">Something happened...</h1>
+      <p class="page-subtitle mx-auto mt-3" th:switch="${status}">
+        <span th:case="404" th:text="#{error.404}">The requested page was not found.</span>
+        <span th:case="500" th:text="#{error.500}">An internal server error occurred.</span>
+        <span th:case="*" th:text="#{error.general}">An unexpected error occurred.</span>
+      </p>
+      <p class="small mt-3" th:if="${message}" th:text="${message}">Exception message</p>
+      <a class="btn btn-primary mt-4" th:href="@{/}" th:text="#{navigation.home}">Back to home</a>
+    </div>
+  </section>
 </body>
-
 </html>

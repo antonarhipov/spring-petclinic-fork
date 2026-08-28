@@ -1,2 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org"><body><h2 th:text="#{appointment.book.title}">Book appointment</h2></body></html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{staff.workspace}">Clinic workspace</p>
+      <h1 th:text="#{appointment.book.title}">Book appointment</h1>
+    </div>
+  </header>
+</body>
+</html>

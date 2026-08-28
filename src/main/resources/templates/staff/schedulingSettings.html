@@ -1,4 +1,42 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'settings')}">
-<body><h2>Scheduling settings</h2><form th:action="@{/staff/settings/scheduling}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><label>Time zone <input name="zone" th:value="${settings.clinicZone}"></label><label>Horizon <input name="horizon" th:value="${settings.bookingHorizonDays}"></label><label>Notice <input name="notice" th:value="${settings.ownerMinimumNoticeMinutes}"></label><label>Hold <input name="hold" th:value="${settings.offerHoldMinutes}"></label><textarea name="guidance" th:text="${settings.urgentCareGuidance}"></textarea><button>Save</button></form></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{staff.workspace}">Clinic workspace</p>
+      <h1 th:text="#{appointment.settings.title}">Scheduling settings</h1>
+      <p class="page-subtitle" th:text="#{appointment.settings.subtitle}">Configure how far ahead owners can book and how offers are held.</p>
+    </div>
+  </header>
+  <form class="form-card" th:action="@{/staff/settings/scheduling}" method="post"
+    th:attr="data-loading-message=#{loading.saving}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="zone" th:text="#{appointment.settings.zone}">Time zone</label>
+        <input class="form-control" id="zone" name="zone" th:value="${settings.clinicZone}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="horizon" th:text="#{appointment.settings.horizon}">Booking horizon</label>
+        <input class="form-control" id="horizon" type="number" name="horizon"
+          th:value="${settings.bookingHorizonDays}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="notice" th:text="#{appointment.settings.notice}">Minimum notice</label>
+        <input class="form-control" id="notice" type="number" name="notice"
+          th:value="${settings.ownerMinimumNoticeMinutes}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="hold" th:text="#{appointment.settings.hold}">Offer hold</label>
+        <input class="form-control" id="hold" type="number" name="hold" th:value="${settings.offerHoldMinutes}">
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="guidance" th:text="#{appointment.settings.guidance}">Urgent-care guidance</label>
+        <textarea class="form-control" id="guidance" name="guidance" th:text="${settings.urgentCareGuidance}"></textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary mt-4" type="submit" th:text="#{save}">Save</button>
+  </form>
+</body>
 </html>

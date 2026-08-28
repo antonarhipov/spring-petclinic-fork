@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.owner.PetRepository;
+import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentSource;
 import org.springframework.samples.petclinic.scheduling.offer.AppointmentOffer;
 import org.springframework.samples.petclinic.scheduling.offer.AppointmentOfferRepository;
 import org.springframework.samples.petclinic.scheduling.offer.OfferState;
@@ -48,6 +51,9 @@ class RepositoryFetchPlanTests {
 
 	@Autowired
 	private AppointmentOfferRepository offers;
+
+	@Autowired
+	private AppointmentRepository appointments;
 
 	@Test
 	void ownerAccessLookupFetchesTheOwnerAndPets() {
@@ -87,6 +93,44 @@ class RepositoryFetchPlanTests {
 
 		assertThat(offer.getVet().getLastName()).isEqualTo("Carter");
 		assertThat(offer.getRationale()).isEqualTo("Match");
+	}
+
+	@Test
+	void ownerDashboardLookupsFetchDisplayRelationships() {
+		RequestRevision revision = createRequestForPet(1);
+		Vet vet = this.vets.findById(1).orElseThrow();
+		Instant startAt = Instant.parse("2030-01-01T09:00:00Z");
+		this.appointments.saveAndFlush(new Appointment(revision.getRequest().getPet(), vet, startAt, 30,
+				AppointmentSource.STAFF_OPERATIONAL, revision.getRequest(), revision, null, null));
+		Integer requestId = revision.getRequest().getId();
+		this.entityManager.clear();
+
+		SchedulingRequest request = this.requests.findOwnedHistory(1)
+			.stream()
+			.filter(candidate -> candidate.getId().equals(requestId))
+			.findFirst()
+			.orElseThrow();
+		Appointment appointment = this.appointments.findUpcomingForOwner(1, Instant.parse("2029-12-31T00:00:00Z"))
+			.getFirst();
+		this.entityManager.clear();
+
+		assertThat(request.getPet().getName()).isEqualTo("Leo");
+		assertThat(appointment.getPet().getName()).isEqualTo("Leo");
+		assertThat(appointment.getVet().getLastName()).isEqualTo("Carter");
+	}
+
+	@Test
+	void heldOfferCalendarLookupFetchesTheVeterinarian() {
+		RequestRevision revision = createRequestForPet(1);
+		Vet vet = this.vets.findById(1).orElseThrow();
+		Instant now = Instant.parse("2030-01-01T09:00:00Z");
+		this.offers.saveAndFlush(new AppointmentOffer(revision, vet, now, 30, now, now.plusSeconds(600), "Match"));
+		this.entityManager.clear();
+
+		AppointmentOffer offer = this.offers.findByState(OfferState.HELD).getFirst();
+		this.entityManager.clear();
+
+		assertThat(offer.getVet().getLastName()).isEqualTo("Carter");
 	}
 
 	private RequestRevision createRequestForPet(Integer petId) {

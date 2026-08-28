@@ -1,4 +1,33 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
-<body><h2>Scheduling queue</h2><ul><li th:each="item : ${items}"><a th:href="@{/staff/queue/{id}(id=${item.id})}" th:text="${item.priority + ' - ' + item.state}">Queue item</a></li></ul></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{staff.workspace}">Clinic workspace</p>
+      <h1 th:text="#{appointment.queue.title}">Scheduling queue</h1>
+      <p class="page-subtitle" th:text="#{appointment.queue.subtitle}">Requests that need personal review from clinic staff.</p>
+    </div>
+  </header>
+  <section class="section-card">
+    <ul class="item-list" th:if="${!#lists.isEmpty(items)}">
+      <li class="item-row" th:each="entry : ${items}">
+        <div class="item-row-main">
+          <a class="item-row-title" th:href="@{/staff/queue/{id}(id=${entry.item.id})}"
+            th:text="${entry.owner.firstName + ' ' + entry.owner.lastName}">Owner</a>
+          <p class="item-row-meta"
+            th:text="#{appointment.queue.requestSummary(${entry.item.request.pet.name}, ${entry.item.id})}">Pet and request</p>
+          <p class="item-row-meta" th:text="${entry.item.priority}">Priority</p>
+        </div>
+        <span class="status-badge"
+          th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(entry.item.state.name(), '_', '-'))}"
+          th:text="${entry.item.state}">State</span>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(items)}">
+      <span class="fa fa-check-circle-o" aria-hidden="true"></span>
+      <span th:text="#{appointment.queue.empty}">The scheduling queue is clear.</span>
+    </div>
+  </section>
+</body>
 </html>

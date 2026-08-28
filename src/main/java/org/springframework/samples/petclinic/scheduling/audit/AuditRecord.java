@@ -62,8 +62,28 @@ public class AuditRecord extends BaseEntity {
 		return this.action;
 	}
 
+	public Instant getOccurredAt() {
+		return this.occurredAt;
+	}
+
+	public String getActor() {
+		return this.actor;
+	}
+
+	public String getTargetType() {
+		return this.targetType;
+	}
+
 	public String getTargetId() {
 		return this.targetId;
+	}
+
+	public String getPriorValue() {
+		return this.priorValue;
+	}
+
+	public String getResultingValue() {
+		return this.resultingValue;
 	}
 
 	public String getReason() {

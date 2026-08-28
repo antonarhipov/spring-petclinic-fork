@@ -1,4 +1,113 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
-<body><h2>Appointment</h2><p th:text="${appointment.status}">Status</p></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.calendar.title}">Clinic calendar</p>
+      <h1 th:text="#{appointment.details.title}">Appointment details</h1>
+    </div>
+    <span class="status-badge"
+      th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(appointment.status.name(), '_', '-'))}"
+      th:text="${appointment.status}">Status</span>
+  </header>
+  <section class="section-card">
+    <dl class="definition-list">
+      <dt th:text="#{appointment.time}">Time</dt>
+      <dd th:text="${@clinicDateTime.format(appointment.startAt)}">Appointment time</dd>
+      <dt th:text="#{appointment.duration}">Duration</dt>
+      <dd th:text="#{appointment.duration.minutes(${appointment.durationMinutes})}">Duration</dd>
+      <dt th:text="#{owner}">Owner</dt>
+      <dd><a th:href="@{/owners/{id}(id=${owner.id})}"
+        th:text="${owner.firstName + ' ' + owner.lastName}">Owner</a></dd>
+      <dt th:text="#{pet}">Pet</dt>
+      <dd th:text="${appointment.pet.name}">Pet</dd>
+      <dt th:text="#{veterinarian}">Veterinarian</dt>
+      <dd th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}">Veterinarian</dd>
+      <dt th:text="#{appointment.source}">Booking source</dt>
+      <dd th:text="${appointment.source}">Source</dd>
+      <dt th:text="#{appointment.ownerAgreement}">Owner agreement</dt>
+      <dd th:text="${appointment.ownerAgreement ?: #messages.msg('appointment.details.unavailable')}">Agreement</dd>
+      <dt th:if="${appointment.changeReason}" th:text="#{appointment.changeReason}">Change reason</dt>
+      <dd th:if="${appointment.changeReason}" th:text="${appointment.changeReason}">Change reason</dd>
+      <dt th:if="${appointment.changeNote}" th:text="#{appointment.changeNote}">Internal note</dt>
+      <dd th:if="${appointment.changeNote}" th:text="${appointment.changeNote}">Internal note</dd>
+    </dl>
+  </section>
+
+  <section class="section-card" th:if="${requestDetails}">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.requestDetails}">Scheduling request</h2>
+    </div>
+    <div th:replace="~{fragments/schedulingRequestDetails :: details (${requestDetails},false)}"></div>
+  </section>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.eventLog}">Event log</h2>
+    </div>
+    <ul class="item-list" th:if="${!#lists.isEmpty(events)}">
+      <li class="item-row" th:each="event : ${events}">
+        <div class="item-row-main">
+          <p class="item-row-title" th:text="${event.action}">Action</p>
+          <p class="item-row-meta" th:text="${@clinicDateTime.format(event.occurredAt)}">Event time</p>
+          <p class="item-row-meta" th:if="${event.resultingValue}"
+            th:text="#{appointment.event.result(${event.resultingValue})}">Result</p>
+          <p class="item-row-meta" th:if="${event.reason}"
+            th:text="#{appointment.event.reason(${event.reason})}">Reason</p>
+        </div>
+        <span class="status-badge" th:text="${event.actor}">Actor</span>
+      </li>
+    </ul>
+    <p class="mb-0 text-muted" th:if="${#lists.isEmpty(events)}"
+      th:text="#{appointment.eventLog.empty}">No events recorded.</p>
+  </section>
+
+  <div class="row g-4 mt-1" th:if="${appointment.status.name() == 'CONFIRMED'}">
+    <div class="col-lg-7">
+      <form class="form-card h-100" th:action="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}"
+        method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <div class="section-heading">
+          <h2 th:text="#{appointment.reschedule}">Reschedule appointment</h2>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="reschedule-vet" th:text="#{veterinarian}">Veterinarian</label>
+            <select class="form-select" id="reschedule-vet" name="vetId" required>
+              <option th:each="vet : ${vets}" th:value="${vet.id}"
+                th:selected="${vet.id == appointment.vet.id}"
+                th:text="${vet.firstName + ' ' + vet.lastName}">Veterinarian</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="reschedule-time" th:text="#{appointment.newTime}">New time</label>
+            <input class="form-control" id="reschedule-time" name="startAt" type="datetime-local" step="900"
+              th:value="${@clinicDateTime.formatInput(appointment.startAt)}" required>
+          </div>
+        </div>
+        <label class="form-label mt-3" for="reschedule-reason" th:text="#{appointment.changeReason}">Change reason</label>
+        <input class="form-control" id="reschedule-reason" name="reason" maxlength="255" required>
+        <label class="form-label mt-3" for="reschedule-note" th:text="#{appointment.changeNote.optional}">Internal note (optional)</label>
+        <textarea class="form-control" id="reschedule-note" name="note" maxlength="1000"></textarea>
+        <button class="btn btn-primary mt-3" type="submit" th:text="#{appointment.reschedule.save}">Reschedule</button>
+      </form>
+    </div>
+
+    <div class="col-lg-5">
+      <form class="form-card h-100" th:action="@{/staff/appointments/{id}/cancel(id=${appointment.id})}"
+        method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <div class="section-heading">
+          <h2 th:text="#{appointment.cancel}">Cancel appointment</h2>
+        </div>
+        <label class="form-label" for="cancel-reason" th:text="#{appointment.changeReason}">Cancellation reason</label>
+        <input class="form-control" id="cancel-reason" name="reason" maxlength="255" required>
+        <label class="form-label mt-3" for="cancel-note" th:text="#{appointment.changeNote.optional}">Internal note (optional)</label>
+        <textarea class="form-control" id="cancel-note" name="note" maxlength="1000"></textarea>
+        <button class="btn btn-outline-danger mt-3" type="submit" th:text="#{appointment.cancel}">Cancel appointment</button>
+      </form>
+    </div>
+  </div>
+</body>
 </html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org">
+<body>
+  <div th:fragment="details (entry,showEvents)" class="request-details">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h3 class="h6" th:text="#{appointment.request.originalMessage}">Original message</h3>
+        <p class="mb-0 text-break" th:if="${entry.originalSourceText}" th:text="${entry.originalSourceText}">Message</p>
+        <p class="mb-0 text-muted" th:unless="${entry.originalSourceText}"
+          th:text="#{appointment.details.unavailable}">Not available.</p>
+      </div>
+      <div class="col-lg-6">
+        <h3 class="h6" th:text="#{appointment.proposedVisit}">Proposed visit</h3>
+        <p class="mb-1" th:if="${entry.proposedStartAt}"
+          th:text="${@clinicDateTime.format(entry.proposedStartAt)}">Proposed time</p>
+        <p class="item-row-meta" th:if="${entry.proposedVet}"
+          th:text="${entry.proposedVet.firstName + ' ' + entry.proposedVet.lastName}">Veterinarian</p>
+        <p class="mb-0 text-muted" th:unless="${entry.proposedStartAt}"
+          th:text="#{appointment.proposedVisit.none}">No time has been proposed yet.</p>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-4 border-top">
+      <h3 class="h6" th:text="#{appointment.interpretation.system}">System interpretation</h3>
+      <dl class="definition-list" th:if="${entry.interpretation}">
+        <dt th:text="#{appointment.reason}">Reason</dt>
+        <dd th:text="${entry.interpretation.visitReason ?: #messages.msg('appointment.details.unavailable')}">Reason</dd>
+        <dt th:text="#{appointment.duration}">Duration</dt>
+        <dd th:text="${entry.interpretation.durationMinutes == null ? #messages.msg('appointment.details.unavailable') : #messages.msg('appointment.duration.minutes', entry.interpretation.durationMinutes)}">Duration</dd>
+        <dt th:text="#{appointment.careType}">Care type</dt>
+        <dd th:text="${entry.interpretation.careType ?: #messages.msg('appointment.details.unavailable')}">Care type</dd>
+        <dt th:text="#{specialty}">Specialty</dt>
+        <dd th:text="${entry.interpretation.requiredSpecialty ?: #messages.msg('none')}">Specialty</dd>
+        <dt th:text="#{appointment.urgency}">Urgency</dt>
+        <dd th:text="${entry.interpretation.urgency ?: #messages.msg('appointment.details.unavailable')}">Urgency</dd>
+        <dt th:text="#{appointment.interpretation.raw}">Raw interpretation</dt>
+        <dd class="text-break"
+          th:text="${entry.interpretation.rawInterpretation ?: #messages.msg('appointment.details.unavailable')}">Raw interpretation</dd>
+      </dl>
+      <p class="mb-0 text-muted" th:unless="${entry.interpretation}"
+        th:text="#{appointment.interpretation.none}">No interpretation is available yet.</p>
+    </div>
+
+    <div class="mt-4 pt-4 border-top" th:if="${showEvents}">
+      <h3 class="h6" th:text="#{appointment.eventLog}">Event log</h3>
+      <ul class="item-list" th:if="${!#lists.isEmpty(entry.events)}">
+        <li class="item-row" th:each="event : ${entry.events}">
+          <div class="item-row-main">
+            <p class="item-row-title" th:text="${event.action}">Action</p>
+            <p class="item-row-meta" th:text="${@clinicDateTime.format(event.occurredAt)}">Event time</p>
+            <p class="item-row-meta" th:if="${event.resultingValue}"
+              th:text="#{appointment.event.result(${event.resultingValue})}">Result</p>
+            <p class="item-row-meta" th:if="${event.reason}"
+              th:text="#{appointment.event.reason(${event.reason})}">Reason</p>
+          </div>
+          <span class="status-badge" th:text="${event.actor}">Actor</span>
+        </li>
+      </ul>
+      <p class="mb-0 text-muted" th:if="${#lists.isEmpty(entry.events)}"
+        th:text="#{appointment.eventLog.empty}">No events recorded.</p>
+    </div>
+  </div>
+</body>
+</html>

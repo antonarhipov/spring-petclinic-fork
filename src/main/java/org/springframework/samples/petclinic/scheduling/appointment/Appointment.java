@@ -102,12 +102,32 @@ public class Appointment extends BaseEntity {
 		return this.durationMinutes;
 	}
 
+	public AppointmentSource getSource() {
+		return this.source;
+	}
+
+	public String getOwnerAgreement() {
+		return this.ownerAgreement;
+	}
+
 	public AppointmentStatus getStatus() {
 		return this.status;
 	}
 
 	public SchedulingRequest getRequest() {
 		return this.request;
+	}
+
+	public RequestRevision getRevision() {
+		return this.revision;
+	}
+
+	public String getChangeReason() {
+		return this.changeReason;
+	}
+
+	public String getChangeNote() {
+		return this.changeNote;
 	}
 
 	public void reschedule(Vet vet, Instant startAt, String reason, String note) {

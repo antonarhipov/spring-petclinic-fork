@@ -16,19 +16,15 @@ public class StaffQueueController {
 
 	private final StaffQueueQueryService query;
 
-	private final StaffQueueRepository queue;
-
 	private final StaffQueueService queueService;
 
 	private final StaffInterpretationService interpretations;
 
 	private final StaffSchedulingService scheduling;
 
-	public StaffQueueController(StaffQueueQueryService query, StaffQueueRepository queue,
-			StaffQueueService queueService, StaffInterpretationService interpretations,
-			StaffSchedulingService scheduling) {
+	public StaffQueueController(StaffQueueQueryService query, StaffQueueService queueService,
+			StaffInterpretationService interpretations, StaffSchedulingService scheduling) {
 		this.query = query;
-		this.queue = queue;
 		this.queueService = queueService;
 		this.interpretations = interpretations;
 		this.scheduling = scheduling;
@@ -42,7 +38,9 @@ public class StaffQueueController {
 
 	@GetMapping("/staff/queue/{itemId}")
 	public String detail(@PathVariable Integer itemId, Model model) {
-		model.addAttribute("item", this.queue.findById(itemId).orElseThrow());
+		StaffQueueQueryService.StaffQueueView view = this.query.item(itemId);
+		model.addAttribute("item", view.item());
+		model.addAttribute("owner", view.owner());
 		return "staff/queueDetail";
 	}
 

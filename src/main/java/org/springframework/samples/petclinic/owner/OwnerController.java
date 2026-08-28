@@ -22,6 +22,9 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.hibernate.Hibernate;
+import org.springframework.security.core.Authentication;
+import org.springframework.samples.petclinic.security.OwnerAccessService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -34,6 +37,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -52,8 +56,11 @@ class OwnerController {
 
 	private final OwnerRepository owners;
 
-	public OwnerController(OwnerRepository owners) {
+	private final OwnerAccessService ownerAccess;
+
+	public OwnerController(OwnerRepository owners, OwnerAccessService ownerAccess) {
 		this.owners = owners;
+		this.ownerAccess = ownerAccess;
 	}
 
 	@InitBinder
@@ -62,11 +69,22 @@ class OwnerController {
 	}
 
 	@ModelAttribute("owner")
-	public Owner findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
-		return ownerId == null ? new Owner()
-				: this.owners.findById(ownerId)
-					.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
-							+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
+	public Owner findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId,
+			Authentication authentication, HttpServletRequest request) {
+		if (ownerId == null && !isOwnerPortal(request)) {
+			return new Owner();
+		}
+		if (ownerId == null) {
+			return Hibernate.unproxy(this.ownerAccess.currentOwner(authentication).owner(), Owner.class);
+		}
+		return this.owners.findById(ownerId)
+			.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
+					+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
+	}
+
+	@ModelAttribute("ownerPortal")
+	public boolean ownerPortal(HttpServletRequest request) {
+		return isOwnerPortal(request);
 	}
 
 	@GetMapping("/owners/new")
@@ -136,29 +154,35 @@ class OwnerController {
 		return owners.findByLastNameStartingWith(lastname, pageable);
 	}
 
-	@GetMapping("/owners/{ownerId}/edit")
+	@GetMapping("/my/profile")
+	public String showCurrentOwner() {
+		return "owners/profile";
+	}
+
+	@GetMapping({ "/owners/{ownerId}/edit", "/my/profile/edit" })
 	public String initUpdateOwnerForm() {
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
-	@PostMapping("/owners/{ownerId}/edit")
-	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
-			RedirectAttributes redirectAttributes) {
+	@PostMapping({ "/owners/{ownerId}/edit", "/my/profile/edit" })
+	public String processUpdateOwnerForm(@Valid @ModelAttribute("owner") Owner owner, BindingResult result,
+			@PathVariable(name = "ownerId", required = false) Integer ownerId, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
 			redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
-		if (!Objects.equals(owner.getId(), ownerId)) {
+		Integer resolvedOwnerId = ownerId == null ? owner.getId() : ownerId;
+		if (!Objects.equals(owner.getId(), resolvedOwnerId)) {
 			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
 			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
-			return "redirect:/owners/{ownerId}/edit";
+			return ownerId == null ? "redirect:/my/profile/edit" : "redirect:/owners/{ownerId}/edit";
 		}
 
-		owner.setId(ownerId);
+		owner.setId(resolvedOwnerId);
 		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
-		return "redirect:/owners/{ownerId}";
+		redirectAttributes.addFlashAttribute("message", ownerId == null ? "Profile updated" : "Owner Values Updated");
+		return ownerId == null ? "redirect:/my/profile" : "redirect:/owners/{ownerId}";
 	}
 
 	/**
@@ -174,6 +198,10 @@ class OwnerController {
 				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
 		mav.addObject(owner);
 		return mav;
+	}
+
+	private boolean isOwnerPortal(HttpServletRequest request) {
+		return request.getRequestURI().startsWith(request.getContextPath() + "/my/");
 	}
 
 }

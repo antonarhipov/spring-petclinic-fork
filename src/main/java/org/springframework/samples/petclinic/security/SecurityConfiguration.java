@@ -4,7 +4,6 @@ import java.time.Clock;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -48,7 +47,7 @@ public class SecurityConfiguration {
 				.successHandler(successHandler)
 				.failureHandler(failureHandler)
 				.permitAll())
-			.logout(Customizer.withDefaults())
+			.logout(logout -> logout.logoutSuccessUrl("/").permitAll())
 			.sessionManagement(session -> session.sessionFixation(fixation -> fixation.changeSessionId())
 				.invalidSessionUrl("/login?expired"))
 			.exceptionHandling(

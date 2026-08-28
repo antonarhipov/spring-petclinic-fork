@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
-
+<html xmlns:th="https://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security"
+  th:replace="~{fragments/layout :: layout (~{::body},'home')}">
 <body>
-
-  <h2 th:text="#{welcome}">Welcome</h2>
-  <div class="row">
-    <div class="col-md-12">
-      <img class="img-responsive" src="../static/resources/images/pets.png" th:src="@{/resources/images/pets.png}" />
+  <section class="hero">
+    <div>
+      <p class="page-eyebrow" th:text="#{welcome.eyebrow}">Veterinary care, thoughtfully scheduled</p>
+      <h1 th:text="#{welcome.heading}">Care made easier.</h1>
+      <p th:text="#{welcome.subtitle}">Request appointments, review options, and keep your pet's care on track.</p>
+      <div class="button-row">
+        <a sec:authorize="isAnonymous()" class="btn btn-primary btn-lg" th:href="@{/login}"
+          th:text="#{auth.signIn}">Sign in</a>
+        <a sec:authorize="hasRole('OWNER')" class="btn btn-primary btn-lg" th:href="@{/my/appointments}"
+          th:text="#{welcome.ownerCta}">View my appointments</a>
+        <a sec:authorize="hasRole('STAFF')" class="btn btn-primary btn-lg" th:href="@{/staff/calendar}"
+          th:text="#{welcome.staffCta}">Open clinic calendar</a>
+      </div>
     </div>
-  </div>
-
+    <img class="hero-image" th:src="@{/resources/images/pets.png}" th:alt="#{welcome.imageAlt}">
+  </section>
 </body>
-
 </html>

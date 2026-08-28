@@ -1,12 +1,82 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
 <body>
-  <h2 th:text="#{appointment.dashboard.title}">My appointments</h2>
-  <a th:href="@{/my/scheduling/requests/new}" th:text="#{appointment.request.link}">Request an appointment</a>
-  <p th:if="${error}" th:text="${error}">Error</p>
-  <h3 th:text="#{appointment.upcoming}">Upcoming appointments</h3>
-  <ul><li th:each="appointment : ${appointments}" th:text="${appointment.startAt + ' - ' + appointment.status}">Appointment</li></ul>
-  <h3 th:text="#{appointment.requests}">Requests</h3>
-  <ul><li th:each="request : ${requests}"><span th:text="${request.state}">Status</span> <a th:if="${request.state.name() == 'OFFER_HELD'}" th:href="@{/my/scheduling/requests/{id}/offer(id=${request.id})}">View offer</a></li></ul>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.owner.eyebrow}">Your pet care</p>
+      <h1 th:text="#{appointment.dashboard.title}">My appointments</h1>
+      <p class="page-subtitle" th:text="#{appointment.dashboard.subtitle}">Keep track of upcoming care and scheduling requests.</p>
+    </div>
+    <div class="button-row mt-0">
+      <a class="btn btn-outline-primary" th:href="@{/my/pets}" th:text="#{pets}">Pets</a>
+      <a class="btn btn-primary" th:href="@{/my/scheduling/requests/new}"
+        th:text="#{appointment.request.link}">Request an appointment</a>
+    </div>
+  </header>
+
+  <div class="alert alert-danger" role="alert" th:if="${error}" th:text="${error}">Error</div>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.upcoming}">Upcoming appointments</h2>
+      <span class="status-badge" th:text="${#lists.size(appointments)}">0</span>
+    </div>
+    <ul class="item-list" th:if="${!#lists.isEmpty(appointments)}">
+      <li class="item-row" th:each="appointment : ${appointments}">
+        <div class="item-row-main">
+          <p class="item-row-title" th:text="${@clinicDateTime.format(appointment.startAt)}">Appointment time</p>
+          <p class="item-row-meta" th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}">Veterinarian</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="status-badge"
+            th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(appointment.status.name(), '_', '-'))}"
+            th:text="${appointment.status}">Status</span>
+          <form th:if="${appointment.status.name() == 'CONFIRMED'}"
+            th:action="@{/my/appointments/{id}/cancel(id=${appointment.id})}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button class="btn btn-outline-danger" type="submit" th:text="#{appointment.cancel}">Cancel appointment</button>
+          </form>
+        </div>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(appointments)}">
+      <span class="fa fa-calendar-check-o" aria-hidden="true"></span>
+      <span th:text="#{appointment.upcoming.empty}">No upcoming appointments.</span>
+    </div>
+  </section>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.requests}">Requests</h2>
+      <a th:href="@{/my/scheduling/requests}" th:text="#{appointment.requests.history}">View history</a>
+    </div>
+    <ul class="item-list" th:if="${!#lists.isEmpty(requests)}">
+      <li class="section-card" th:each="entry : ${requests}">
+        <div class="section-heading">
+          <div>
+            <p class="item-row-title" th:text="${entry.request.pet.name}">Pet</p>
+          <span class="status-badge"
+              th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(entry.request.state.name(), '_', '-'))}"
+              th:text="${entry.request.state}">Status</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-outline-primary" th:if="${entry.request.state.name() == 'OFFER_HELD'}"
+              th:href="@{/my/scheduling/requests/{id}/offer(id=${entry.request.id})}" th:text="#{appointment.offer.view}">View offer</a>
+            <form th:if="${entry.request.state.name() != 'CONFIRMED' and entry.request.state.name() != 'CLOSED'}"
+              th:action="@{/my/scheduling/requests/{id}/withdraw(id=${entry.request.id})}" method="post">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+              <button class="btn btn-outline-danger" type="submit" th:text="#{appointment.request.cancel}">Cancel request</button>
+            </form>
+          </div>
+        </div>
+        <div th:replace="~{fragments/schedulingRequestDetails :: details (${entry},true)}"></div>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(requests)}">
+      <span class="fa fa-paw" aria-hidden="true"></span>
+      <span th:text="#{appointment.requests.empty}">No scheduling requests yet.</span>
+    </div>
+  </section>
 </body>
 </html>

@@ -1,25 +1,30 @@
 <!DOCTYPE html>
 
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
-
+<html xmlns:th="https://www.thymeleaf.org"
+  th:replace="~{fragments/layout :: layout (~{::body},${ownerPortal ? 'profile' : 'owners'})}">
 <body>
-
-  <h2 th:text="#{owner}">Owner</h2>
-  <form th:object="${owner}" class="form-horizontal" id="add-owner-form" method="post">
-    <div class="form-group has-feedback">
-      <input th:replace="~{fragments/inputField :: input (#{firstName}, 'firstName', 'text')}" />
-      <input th:replace="~{fragments/inputField :: input (#{lastName}, 'lastName', 'text')}" />
-      <input th:replace="~{fragments/inputField :: input (#{address}, 'address', 'text')}" />
-      <input th:replace="~{fragments/inputField :: input (#{city}, 'city', 'text')}" />
-      <input th:replace="~{fragments/inputField :: input (#{telephone}, 'telephone', 'text')}" />
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="${ownerPortal} ? #{owner.profile} : #{staff.workspace}">Workspace</p>
+      <h1 th:if="${ownerPortal}" th:text="#{owner.profile.edit}">Edit profile</h1>
+      <h1 th:unless="${ownerPortal}" th:text="${owner['new']} ? #{owner.add.title} : #{owner.edit.title}">Owner</h1>
+      <p class="page-subtitle" th:text="#{owner.form.subtitle}">Keep contact details current for appointment communication.</p>
     </div>
-    <div class="form-group">
-      <div class="col-sm-offset-2 col-sm-10">
-        <button th:with="text=${owner['new']} ? #{addOwner} : #{updateOwner}" class="btn btn-primary" type="submit"
-          th:text="${text}">Add Owner</button>
-      </div>
+  </header>
+  <form th:object="${owner}" class="form-card" id="add-owner-form" method="post"
+    th:attr="data-loading-message=#{loading.saving}">
+    <input th:replace="~{fragments/inputField :: input (#{firstName}, 'firstName', 'text')}">
+    <input th:replace="~{fragments/inputField :: input (#{lastName}, 'lastName', 'text')}">
+    <input th:replace="~{fragments/inputField :: input (#{address}, 'address', 'text')}">
+    <input th:replace="~{fragments/inputField :: input (#{city}, 'city', 'text')}">
+    <input th:replace="~{fragments/inputField :: input (#{telephone}, 'telephone', 'text')}">
+    <div class="button-row">
+      <button th:if="${ownerPortal}" class="btn btn-primary" type="submit" th:text="#{save}">Save</button>
+      <button th:unless="${ownerPortal}" th:with="text=${owner['new']} ? #{addOwner} : #{updateOwner}" class="btn btn-primary" type="submit"
+        th:text="${text}">Add Owner</button>
+      <a class="btn btn-link" th:href="${ownerPortal} ? @{/my/profile} : @{/owners/find}"
+        th:text="#{cancel}">Cancel</a>
     </div>
   </form>
 </body>
-
 </html>

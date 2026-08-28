@@ -1,41 +1,62 @@
-@media (max-width: 768px) {
-  .navbar-toggle {
-    position:absolute;
-    z-index: 9999;
-    left:0px;
-    top:0px;
+@media (max-width: 991.98px) {
+  .app-navbar .navbar-collapse {
+    padding: 1rem 0 .5rem;
+    border-top: 1px solid var(--clinic-border);
   }
 
-  .navbar a.navbar-brand {
-    display: block;
-    margin: 0 auto 0 auto;
-    width: 148px;
-    height: 50px;
-    float: none;
-    background: url("../images/spring-logo-dataflow-mobile.png") 0 center no-repeat;
+  .account-nav {
+    align-items: stretch;
+    margin: .75rem 0 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--clinic-border);
   }
 
-  .homepage-billboard .homepage-subtitle {
-    font-size: 21px;
-    line-height: 21px;
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 2rem;
   }
 
-  .navbar a.navbar-brand span {
-    display: none;
+  .hero-image {
+    max-height: 17rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .app-main {
+    padding: 1.5rem 0 3rem;
   }
 
-  .navbar {
-    border-top-width: 0;
+  .page-header,
+  .section-heading,
+  .item-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .xd-container {
-    margin-top: 20px;
-    margin-bottom: 30px;
+  .section-card,
+  .form-card,
+  .offer-card,
+  .auth-card {
+    padding: 1.1rem;
   }
 
-  .index-page--subtitle {
-    margin-top: 10px;
-    margin-bottom: 30px;
+  .definition-list {
+    grid-template-columns: 1fr;
+    gap: .2rem;
   }
 
+  .definition-list dd + dt {
+    margin-top: .65rem;
+  }
+
+  .button-row > .btn,
+  .button-row > form,
+  .button-row > form .btn {
+    width: 100%;
+  }
+
+  .submit-status {
+    top: 4.8rem;
+  }
 }

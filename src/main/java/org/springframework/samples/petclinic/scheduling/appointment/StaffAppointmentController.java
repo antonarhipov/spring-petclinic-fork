@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.scheduling.appointment;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
@@ -10,6 +12,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingSettingsService;
+import org.springframework.samples.petclinic.vet.VetRepository;
 
 @Controller
 public class StaffAppointmentController {
@@ -18,18 +22,29 @@ public class StaffAppointmentController {
 
 	private final AppointmentLifecycleService lifecycle;
 
-	private final AppointmentRepository repository;
+	private final StaffAppointmentQueryService query;
+
+	private final VetRepository vets;
+
+	private final ClinicSchedulingSettingsService settings;
 
 	public StaffAppointmentController(AppointmentService appointments, AppointmentLifecycleService lifecycle,
-			AppointmentRepository repository) {
+			StaffAppointmentQueryService query, VetRepository vets, ClinicSchedulingSettingsService settings) {
 		this.appointments = appointments;
 		this.lifecycle = lifecycle;
-		this.repository = repository;
+		this.query = query;
+		this.vets = vets;
+		this.settings = settings;
 	}
 
 	@GetMapping("/staff/appointments/{appointmentId}")
 	public String details(@PathVariable Integer appointmentId, Model model) {
-		model.addAttribute("appointment", this.repository.findById(appointmentId).orElseThrow());
+		StaffAppointmentQueryService.StaffAppointmentView view = this.query.appointment(appointmentId);
+		model.addAttribute("appointment", view.appointment());
+		model.addAttribute("owner", view.owner());
+		model.addAttribute("requestDetails", view.request());
+		model.addAttribute("events", view.events());
+		model.addAttribute("vets", this.vets.findAll());
 		return "staff/appointment";
 	}
 
@@ -44,9 +59,10 @@ public class StaffAppointmentController {
 
 	@PostMapping("/staff/appointments/{appointmentId}/reschedule")
 	public String reschedule(@PathVariable Integer appointmentId, @RequestParam Integer vetId,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startAt,
+			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
 			@RequestParam String reason, @RequestParam(required = false) String note, Authentication actor) {
-		this.appointments.reschedule(appointmentId, vetId, startAt, reason, note, actor);
+		Instant instant = startAt.atZone(ZoneId.of(this.settings.get().getClinicZone())).toInstant();
+		this.appointments.reschedule(appointmentId, vetId, instant, reason, note, actor);
 		return "redirect:/staff/appointments/" + appointmentId;
 	}
 

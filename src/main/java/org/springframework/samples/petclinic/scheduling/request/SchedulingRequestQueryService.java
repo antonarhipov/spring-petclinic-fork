@@ -14,9 +14,13 @@ public class SchedulingRequestQueryService {
 
 	private final OwnerAccessService owners;
 
-	public SchedulingRequestQueryService(SchedulingRequestRepository requests, OwnerAccessService owners) {
+	private final SchedulingRequestViewQueryService views;
+
+	public SchedulingRequestQueryService(SchedulingRequestRepository requests, OwnerAccessService owners,
+			SchedulingRequestViewQueryService views) {
 		this.requests = requests;
 		this.owners = owners;
+		this.views = views;
 	}
 
 	@Transactional(readOnly = true)
@@ -26,8 +30,11 @@ public class SchedulingRequestQueryService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<SchedulingRequest> history(Authentication actor) {
-		return this.requests.findOwnedHistory(this.owners.currentOwner(actor).owner().getId());
+	public List<SchedulingRequestView> history(Authentication actor) {
+		return this.requests.findOwnedHistory(this.owners.currentOwner(actor).owner().getId())
+			.stream()
+			.map(this.views::view)
+			.toList();
 	}
 
 }

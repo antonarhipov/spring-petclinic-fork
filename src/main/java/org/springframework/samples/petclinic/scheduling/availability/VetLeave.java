@@ -42,4 +42,20 @@ public class VetLeave extends BaseEntity {
 		return !date.isBefore(this.startDate) && !date.isAfter(this.endDate);
 	}
 
+	public Integer getVetId() {
+		return this.vetId;
+	}
+
+	public LocalDate getStartDate() {
+		return this.startDate;
+	}
+
+	public LocalDate getEndDate() {
+		return this.endDate;
+	}
+
+	public String getReason() {
+		return this.reason;
+	}
+
 }

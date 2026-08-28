@@ -12,6 +12,7 @@ import org.springframework.samples.petclinic.scheduling.audit.AuditAction;
 import org.springframework.samples.petclinic.scheduling.audit.SchedulingAuditService;
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityQueryService;
 import org.springframework.samples.petclinic.scheduling.offer.ReservationService;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestState;
 import org.springframework.samples.petclinic.security.OwnerAccessService;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
@@ -77,6 +78,7 @@ public class AppointmentService {
 			throw new IllegalStateException("Only an upcoming appointment can be cancelled");
 		}
 		appointment.changeStatus(AppointmentStatus.CANCELLED, reason, null);
+		closeRequest(appointment);
 		this.reservations.releaseAppointment(appointment.getId());
 		this.audit.record(actor, null, AuditAction.APPOINTMENT_CANCELLED, "appointment", appointmentId, "CONFIRMED",
 				"CANCELLED", reason);
@@ -85,10 +87,20 @@ public class AppointmentService {
 	@Transactional
 	public void cancel(Integer appointmentId, String reason, String note, Authentication actor) {
 		Appointment appointment = appointment(appointmentId);
+		if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+			throw new IllegalStateException("Only a confirmed appointment can be cancelled");
+		}
 		appointment.changeStatus(AppointmentStatus.CANCELLED, reason, note);
+		closeRequest(appointment);
 		this.reservations.releaseAppointment(appointmentId);
 		this.audit.record(actor, null, AuditAction.APPOINTMENT_CANCELLED, "appointment", appointmentId, "CONFIRMED",
 				"CANCELLED", reason);
+	}
+
+	private void closeRequest(Appointment appointment) {
+		if (appointment.getRequest() != null) {
+			appointment.getRequest().moveTo(SchedulingRequestState.CLOSED);
+		}
 	}
 
 	@Transactional

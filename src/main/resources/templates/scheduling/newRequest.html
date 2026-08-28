@@ -1,15 +1,44 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
 <body>
-  <h2 th:text="#{appointment.request.title}">Request an appointment</h2>
-  <p class="alert alert-warning" th:text="${guidance}">Urgent care guidance</p>
-  <p th:if="${error}" th:text="${error}">Error</p>
-  <form th:action="@{/my/scheduling/requests}" method="post">
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.request.step}">Appointment request</p>
+      <h1 th:text="#{appointment.request.title}">Request an appointment</h1>
+      <p class="page-subtitle" th:text="#{appointment.request.subtitle}">Tell us what your pet needs and we will help find a suitable time.</p>
+    </div>
+  </header>
+
+  <div class="alert alert-warning" role="note">
+    <span class="fa fa-exclamation-circle me-2" aria-hidden="true"></span>
+    <span th:text="${guidance}">Urgent care guidance</span>
+  </div>
+  <div class="alert alert-danger" role="alert" th:if="${error}" th:text="${error}">Error</div>
+
+  <form class="form-card" th:action="@{/my/scheduling/requests}" method="post"
+    th:attr="data-loading-message=#{loading.interpreting}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-    <label>Pet <select name="petId" required><option th:each="pet : ${pets}" th:value="${pet.id}" th:text="${pet.name}">Pet</option></select></label>
-    <label><span th:text="#{appointment.request.text}">Tell us what your pet needs</span> <textarea name="sourceText" minlength="10" maxlength="2000" required></textarea></label>
-    <label><input type="checkbox" name="consent" value="true"> <span th:text="#{appointment.request.consent.label}">I consent to automated interpretation of this text.</span></label>
-    <button type="submit" th:text="#{appointment.continue}">Continue</button>
+    <div class="mb-4">
+      <label class="form-label" for="petId" th:text="#{pet}">Pet</label>
+      <select class="form-select" id="petId" name="petId" required>
+        <option th:each="pet : ${pets}" th:value="${pet.id}" th:text="${pet.name}">Pet</option>
+      </select>
+    </div>
+    <div class="mb-4">
+      <label class="form-label" for="sourceText" th:text="#{appointment.request.text}">Tell us what your pet needs</label>
+      <textarea class="form-control" id="sourceText" name="sourceText" minlength="10" maxlength="2000"
+        aria-describedby="request-help" required></textarea>
+      <div id="request-help" class="form-help mt-2" th:text="#{appointment.request.help}">Include symptoms, timing, and any scheduling constraints.</div>
+    </div>
+    <div class="form-check mb-4">
+      <input class="form-check-input" id="consent" type="checkbox" name="consent" value="true">
+      <label class="form-check-label" for="consent" th:text="#{appointment.request.consent.label}">I consent to automated interpretation of this text.</label>
+    </div>
+    <div class="button-row">
+      <button class="btn btn-primary" type="submit" th:text="#{appointment.continue}">Continue</button>
+      <a class="btn btn-link" th:href="@{/my/appointments}" th:text="#{cancel}">Cancel</a>
+    </div>
   </form>
 </body>
 </html>

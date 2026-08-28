@@ -8,4 +8,6 @@ public interface RecurringVetShiftRepository extends JpaRepository<RecurringVetS
 
 	List<RecurringVetShift> findByVetIdAndDayOfWeek(Integer vetId, int dayOfWeek);
 
+	List<RecurringVetShift> findByVetId(Integer vetId);
+
 }

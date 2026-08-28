@@ -1,4 +1,25 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'audit')}">
-<body><h2>Scheduling audit</h2><ul><li th:each="record : ${records}" th:text="${record.action + ' ' + record.targetId}">Audit record</li></ul></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{staff.workspace}">Clinic workspace</p>
+      <h1 th:text="#{appointment.audit.title}">Scheduling audit</h1>
+      <p class="page-subtitle" th:text="#{appointment.audit.subtitle}">A record of scheduling decisions and changes.</p>
+    </div>
+  </header>
+  <section class="section-card">
+    <ul class="item-list" th:if="${!#lists.isEmpty(records)}">
+      <li class="item-row" th:each="record : ${records}">
+        <span class="item-row-title" th:text="${record.action}">Action</span>
+        <span class="item-row-meta" th:text="${record.targetId}">Target</span>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(records)}">
+      <span class="fa fa-history" aria-hidden="true"></span>
+      <span th:text="#{appointment.audit.empty}">No scheduling activity yet.</span>
+    </div>
+  </section>
+</body>
 </html>

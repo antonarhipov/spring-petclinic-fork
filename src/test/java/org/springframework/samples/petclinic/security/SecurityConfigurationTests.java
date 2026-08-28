@@ -1,8 +1,13 @@
 package org.springframework.samples.petclinic.security;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +51,32 @@ class SecurityConfigurationTests {
 	void ownerCanOpenTheNewSchedulingRequestPage() throws Exception {
 		this.mvc.perform(get("/my/scheduling/requests/new").session(signIn("george", "george123")))
 			.andExpect(status().isOk());
+	}
+
+	@Test
+	void authenticatedNavigationOffersLogoutAndAnonymousNavigationDoesNot() throws Exception {
+		this.mvc.perform(get("/"))
+			.andExpect(status().isOk())
+			.andExpect(content().string(not(containsString("action=\"/logout\""))));
+		this.mvc.perform(get("/my/appointments").session(signIn("george", "george123")))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("action=\"/logout\"")))
+			.andExpect(content().string(containsString("Sign out")))
+			.andExpect(content().string(containsString("george")));
+	}
+
+	@Test
+	void csrfProtectedLogoutClearsAuthenticationAndReturnsHome() throws Exception {
+		this.mvc.perform(post("/logout").session(signIn("george", "george123")).with(csrf()))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/"))
+			.andExpect(unauthenticated());
+	}
+
+	@Test
+	void logoutRejectsInvalidCsrfToken() throws Exception {
+		this.mvc.perform(post("/logout").with(user("george").roles("OWNER")).with(csrf().useInvalidToken()))
+			.andExpect(status().isForbidden());
 	}
 
 	private MockHttpSession signIn(String username, String password) throws Exception {

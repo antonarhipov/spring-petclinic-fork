@@ -8,4 +8,6 @@ public interface RequestRevisionRepository extends JpaRepository<RequestRevision
 
 	List<RequestRevision> findByRequestIdOrderByRevisionNumberDesc(Integer requestId);
 
+	List<RequestRevision> findByRequestIdOrderByRevisionNumberAsc(Integer requestId);
+
 }

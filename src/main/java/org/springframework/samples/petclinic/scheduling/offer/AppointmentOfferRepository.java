@@ -24,8 +24,12 @@ public interface AppointmentOfferRepository extends JpaRepository<AppointmentOff
 
 	List<AppointmentOffer> findByStateAndExpiresAtBefore(OfferState state, Instant instant);
 
+	@EntityGraph(attributePaths = "vet")
 	List<AppointmentOffer> findByState(OfferState state);
 
 	List<AppointmentOffer> findByRevisionId(Integer revisionId);
+
+	@EntityGraph(attributePaths = "vet")
+	Optional<AppointmentOffer> findFirstByRevisionIdOrderByOfferedAtDesc(Integer revisionId);
 
 }

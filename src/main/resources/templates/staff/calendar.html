@@ -1,4 +1,70 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
-<body><h2>Clinic calendar</h2><h3>Appointments</h3><ul><li th:each="appointment : ${appointments}" th:text="${appointment.startAt + ' - ' + appointment.status}">Appointment</li></ul><h3>Held offers</h3><ul><li th:each="offer : ${holds}" th:text="${offer.startAt}">Hold</li></ul></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{staff.workspace}">Clinic workspace</p>
+      <h1 th:text="#{appointment.calendar.title}">Clinic calendar</h1>
+      <p class="page-subtitle" th:text="#{appointment.calendar.subtitle}">Review confirmed appointments and active holds.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-primary" th:href="@{/staff/availability}"
+        th:text="#{appointment.availability.manage}">Manage vet schedules</a>
+      <a class="btn btn-outline-primary" th:href="@{/staff/settings/scheduling}"
+        th:text="#{appointment.nav.settings}">Settings</a>
+    </div>
+  </header>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.upcoming}">Appointments</h2>
+      <span class="status-badge" th:text="${#lists.size(appointments)}">0</span>
+    </div>
+    <ul class="item-list" th:if="${!#lists.isEmpty(appointments)}">
+      <li class="item-row" th:each="entry : ${appointments}" th:with="appointment=${entry.appointment}">
+        <div class="item-row-main">
+          <a class="item-row-title" th:href="@{/staff/appointments/{id}(id=${appointment.id})}"
+            th:text="${@clinicDateTime.format(appointment.startAt)}">Appointment time</a>
+          <p class="item-row-meta"
+            th:text="#{appointment.staff.ownerAndPet(${entry.owner.firstName + ' ' + entry.owner.lastName}, ${appointment.pet.name})}">Owner and pet</p>
+          <p class="item-row-meta"
+            th:text="#{appointment.staff.assignedVet(${appointment.vet.firstName + ' ' + appointment.vet.lastName})}">Veterinarian</p>
+          <p class="item-row-meta" th:text="#{appointment.duration.minutes(${appointment.durationMinutes})}">Duration</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="status-badge"
+            th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(appointment.status.name(), '_', '-'))}"
+            th:text="${appointment.status}">Status</span>
+          <a class="btn btn-outline-primary" th:href="@{/staff/appointments/{id}(id=${appointment.id})}"
+            th:text="#{appointment.manage}">Manage</a>
+        </div>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(appointments)}">
+      <span class="fa fa-calendar-o" aria-hidden="true"></span>
+      <span th:text="#{appointment.calendar.empty}">No appointments scheduled.</span>
+    </div>
+  </section>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{appointment.holds}">Held offers</h2>
+      <span class="status-badge" th:text="${#lists.size(holds)}">0</span>
+    </div>
+    <ul class="item-list" th:if="${!#lists.isEmpty(holds)}">
+      <li class="item-row" th:each="offer : ${holds}">
+        <div class="item-row-main">
+          <p class="item-row-title" th:text="${@clinicDateTime.format(offer.startAt)}">Held time</p>
+          <p class="item-row-meta" th:text="${offer.vet.firstName + ' ' + offer.vet.lastName}">Veterinarian</p>
+        </div>
+        <span class="status-badge status-offer-held" th:text="#{appointment.offer.held}">Held</span>
+      </li>
+    </ul>
+    <div class="empty-state" th:if="${#lists.isEmpty(holds)}">
+      <span class="fa fa-clock-o" aria-hidden="true"></span>
+      <span th:text="#{appointment.holds.empty}">No held offers.</span>
+    </div>
+  </section>
+</body>
 </html>

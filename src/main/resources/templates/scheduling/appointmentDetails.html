@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
-<body><h2 th:text="#{appointment.details.title}">Appointment details</h2></body>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.owner.eyebrow}">Your pet care</p>
+      <h1 th:text="#{appointment.details.title}">Appointment details</h1>
+    </div>
+  </header>
+</body>
 </html>

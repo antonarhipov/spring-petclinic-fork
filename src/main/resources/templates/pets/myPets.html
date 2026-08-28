@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'pets')}">
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.owner.eyebrow}">Your pet care</p>
+      <h1 th:text="#{pets}">Pets</h1>
+    </div>
+    <a class="btn btn-primary" th:href="@{/my/pets/new}" th:text="#{addNewPet}">Add new pet</a>
+  </header>
+
+  <div th:if="${message}" class="alert alert-success" role="status" th:text="${message}">Success</div>
+
+  <section class="section-card">
+    <div class="section-heading">
+      <h2 th:text="#{petsAndVisits}">Pets and visits</h2>
+      <span class="status-badge" th:text="${#lists.size(owner.pets)}">0</span>
+    </div>
+    <div class="item-list" th:if="${!#lists.isEmpty(owner.pets)}">
+      <article class="item-row" th:each="pet : ${owner.pets}">
+        <div class="item-row-main">
+          <h3 class="item-row-title" th:text="${pet.name}">Pet name</h3>
+          <p class="item-row-meta"
+            th:text="${#temporals.format(pet.birthDate, 'yyyy-MM-dd') + ' · ' + pet.type}">Pet details</p>
+        </div>
+        <a class="btn btn-outline-primary" th:href="@{/my/pets/{id}/edit(id=${pet.id})}"
+          th:text="#{editPet}">Edit pet</a>
+      </article>
+    </div>
+    <div class="empty-state" th:if="${#lists.isEmpty(owner.pets)}">
+      <span class="fa fa-paw" aria-hidden="true"></span>
+      <span th:text="#{pet.owner.empty}">No pets added yet.</span>
+    </div>
+  </section>
+</body>
+</html>

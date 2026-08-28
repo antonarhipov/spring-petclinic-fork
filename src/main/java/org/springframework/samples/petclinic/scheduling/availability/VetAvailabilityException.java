@@ -56,6 +56,18 @@ public class VetAvailabilityException extends BaseEntity {
 		return !date.isBefore(this.startDate) && !date.isAfter(this.endDate);
 	}
 
+	public Integer getVetId() {
+		return this.vetId;
+	}
+
+	public LocalDate getStartDate() {
+		return this.startDate;
+	}
+
+	public LocalDate getEndDate() {
+		return this.endDate;
+	}
+
 	public boolean isAvailable() {
 		return this.available;
 	}
@@ -66,6 +78,10 @@ public class VetAvailabilityException extends BaseEntity {
 
 	public LocalTime getEndTime() {
 		return this.endTime;
+	}
+
+	public String getReason() {
+		return this.reason;
 	}
 
 }

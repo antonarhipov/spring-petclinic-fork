@@ -22,4 +22,9 @@ public class FallbackQueueService {
 					request.isEmergencyPriority() ? QueuePriority.EMERGENCY : QueuePriority.STANDARD)));
 	}
 
+	@Transactional
+	public void close(SchedulingRequest request, String details) {
+		this.queue.findByRequestId(request.getId()).ifPresent(item -> item.close(details));
+	}
+
 }

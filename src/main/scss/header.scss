@@ -1,73 +1,82 @@
-.navbar {
-  border-top: 4px solid #6db33f;
-  background-color: #34302d;
-  margin-bottom: 0px;
-  border-bottom: 0;
-  border-left: 0;
-  border-right: 0;
+.app-navbar {
+  min-height: 4.75rem;
+  background: rgba(255, 255, 255, .96);
+  border-bottom: 1px solid var(--clinic-border);
+  box-shadow: 0 .25rem 1rem rgba(32, 51, 48, .05);
+  backdrop-filter: blur(12px);
 }
 
-.navbar a.navbar-brand {
-  background: url("../images/spring-logo-dataflow.png") -1px -1px no-repeat;
-  margin: 12px 0 6px;
-  width: 229px;
-  height: 46px;
-  display: inline-block;
-  text-decoration: none;
-  padding: 0;
+.app-navbar .navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  margin-right: 2rem;
+  color: var(--clinic-primary-dark);
+  font-size: 1.25rem;
+  font-weight: 850;
+  letter-spacing: -.03em;
 }
 
-.navbar a.navbar-brand span {
-  display: block;
-  width: 229px;
-  height: 46px;
-  background: url("../images/spring-logo-dataflow.png") -1px -48px no-repeat;
-  opacity: 0;
-  -moz-transition: opacity 0.12s ease-in-out;
-  -webkit-transition: opacity 0.12s ease-in-out;
-  -o-transition: opacity 0.12s ease-in-out;
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  color: #fff;
+  background: var(--clinic-primary);
+  border-radius: .75rem;
 }
 
-.navbar a:hover.navbar-brand span {
-  opacity: 1;
+.app-navbar .nav-link {
+  position: relative;
+  margin: .15rem;
+  padding: .6rem .75rem;
+  color: #4a5e5a;
+  border-radius: .55rem;
+  font-size: .94rem;
+  font-weight: 700;
 }
 
-.navbar li > a, .navbar-text {
-  font-family: "montserratregular", sans-serif;
-  text-shadow: none;
-  font-size: 14px;
-
-/* line-height: 14px; */
-  padding: 28px 20px;
-  transition: all 0.15s;
-  -webkit-transition: all 0.15s;
-  -moz-transition: all 0.15s;
-  -o-transition: all 0.15s;
-  -ms-transition: all 0.15s;
+.app-navbar .nav-link:hover,
+.app-navbar .nav-link:focus,
+.app-navbar .nav-link.active {
+  color: var(--clinic-primary-dark);
+  background: var(--clinic-mint);
 }
 
-.navbar li > a {
-  text-transform: uppercase;
+.app-navbar .nav-link .fa {
+  width: 1.1rem;
+  margin-right: .25rem;
+  text-align: center;
 }
 
-.navbar .navbar-text {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-.navbar li:hover > a {
-  color: #eeeeee;
-  background-color: #6db33f;
+.account-nav {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-left: auto;
 }
 
-.navbar-toggle {
-  border-width: 0;
+.account-name {
+  max-width: 12rem;
+  overflow: hidden;
+  color: var(--clinic-muted);
+  font-size: .88rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  .icon-bar + .icon-bar {
-    margin-top: 3px;
-  }
-  .icon-bar {
-    width: 19px;
-    height: 3px;
-  }
+.logout-form {
+  margin: 0;
+}
 
+.logout-form .btn {
+  min-height: 2.4rem;
+  padding: .4rem .8rem;
+}
+
+.navbar-toggler {
+  border-color: var(--clinic-border);
 }

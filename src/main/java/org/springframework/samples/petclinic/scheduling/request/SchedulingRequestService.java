@@ -170,6 +170,7 @@ public class SchedulingRequestService {
 			throw new IllegalStateException("A confirmed request cannot be withdrawn");
 		}
 		this.offers.releaseCurrent(request.getCurrentRevision(), actor, "Owner withdrawal");
+		this.fallback.close(request, "Cancelled by owner");
 		request.getCurrentRevision().withdraw();
 		request.moveTo(SchedulingRequestState.CLOSED);
 		this.audit.record(actor, request.getCurrentRevision().getCorrelationId(), AuditAction.REQUEST_WITHDRAWN,

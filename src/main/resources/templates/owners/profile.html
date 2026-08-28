@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'profile')}">
+<body>
+  <header class="page-header" th:object="${owner}">
+    <div>
+      <p class="page-eyebrow" th:text="#{owner.profile}">Profile</p>
+      <h1 th:text="*{firstName + ' ' + lastName}">Owner name</h1>
+    </div>
+    <div class="button-row mt-0">
+      <a class="btn btn-outline-primary" th:href="@{/my/pets}" th:text="#{pets}">Pets</a>
+      <a class="btn btn-primary" th:href="@{/my/profile/edit}" th:text="#{owner.profile.edit}">Edit profile</a>
+    </div>
+  </header>
+
+  <div th:if="${message}" class="alert alert-success" role="status" th:text="${message}">Success</div>
+
+  <section class="section-card" th:object="${owner}">
+    <div class="section-heading">
+      <h2 th:text="#{ownerInformation}">Owner information</h2>
+    </div>
+    <dl class="definition-list">
+      <dt th:text="#{firstName}">First name</dt>
+      <dd th:text="*{firstName}">First name</dd>
+      <dt th:text="#{lastName}">Last name</dt>
+      <dd th:text="*{lastName}">Last name</dd>
+      <dt th:text="#{address}">Address</dt>
+      <dd th:text="*{address}">Address</dd>
+      <dt th:text="#{city}">City</dt>
+      <dd th:text="*{city}">City</dd>
+      <dt th:text="#{telephone}">Telephone</dt>
+      <dd th:text="*{telephone}">Telephone</dd>
+    </dl>
+  </section>
+</body>
+</html>

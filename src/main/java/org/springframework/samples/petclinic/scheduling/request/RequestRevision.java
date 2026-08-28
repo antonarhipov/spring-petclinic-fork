@@ -118,12 +118,28 @@ public class RequestRevision extends BaseEntity {
 		return this.visitReason;
 	}
 
+	public String getRawInterpretation() {
+		return this.rawInterpretation;
+	}
+
+	public String getModelIdentifier() {
+		return this.modelIdentifier;
+	}
+
 	public Integer getDurationMinutes() {
 		return this.durationMinutes;
 	}
 
+	public String getCareType() {
+		return this.careType;
+	}
+
 	public String getRequiredSpecialty() {
 		return this.requiredSpecialty;
+	}
+
+	public String getUrgency() {
+		return this.urgency;
 	}
 
 	public Vet getPreferredVet() {

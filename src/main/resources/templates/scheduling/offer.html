@@ -1,13 +1,50 @@
 <!DOCTYPE html>
+
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
 <body>
-  <h2 th:text="#{appointment.offer.title}">Your appointment offer</h2>
-  <p><strong th:text="${offer.vet.firstName + ' ' + offer.vet.lastName}">Veterinarian</strong></p>
-  <p th:text="${offer.startAt}">Time</p>
-  <p th:text="${offer.durationMinutes + ' minutes'}">Duration</p>
-  <p th:text="${offer.rationale}">Rationale</p>
-  <p>Available until <strong th:text="${offer.expiresAt}">Expiry</strong>.</p>
-  <form th:action="@{/my/scheduling/offers/{id}/accept(id=${offer.id})}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><button type="submit" th:text="#{appointment.offer.accept}">Accept offer</button></form>
-  <form th:action="@{/my/scheduling/offers/{id}/reject(id=${offer.id})}" method="post"><input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"><label><span th:text="#{appointment.reason.optional}">Reason (optional)</span> <input name="reason" maxlength="255"></label><button type="submit" th:text="#{appointment.offer.reject}">Reject offer</button></form>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.offer.eyebrow}">Recommended time</p>
+      <h1 th:text="#{appointment.offer.title}">Your appointment offer</h1>
+      <p class="page-subtitle" th:text="#{appointment.offer.subtitle}">This time is reserved for you until the offer expires.</p>
+    </div>
+  </header>
+
+  <section class="offer-card">
+    <p class="page-eyebrow" th:text="#{veterinarian}">Veterinarian</p>
+    <h2 th:text="${offer.vet.firstName + ' ' + offer.vet.lastName}">Veterinarian</h2>
+    <p class="offer-time">
+      <span class="offer-date" th:text="${@clinicDateTime.formatDate(offer.startAt)}">Friday, August 28, 2026</span>
+      <span class="offer-time-of-day" th:text="${@clinicDateTime.formatTime(offer.startAt)}">7:41 PM CEST</span>
+    </p>
+    <p th:text="#{appointment.duration.minutes(${offer.durationMinutes})}">Duration</p>
+    <p class="mt-3" th:text="${offer.rationale}">Rationale</p>
+    <p class="offer-expiry mt-4">
+      <span class="fa fa-clock-o me-2" aria-hidden="true"></span>
+      <span th:text="#{appointment.offer.expires}">Available until</span>
+      <strong th:text="${@clinicDateTime.format(offer.expiresAt)}">Friday, August 28, 2026 · 7:51 PM CEST</strong>
+    </p>
+
+    <div class="button-row">
+      <form th:action="@{/my/scheduling/offers/{id}/accept(id=${offer.id})}" method="post"
+        th:attr="data-loading-message=#{loading.acceptingOffer}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button class="btn btn-primary" type="submit" th:text="#{appointment.offer.accept}">Accept offer</button>
+      </form>
+    </div>
+
+    <form class="mt-4 pt-4 border-top" th:action="@{/my/scheduling/offers/{id}/reject(id=${offer.id})}" method="post"
+      th:attr="data-loading-message=#{loading.rejectingOffer}">
+      <label class="form-label" for="reason" th:text="#{appointment.reason.optional}">Reason (optional)</label>
+      <input class="form-control" id="reason" name="reason" maxlength="255">
+      <button class="btn btn-link text-danger mt-2 px-0" type="submit" th:text="#{appointment.offer.reject}">Reject offer</button>
+    </form>
+
+    <form class="mt-3" th:action="@{/my/scheduling/requests/{id}/withdraw(id=${request.id})}"
+      method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button class="btn btn-outline-danger" type="submit" th:text="#{appointment.request.cancel}">Cancel request</button>
+    </form>
+  </section>
 </body>
 </html>
