@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface SchedulingRequestRepository extends JpaRepository<SchedulingRequest, Integer> {
 
+	@EntityGraph(attributePaths = { "pet", "currentRevision", "currentRevision.availabilityWindows" })
 	@Query("""
 			SELECT request FROM SchedulingRequest request
 			JOIN FETCH request.pet pet
@@ -20,7 +21,7 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 			""")
 	Optional<SchedulingRequest> findOwnedById(Integer id, Integer ownerId);
 
-	@EntityGraph(attributePaths = { "pet", "currentRevision" })
+	@EntityGraph(attributePaths = { "pet", "currentRevision", "currentRevision.availabilityWindows" })
 	@Query("""
 			SELECT request FROM SchedulingRequest request
 			WHERE EXISTS (

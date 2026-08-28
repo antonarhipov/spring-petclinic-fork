@@ -1,7 +1,9 @@
 package org.springframework.samples.petclinic.scheduling.availability;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -32,8 +34,20 @@ public class ClinicDateTimeFormatter {
 		return formatDate(instant, clinicZone(), LocaleContextHolder.getLocale());
 	}
 
+	public String formatDate(LocalDate date) {
+		return DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+			.withLocale(LocaleContextHolder.getLocale())
+			.format(date);
+	}
+
 	public String formatTime(Instant instant) {
 		return formatTime(instant, clinicZone(), LocaleContextHolder.getLocale());
+	}
+
+	public String formatTime(LocalTime time) {
+		return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+			.withLocale(LocaleContextHolder.getLocale())
+			.format(time);
 	}
 
 	public String formatInput(Instant instant) {

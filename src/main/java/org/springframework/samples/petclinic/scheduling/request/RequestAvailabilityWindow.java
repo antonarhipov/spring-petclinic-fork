@@ -69,12 +69,20 @@ public class RequestAvailabilityWindow extends BaseEntity {
 		return this.applicableDate;
 	}
 
+	public Integer getDayOfWeek() {
+		return this.dayOfWeek;
+	}
+
 	public LocalTime getStartTime() {
 		return this.startTime;
 	}
 
 	public LocalTime getEndTime() {
 		return this.endTime;
+	}
+
+	public String getSource() {
+		return this.source;
 	}
 
 }

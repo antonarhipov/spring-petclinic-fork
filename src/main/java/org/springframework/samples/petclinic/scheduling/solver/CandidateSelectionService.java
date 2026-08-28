@@ -3,6 +3,9 @@ package org.springframework.samples.petclinic.scheduling.solver;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +20,9 @@ import org.springframework.samples.petclinic.scheduling.availability.ClinicSched
 import org.springframework.samples.petclinic.scheduling.offer.AppointmentOffer;
 import org.springframework.samples.petclinic.scheduling.offer.AppointmentOfferRepository;
 import org.springframework.samples.petclinic.scheduling.offer.ReservationBlockRepository;
+import org.springframework.samples.petclinic.scheduling.request.RequestAvailabilityWindow;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevision;
+import org.springframework.samples.petclinic.scheduling.request.WindowKind;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 
@@ -51,8 +56,18 @@ public class CandidateSelectionService {
 
 	@Transactional(readOnly = true)
 	public Optional<CandidateSlot> select(RequestRevision revision) {
+		return select(revision, SearchMode.PREFERRED);
+	}
+
+	@Transactional(readOnly = true)
+	public Optional<CandidateSlot> selectAlternative(RequestRevision revision) {
+		return select(revision, SearchMode.ALTERNATIVE);
+	}
+
+	private Optional<CandidateSlot> select(RequestRevision revision, SearchMode mode) {
 		Instant started = this.clock.instant();
 		ClinicSchedulingSettings clinic = this.settings.findById(1).orElseThrow();
+		ZoneId clinicZone = ZoneId.of(clinic.getClinicZone());
 		int duration = revision.getDurationMinutes();
 		Instant first = ceilToQuarter(started.plus(Duration.ofMinutes(clinic.getOwnerMinimumNoticeMinutes())));
 		Instant limit = first.plus(Duration.ofDays(clinic.getBookingHorizonDays()));
@@ -65,10 +80,13 @@ public class CandidateSelectionService {
 		long vetReservedRejected = 0;
 		long petReservedRejected = 0;
 		logger.debug(
-				"Candidate search started correlationId={} strategy=EARLIEST_SLOT_THEN_VET_ID timefoldInvoked=false revisionId={} durationMinutes={} requiredSpecialty={} firstSlot={} limit={} vetCount={} priorOfferCount={}",
-				revision.getCorrelationId(), revision.getId(), duration, revision.getRequiredSpecialty(), first, limit,
-				sortedVets.size(), prior.size());
+				"Candidate search started correlationId={} strategy=EARLIEST_SLOT_THEN_VET_ID mode={} timefoldInvoked=false revisionId={} durationMinutes={} requiredSpecialty={} firstSlot={} limit={} vetCount={} priorOfferCount={}",
+				revision.getCorrelationId(), mode, revision.getId(), duration, revision.getRequiredSpecialty(), first,
+				limit, sortedVets.size(), prior.size());
 		for (Instant slot = first; slot.isBefore(limit); slot = slot.plus(Duration.ofMinutes(15))) {
+			if (!matchesOwnerWindows(revision, slot, duration, clinicZone, mode)) {
+				continue;
+			}
 			for (Vet vet : sortedVets) {
 				evaluated++;
 				if (requiresUnavailableSpecialty(revision, vet)) {
@@ -106,6 +124,49 @@ public class CandidateSelectionService {
 		return Optional.empty();
 	}
 
+	private boolean matchesOwnerWindows(RequestRevision revision, Instant slot, int duration, ZoneId clinicZone,
+			SearchMode mode) {
+		LocalDateTime localStart = slot.atZone(clinicZone).toLocalDateTime();
+		LocalDateTime localEnd = localStart.plusMinutes(duration);
+		List<RequestAvailabilityWindow> windows = revision.getAvailabilityWindows();
+		List<RequestAvailabilityWindow> allowed = windows.stream()
+			.filter(window -> window.getKind() == WindowKind.ALLOWED)
+			.toList();
+		if (!allowed.isEmpty() && allowed.stream().noneMatch(window -> contains(window, localStart, localEnd))) {
+			return false;
+		}
+		if (windows.stream()
+			.filter(window -> window.getKind() == WindowKind.EXCLUDED)
+			.anyMatch(window -> overlaps(window, localStart, localEnd))) {
+			return false;
+		}
+		List<RequestAvailabilityWindow> preferred = windows.stream()
+			.filter(window -> window.getKind() == WindowKind.PREFERRED)
+			.toList();
+		if (preferred.isEmpty()) {
+			return true;
+		}
+		boolean isPreferred = preferred.stream().anyMatch(window -> contains(window, localStart, localEnd));
+		return mode == SearchMode.PREFERRED ? isPreferred : !isPreferred;
+	}
+
+	private boolean contains(RequestAvailabilityWindow window, LocalDateTime start, LocalDateTime end) {
+		return appliesOn(window, start.toLocalDate()) && start.toLocalDate().equals(end.toLocalDate())
+				&& !start.toLocalTime().isBefore(window.getStartTime())
+				&& !end.toLocalTime().isAfter(window.getEndTime());
+	}
+
+	private boolean overlaps(RequestAvailabilityWindow window, LocalDateTime start, LocalDateTime end) {
+		return appliesOn(window, start.toLocalDate()) && start.toLocalDate().equals(end.toLocalDate())
+				&& start.toLocalTime().isBefore(window.getEndTime())
+				&& end.toLocalTime().isAfter(window.getStartTime());
+	}
+
+	private boolean appliesOn(RequestAvailabilityWindow window, LocalDate date) {
+		return window.getApplicableDate() != null ? window.getApplicableDate().equals(date)
+				: window.getDayOfWeek() != null && window.getDayOfWeek() == date.getDayOfWeek().getValue();
+	}
+
 	private boolean requiresUnavailableSpecialty(RequestRevision revision, Vet vet) {
 		String required = revision.getRequiredSpecialty();
 		return required != null && !required.isBlank()
@@ -131,6 +192,12 @@ public class CandidateSelectionService {
 		long epoch = instant.getEpochSecond();
 		long quarter = 15 * 60L;
 		return Instant.ofEpochSecond(((epoch + quarter - 1) / quarter) * quarter);
+	}
+
+	private enum SearchMode {
+
+		PREFERRED, ALTERNATIVE
+
 	}
 
 }

@@ -28,6 +28,18 @@
           th:selected="${d == request.currentRevision.durationMinutes}" th:text="#{appointment.duration.minutes(${d})}">15 minutes</option>
       </select>
     </div>
+    <div class="mb-4" th:if="${!#lists.isEmpty(request.currentRevision.availabilityWindows)}">
+      <span class="form-label" th:text="#{appointment.preferredIntervals}">Preferred interval</span>
+      <ul class="mb-0">
+        <li th:each="window : ${request.currentRevision.availabilityWindows}">
+          <span th:if="${window.applicableDate}" th:text="${@clinicDateTime.formatDate(window.applicableDate)}">Tuesday</span>
+          <span th:unless="${window.applicableDate}" th:text="${window.dayOfWeek}">2</span>
+          <span th:text="${@clinicDateTime.formatTime(window.startTime)}">1:00 PM</span>
+          <span aria-hidden="true" th:text="${'–'}">–</span>
+          <span th:text="${@clinicDateTime.formatTime(window.endTime)}">5:00 PM</span>
+        </li>
+      </ul>
+    </div>
     <button class="btn btn-primary" type="submit" th:text="#{appointment.offer.find}">Find one appointment</button>
   </form>
 

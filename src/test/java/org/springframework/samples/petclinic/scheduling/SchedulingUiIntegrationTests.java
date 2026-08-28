@@ -10,6 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
+import java.time.DayOfWeek;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +40,8 @@ import org.springframework.samples.petclinic.scheduling.request.SchedulingReques
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestState;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevision;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevisionRepository;
+import org.springframework.samples.petclinic.scheduling.request.RequestAvailabilityWindow;
+import org.springframework.samples.petclinic.scheduling.request.WindowKind;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -227,6 +235,76 @@ class SchedulingUiIntegrationTests {
 
 		assertThat(request.getState()).isEqualTo(SchedulingRequestState.CLOSED);
 		assertThat(item.getState()).isEqualTo(QueueState.CLOSED);
+	}
+
+	@Test
+	void ownerSeesNoPreferredAvailabilityBeforeChoosingStaffFallback() throws Exception {
+		SchedulingRequest request = requestWithUnavailablePreferredDate();
+
+		this.mvc
+			.perform(post("/my/scheduling/requests/" + request.getId() + "/confirm").with(csrf())
+				.with(user("george").roles("OWNER")))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+				.redirectedUrl("/my/scheduling/requests/" + request.getId() + "/no-preferred-availability"));
+
+		assertThat(request.getState()).isEqualTo(SchedulingRequestState.READY_FOR_SUGGESTION);
+		assertThat(this.queue.findByRequestId(request.getId())).isEmpty();
+
+		this.mvc
+			.perform(get("/my/scheduling/requests/" + request.getId() + "/no-preferred-availability")
+				.with(user("george").roles("OWNER")))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("No appointments in your preferred interval")))
+			.andExpect(content().string(containsString("/my/scheduling/requests/" + request.getId() + "/alternative")))
+			.andExpect(content().string(containsString("/my/scheduling/requests/" + request.getId() + "/staff")));
+
+		this.mvc
+			.perform(post("/my/scheduling/requests/" + request.getId() + "/staff").with(csrf())
+				.with(user("george").roles("OWNER")))
+			.andExpect(status().is3xxRedirection());
+
+		assertThat(request.getState()).isEqualTo(SchedulingRequestState.STAFF_HANDLING);
+		assertThat(this.queue.findByRequestId(request.getId())).isPresent();
+	}
+
+	@Test
+	void ownerCanRequestAnAlternativeOutsideThePreferredInterval() throws Exception {
+		SchedulingRequest request = requestWithUnavailablePreferredDate();
+		request.getCurrentRevision().confirm(Instant.now());
+		request.moveTo(SchedulingRequestState.READY_FOR_SUGGESTION);
+
+		this.mvc
+			.perform(post("/my/scheduling/requests/" + request.getId() + "/alternative").with(csrf())
+				.with(user("george").roles("OWNER")))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+				.redirectedUrl("/my/scheduling/requests/" + request.getId() + "/offer"));
+
+		AppointmentOffer offer = this.offers
+			.findFirstByRevisionIdAndStateOrderByOfferedAtDesc(request.getCurrentRevision().getId(),
+					org.springframework.samples.petclinic.scheduling.offer.OfferState.HELD)
+			.orElseThrow();
+		assertThat(request.getState()).isEqualTo(SchedulingRequestState.OFFER_HELD);
+		assertThat(offer.getStartAt().atZone(ZoneId.of("Europe/Amsterdam")).toLocalDate())
+			.isNotEqualTo(request.getCurrentRevision().getAvailabilityWindows().getFirst().getApplicableDate());
+		assertThat(offer.getRationale()).contains("Alternative outside");
+	}
+
+	private SchedulingRequest requestWithUnavailablePreferredDate() {
+		Pet pet = this.pets.findById(1).orElseThrow();
+		SchedulingRequest request = this.requests.save(new SchedulingRequest(pet, false));
+		RequestRevision revision = this.revisions
+			.save(new RequestRevision(request, 1, "Leo needs a visit on Sunday after lunch", true, Instant.now(),
+					"preferred-window-test-" + System.nanoTime()));
+		revision.applyInterpretation("raw", "test", "Routine visit", 30, "GENERAL", null, null, "STANDARD");
+		LocalDate sunday = LocalDate.now(ZoneId.of("Europe/Amsterdam"))
+			.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+		revision.replaceWindows(List.of(new RequestAvailabilityWindow(WindowKind.PREFERRED, sunday, null,
+				LocalTime.of(13, 0), LocalTime.of(17, 0), "owner request")));
+		request.setCurrentRevision(revision);
+		this.requests.flush();
+		return request;
 	}
 
 }

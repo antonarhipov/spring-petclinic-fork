@@ -61,6 +61,10 @@
               th:text="${entry.request.state}">Status</span>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a class="btn btn-outline-primary"
+              th:if="${entry.request.state.name() == 'READY_FOR_SUGGESTION' and entry.interpretation != null and entry.interpretation.hasPreferredWindows()}"
+              th:href="@{/my/scheduling/requests/{id}/no-preferred-availability(id=${entry.request.id})}"
+              th:text="#{appointment.options.review}">Review options</a>
             <a class="btn btn-outline-primary" th:if="${entry.request.state.name() == 'OFFER_HELD'}"
               th:href="@{/my/scheduling/requests/{id}/offer(id=${entry.request.id})}" th:text="#{appointment.offer.view}">View offer</a>
             <form th:if="${entry.request.state.name() != 'CONFIRMED' and entry.request.state.name() != 'CLOSED'}"

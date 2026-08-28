@@ -42,11 +42,16 @@ public class OllamaInterpretationService implements InterpretationPort {
 			    contains contradictory danger information. Do not use UNCERTAIN for a common mild symptom
 			    merely because its severity was not stated; use STANDARD when no danger sign is stated.
 			- preferredVeterinarian: omit unless the veterinarian's name is explicitly stated.
+			- preferredWindows: include every explicit preferred day/date and time interval. Use ISO local dates,
+			  ISO local times, and dayOfWeek 1 for Monday through 7 for Sunday. Set exactly one of
+			  applicableDate or dayOfWeek. Interpret "after lunch" or "afternoon" as 13:00 through 17:00.
+			  Omit preferredWindows when the owner gives no timing preference.
 
 			Example:
 			Request: "leo has running nose\nplease schedule the visit for next thursday after lunch"
 			Interpretation: visitReason="Runny nose", durationMinutes=30, careType="GENERAL",
-			urgency="STANDARD". Omit requiredSpecialty and preferredVeterinarian.
+			urgency="STANDARD", preferredWindows=[{dayOfWeek=4, startTime="13:00", endTime="17:00"}].
+			Omit requiredSpecialty and preferredVeterinarian.
 			""";
 
 	private final ChatClient chatClient;

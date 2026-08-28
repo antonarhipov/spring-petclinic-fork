@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow" th:text="#{appointment.noPreferred.eyebrow}">Preferred time unavailable</p>
+      <h1 th:text="#{appointment.noPreferred.title}">No appointments in your preferred interval</h1>
+      <p class="page-subtitle" th:text="#{appointment.noPreferred.subtitle}">We could not find an available time in the interval you requested.</p>
+    </div>
+  </header>
+
+  <div class="alert alert-warning" role="status" th:if="${noAlternative}"
+    th:text="#{appointment.noAlternative}">No alternative appointment is currently available.</div>
+
+  <section class="section-card">
+    <div class="mb-4">
+      <h2 class="h5" th:text="#{appointment.preferredIntervals}">Preferred interval</h2>
+      <ul class="mb-0">
+        <li th:each="window : ${request.currentRevision.availabilityWindows}">
+          <span th:if="${window.applicableDate}" th:text="${@clinicDateTime.formatDate(window.applicableDate)}">Tuesday</span>
+          <span th:unless="${window.applicableDate}" th:text="${window.dayOfWeek}">2</span>
+          <span th:text="${@clinicDateTime.formatTime(window.startTime)}">1:00 PM</span>
+          <span aria-hidden="true" th:text="${'–'}">–</span>
+          <span th:text="${@clinicDateTime.formatTime(window.endTime)}">5:00 PM</span>
+        </li>
+      </ul>
+    </div>
+    <h2 class="h5" th:text="#{appointment.noPreferred.next}">What would you like to do?</h2>
+    <p th:text="#{appointment.noPreferred.help}">You can see the earliest appointment outside your preferred interval or ask clinic staff to handle the request.</p>
+    <div class="button-row">
+      <form th:action="@{/my/scheduling/requests/{id}/alternative(id=${request.id})}" method="post"
+        th:attr="data-loading-message=#{loading.findingAppointment}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button class="btn btn-primary" type="submit" th:text="#{appointment.alternative.find}">Find an alternative</button>
+      </form>
+      <form th:action="@{/my/scheduling/requests/{id}/staff(id=${request.id})}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button class="btn btn-outline-primary" type="submit" th:text="#{appointment.staff.forward}">Forward to staff</button>
+      </form>
+    </div>
+  </section>
+</body>
+</html>

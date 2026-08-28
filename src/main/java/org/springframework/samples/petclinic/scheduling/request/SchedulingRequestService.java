@@ -1,7 +1,13 @@
 package org.springframework.samples.petclinic.scheduling.request;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +21,8 @@ import org.springframework.samples.petclinic.scheduling.ai.InterpretationPort;
 import org.springframework.samples.petclinic.scheduling.ai.InterpretationResponse;
 import org.springframework.samples.petclinic.scheduling.audit.AuditAction;
 import org.springframework.samples.petclinic.scheduling.audit.SchedulingAuditService;
+import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingSettings;
+import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingSettingsRepository;
 import org.springframework.samples.petclinic.scheduling.offer.OfferService;
 import org.springframework.samples.petclinic.scheduling.queue.FallbackQueueService;
 import org.springframework.samples.petclinic.security.AuthenticatedOwner;
@@ -41,11 +49,14 @@ public class SchedulingRequestService {
 
 	private final SchedulingAuditService audit;
 
+	private final ClinicSchedulingSettingsRepository settings;
+
 	private final Clock clock;
 
 	public SchedulingRequestService(SchedulingRequestRepository requests, RequestRevisionRepository revisions,
 			OwnerAccessService owners, InterpretationPort interpretation, EmergencyScreeningService emergencyScreening,
-			FallbackQueueService fallback, OfferService offers, SchedulingAuditService audit, Clock clock) {
+			FallbackQueueService fallback, OfferService offers, SchedulingAuditService audit,
+			ClinicSchedulingSettingsRepository settings, Clock clock) {
 		this.requests = requests;
 		this.revisions = revisions;
 		this.owners = owners;
@@ -54,6 +65,7 @@ public class SchedulingRequestService {
 		this.fallback = fallback;
 		this.offers = offers;
 		this.audit = audit;
+		this.settings = settings;
 		this.clock = clock;
 	}
 
@@ -125,10 +137,29 @@ public class SchedulingRequestService {
 		request.moveTo(SchedulingRequestState.READY_FOR_SUGGESTION);
 		this.audit.record(actor, revision.getCorrelationId(), AuditAction.REQUEST_CONFIRMED, "request", requestId,
 				"INTERPRETATION_REVIEW", "READY_FOR_SUGGESTION", null);
-		if (this.offers.createOffer(revision, actor).isEmpty()) {
+		if (this.offers.createOffer(revision, actor).isEmpty() && !revision.hasPreferredWindows()) {
 			this.fallback.route(request);
 		}
 		return request;
+	}
+
+	@Transactional
+	public boolean offerAlternative(Integer requestId, Authentication actor) {
+		SchedulingRequest request = owned(requestId, actor);
+		if (request.getState() != SchedulingRequestState.READY_FOR_SUGGESTION
+				|| !request.getCurrentRevision().hasPreferredWindows()) {
+			throw new IllegalStateException("This request is not waiting for an alternative");
+		}
+		return this.offers.createAlternativeOffer(request.getCurrentRevision(), actor).isPresent();
+	}
+
+	@Transactional
+	public void routeToStaff(Integer requestId, Authentication actor) {
+		SchedulingRequest request = owned(requestId, actor);
+		if (request.getState() != SchedulingRequestState.READY_FOR_SUGGESTION) {
+			throw new IllegalStateException("This request cannot be forwarded to staff");
+		}
+		this.fallback.route(request);
 	}
 
 	@Transactional
@@ -185,6 +216,29 @@ public class SchedulingRequestService {
 	private void applyInterpretation(RequestRevision revision, InterpretationResponse response) {
 		revision.applyInterpretation(response.toString(), "ollama", response.visitReason(), response.durationMinutes(),
 				response.careType(), response.requiredSpecialty(), null, response.urgency());
+		revision.replaceWindows(response.preferredWindows()
+			.stream()
+			.map(window -> new RequestAvailabilityWindow(WindowKind.PREFERRED, resolveDate(window), null,
+					LocalTime.parse(window.startTime()), LocalTime.parse(window.endTime()), "owner request"))
+			.toList());
+	}
+
+	private LocalDate resolveDate(
+			org.springframework.samples.petclinic.scheduling.ai.InterpretationAvailabilityWindow window) {
+		if (window.applicableDate() != null) {
+			return LocalDate.parse(window.applicableDate());
+		}
+		ClinicSchedulingSettings clinic = this.settings.findById(1).orElseThrow();
+		LocalDateTime earliest = this.clock.instant()
+			.plusSeconds(clinic.getOwnerMinimumNoticeMinutes() * 60L)
+			.atZone(ZoneId.of(clinic.getClinicZone()))
+			.toLocalDateTime();
+		LocalDate date = earliest.toLocalDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.of(window.dayOfWeek())));
+		if (date.equals(earliest.toLocalDate())
+				&& !earliest.toLocalTime().isBefore(LocalTime.parse(window.endTime()))) {
+			date = date.plusWeeks(1);
+		}
+		return date;
 	}
 
 	private void validateSourceText(String sourceText) {

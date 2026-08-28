@@ -18,6 +18,10 @@
           <span class="status-badge"
               th:classappend="${'status-' + #strings.toLowerCase(#strings.replace(entry.request.state.name(), '_', '-'))}"
               th:text="${entry.request.state}">Request</span>
+            <a class="btn btn-outline-primary"
+              th:if="${entry.request.state.name() == 'READY_FOR_SUGGESTION' and entry.interpretation != null and entry.interpretation.hasPreferredWindows()}"
+              th:href="@{/my/scheduling/requests/{id}/no-preferred-availability(id=${entry.request.id})}"
+              th:text="#{appointment.options.review}">Review options</a>
             <form th:if="${entry.request.state.name() != 'CONFIRMED' and entry.request.state.name() != 'CLOSED'}"
               th:action="@{/my/scheduling/requests/{id}/withdraw(id=${entry.request.id})}" method="post">
               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

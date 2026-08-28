@@ -82,8 +82,38 @@ public class OwnerSchedulingController {
 	public String confirm(@PathVariable Integer requestId, @RequestParam(required = false) String visitReason,
 			@RequestParam(required = false) Integer duration, Authentication actor) {
 		SchedulingRequest request = this.requests.confirm(requestId, visitReason, duration, actor);
-		return request.getState() == SchedulingRequestState.OFFER_HELD
-				? "redirect:/my/scheduling/requests/" + requestId + "/offer" : "redirect:/my/appointments";
+		if (request.getState() == SchedulingRequestState.OFFER_HELD) {
+			return "redirect:/my/scheduling/requests/" + requestId + "/offer";
+		}
+		return request.getState() == SchedulingRequestState.READY_FOR_SUGGESTION
+				? "redirect:/my/scheduling/requests/" + requestId + "/no-preferred-availability"
+				: "redirect:/my/appointments";
+	}
+
+	@GetMapping("/my/scheduling/requests/{requestId}/no-preferred-availability")
+	public String noPreferredAvailability(@PathVariable Integer requestId, Authentication actor, Model model) {
+		SchedulingRequest request = this.query.ownedRequest(requestId, actor);
+		if (request.getState() != SchedulingRequestState.READY_FOR_SUGGESTION
+				|| !request.getCurrentRevision().hasPreferredWindows()) {
+			return "redirect:/my/appointments";
+		}
+		model.addAttribute("request", request);
+		return "scheduling/noPreferredAvailability";
+	}
+
+	@PostMapping("/my/scheduling/requests/{requestId}/alternative")
+	public String alternative(@PathVariable Integer requestId, Authentication actor, RedirectAttributes attributes) {
+		if (this.requests.offerAlternative(requestId, actor)) {
+			return "redirect:/my/scheduling/requests/" + requestId + "/offer";
+		}
+		attributes.addFlashAttribute("noAlternative", true);
+		return "redirect:/my/scheduling/requests/" + requestId + "/no-preferred-availability";
+	}
+
+	@PostMapping("/my/scheduling/requests/{requestId}/staff")
+	public String staff(@PathVariable Integer requestId, Authentication actor) {
+		this.requests.routeToStaff(requestId, actor);
+		return "redirect:/my/appointments";
 	}
 
 	@GetMapping("/my/scheduling/requests/{requestId}/offer")

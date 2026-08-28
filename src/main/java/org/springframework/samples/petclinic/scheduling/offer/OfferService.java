@@ -55,26 +55,38 @@ public class OfferService {
 
 	@Transactional
 	public Optional<AppointmentOffer> createOffer(RequestRevision revision, Authentication actor) {
+		return createOffer(revision, actor, false);
+	}
+
+	@Transactional
+	public Optional<AppointmentOffer> createAlternativeOffer(RequestRevision revision, Authentication actor) {
+		return createOffer(revision, actor, true);
+	}
+
+	private Optional<AppointmentOffer> createOffer(RequestRevision revision, Authentication actor,
+			boolean alternative) {
 		if (revision.getRequest().getState() != SchedulingRequestState.READY_FOR_SUGGESTION) {
 			return Optional.empty();
 		}
-		return this.candidates.select(revision).flatMap(candidate -> {
-			Instant now = this.clock.instant();
-			AppointmentOffer offer = this.offers.save(new AppointmentOffer(revision, candidate.veterinarian(),
-					candidate.startAt(), revision.getDurationMinutes(), now,
-					now.plusSeconds(this.settings.findById(1).orElseThrow().getOfferHoldMinutes() * 60L),
-					"Matches your request."));
-			try {
-				this.reservations.hold(offer);
-				revision.getRequest().moveTo(SchedulingRequestState.OFFER_HELD);
-				this.audit.record(actor, revision.getCorrelationId(), AuditAction.OFFER_HELD, "offer", offer.getId(),
-						null, "HELD", null);
-				return Optional.of(offer);
-			}
-			catch (DataIntegrityViolationException ex) {
-				return Optional.empty();
-			}
-		});
+		return (alternative ? this.candidates.selectAlternative(revision) : this.candidates.select(revision))
+			.flatMap(candidate -> {
+				Instant now = this.clock.instant();
+				AppointmentOffer offer = this.offers.save(new AppointmentOffer(revision, candidate.veterinarian(),
+						candidate.startAt(), revision.getDurationMinutes(), now,
+						now.plusSeconds(this.settings.findById(1).orElseThrow().getOfferHoldMinutes() * 60L),
+						alternative ? "Alternative outside your preferred interval."
+								: "Matches your preferred interval."));
+				try {
+					this.reservations.hold(offer);
+					revision.getRequest().moveTo(SchedulingRequestState.OFFER_HELD);
+					this.audit.record(actor, revision.getCorrelationId(), AuditAction.OFFER_HELD, "offer",
+							offer.getId(), null, "HELD", null);
+					return Optional.of(offer);
+				}
+				catch (DataIntegrityViolationException ex) {
+					return Optional.empty();
+				}
+			});
 	}
 
 	@Transactional

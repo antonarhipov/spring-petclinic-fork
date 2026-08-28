@@ -154,6 +154,10 @@ public class RequestRevision extends BaseEntity {
 		return this.availabilityWindows;
 	}
 
+	public boolean hasPreferredWindows() {
+		return this.availabilityWindows.stream().anyMatch(window -> window.getKind() == WindowKind.PREFERRED);
+	}
+
 	public void applyInterpretation(String raw, String model, String reason, int duration, String careType,
 			String specialty, Vet preferredVet, String urgency) {
 		this.rawInterpretation = raw;
