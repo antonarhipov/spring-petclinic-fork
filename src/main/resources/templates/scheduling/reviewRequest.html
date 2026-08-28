@@ -6,7 +6,7 @@
   <form th:action="@{/my/scheduling/requests/{id}/confirm(id=${request.id})}" method="post" th:if="${request.state.name() != 'STAFF_HANDLING'}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
     <label><span th:text="#{appointment.reason}">Reason</span> <input name="visitReason" th:value="${request.currentRevision.visitReason}" required></label>
-    <label>Duration <select name="duration"><option th:each="d : ${ {15,30,45,60} }" th:value="${d}" th:text="${d}">15</option></select></label>
+    <label>Duration <select name="duration"><option th:each="d : ${ {15,30,45,60} }" th:value="${d}" th:text="${d}" th:selected="${d == request.currentRevision.durationMinutes}">15</option></select></label>
     <button type="submit" th:text="#{appointment.offer.find}">Find one appointment</button>
   </form>
   <form th:action="@{/my/scheduling/requests/{id}/revise(id=${request.id})}" method="post">

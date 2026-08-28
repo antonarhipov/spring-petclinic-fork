@@ -91,6 +91,10 @@ public class AppointmentOffer extends BaseEntity {
 		return this.state;
 	}
 
+	public String getRationale() {
+		return this.rationale;
+	}
+
 	public boolean isActive(Instant now) {
 		return this.state == OfferState.HELD && this.expiresAt.isAfter(now);
 	}

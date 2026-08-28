@@ -86,6 +86,7 @@ class RepositoryFetchPlanTests {
 		this.entityManager.clear();
 
 		assertThat(offer.getVet().getLastName()).isEqualTo("Carter");
+		assertThat(offer.getRationale()).isEqualTo("Match");
 	}
 
 	private RequestRevision createRequestForPet(Integer petId) {

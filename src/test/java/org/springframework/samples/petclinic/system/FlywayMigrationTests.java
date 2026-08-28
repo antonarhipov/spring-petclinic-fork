@@ -20,6 +20,7 @@ class FlywayMigrationTests {
 			assertThat(count(statement, "\"flyway_schema_history\"")).isGreaterThanOrEqualTo(2);
 			assertThat(count(statement, "owners")).isEqualTo(10);
 			assertThat(count(statement, "clinic_scheduling_settings")).isEqualTo(1);
+			assertThat(count(statement, "recurring_vet_shifts")).isEqualTo(30);
 			assertThat(count(statement, "accounts")).isGreaterThanOrEqualTo(11);
 		}
 	}

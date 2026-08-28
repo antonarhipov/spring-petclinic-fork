@@ -15,4 +15,10 @@ class NavigationSecurityTests {
 		assertThat(ownerTemplate).doesNotContain("/staff/calendar");
 	}
 
+	@Test
+	void reviewTemplateSelectsTheInterpretedDuration() throws Exception {
+		String reviewTemplate = Files.readString(Path.of("src/main/resources/templates/scheduling/reviewRequest.html"));
+		assertThat(reviewTemplate).contains("th:selected=\"${d == request.currentRevision.durationMinutes}\"");
+	}
+
 }
