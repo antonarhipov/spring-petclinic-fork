@@ -67,7 +67,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import({ ReservationService.class, OccupancyQueryService.class, ClockConfiguration.class, OfferAcceptanceService.class,
-		StaffBookingService.class, BookingAuthorizationPolicy.class, SlotSelectionSnapshotFactory.class,
+		StaffBookingService.class, BookingAuthorizationPolicy.class,
+		org.springframework.samples.petclinic.scheduling.appointment.AppointmentAuditService.class,
+		org.springframework.samples.petclinic.scheduling.audit.AuditService.class, SlotSelectionSnapshotFactory.class,
 		CandidateSlotFactory.class })
 class CrossDatabaseReservationConcurrencyTests {
 
@@ -172,11 +174,12 @@ class CrossDatabaseReservationConcurrencyTests {
 	void competingStaffBooksHaveSingleWinnerWithoutPartialReservation() throws Exception {
 		Instant start = Instant.parse("2026-03-16T09:00:00Z");
 		int vetId = newVet();
+		long staffAccountId = newStaffAccount();
 		SchedulingRequest first = persistMatchingRequest(1, 1, RequestState.STAFF_HANDLING);
 		SchedulingRequest second = persistMatchingRequest(2, 2, RequestState.STAFF_HANDLING);
 		CandidateSlot slot = slot(vetId, start);
-		BookingAuthorization auth = new BookingAuthorization("OWNER_AGREEMENT", 2L, start.minusSeconds(60), "PHONE",
-				null);
+		BookingAuthorization auth = new BookingAuthorization("OWNER_AGREEMENT", staffAccountId, start.minusSeconds(60),
+				"PHONE", null);
 		AtomicInteger successes = new AtomicInteger();
 		race(2, () -> {
 			this.booking.bookDirect(first.getId(), slot, auth, "OWNER_AGREEMENT");
@@ -329,6 +332,15 @@ class CrossDatabaseReservationConcurrencyTests {
 					id, day.name(), LocalTime.of(0, 0), LocalTime.of(23, 59));
 		}
 		return id;
+	}
+
+	private long newStaffAccount() {
+		this.jdbc.update(
+				"insert into accounts (username, password_hash, role, must_change_password, credential_version, enabled, created_at, updated_at, version) "
+						+ "values (?, 'hash', 'STAFF', false, 0, true, current_timestamp, current_timestamp, 0)",
+				"race-staff-" + UUID.randomUUID());
+		Long accountId = this.jdbc.queryForObject("select max(id) from accounts", Long.class);
+		return accountId == null ? 1L : accountId;
 	}
 
 	private int blockCount(String type, int resourceId, Instant start) {

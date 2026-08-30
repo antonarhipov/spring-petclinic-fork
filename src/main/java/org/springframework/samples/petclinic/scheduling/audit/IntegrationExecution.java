@@ -53,6 +53,15 @@ public class IntegrationExecution {
 	@Column(name = "schema_version", nullable = false)
 	private String schemaVersion;
 
+	@Column(name = "requested_model_id")
+	private String requestedModelId;
+
+	@Column(name = "resolved_model_id")
+	private String resolvedModelId;
+
+	@Column(name = "prompt_template_version")
+	private String promptTemplateVersion;
+
 	@Column(name = "input_json")
 	private String inputJson;
 
@@ -162,6 +171,30 @@ public class IntegrationExecution {
 
 	public void setSchemaVersion(String schemaVersion) {
 		this.schemaVersion = schemaVersion;
+	}
+
+	public String getRequestedModelId() {
+		return this.requestedModelId;
+	}
+
+	public void setRequestedModelId(String requestedModelId) {
+		this.requestedModelId = requestedModelId;
+	}
+
+	public String getResolvedModelId() {
+		return this.resolvedModelId;
+	}
+
+	public void setResolvedModelId(String resolvedModelId) {
+		this.resolvedModelId = resolvedModelId;
+	}
+
+	public String getPromptTemplateVersion() {
+		return this.promptTemplateVersion;
+	}
+
+	public void setPromptTemplateVersion(String promptTemplateVersion) {
+		this.promptTemplateVersion = promptTemplateVersion;
 	}
 
 	public String getInputJson() {

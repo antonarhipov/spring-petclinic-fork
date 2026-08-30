@@ -3,8 +3,19 @@
 <body>
   <h2 th:text="#{scheduling.history.title}">Request history</h2>
   <p th:text="${history.request.state}">state</p>
-  <ul>
-    <li th:each="offer : ${history.offers}" th:text="${offer.status}">HELD</li>
-  </ul>
+  <table>
+    <tr>
+      <th th:text="#{scheduling.owner.appointments.vet}">Veterinarian</th>
+      <th th:text="#{scheduling.owner.appointments.when}">When</th>
+      <th th:text="#{scheduling.history.offer.explanation}">Explanation</th>
+      <th th:text="#{scheduling.owner.appointments.status}">Status</th>
+    </tr>
+    <tr th:each="offer : ${history.offers}">
+      <td th:text="${offer.veterinarianName}">Dr. Smith</td>
+      <td th:text="${offer.startAt} + ' - ' + ${offer.endAt}">2026-01-01T09:00:00Z - 2026-01-01T09:30:00Z</td>
+      <td th:text="${offer.explanationCode}">EARLIEST_AVAILABLE</td>
+      <td th:text="${offer.status}">HELD</td>
+    </tr>
+  </table>
 </body>
 </html>

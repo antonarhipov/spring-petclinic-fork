@@ -67,8 +67,12 @@ public class LlmInterpretationExecutionWorker implements IntegrationExecutionWor
 				text.getSourceText(), text.getSubmittedAt(), execution.getDeadlineAt(), prompt,
 				"schemas/llm-interpretation-v1.schema.json", vocabulary);
 		InterpretationExecutionEvidence evidence = this.coordinator.interpret(request);
+		InterpretationValidationResult validation = evidence.lastValidation();
+		execution.setPromptTemplateVersion(this.prompts.templateVersion());
 		int seq = 1;
+		int attemptTotal = evidence.attempts().size();
 		for (InterpretationPort.InterpretationCallResult attempt : evidence.attempts()) {
+			boolean isLast = seq == attemptTotal;
 			IntegrationAttempt row = new IntegrationAttempt();
 			row.setExecution(execution);
 			row.setSequence(seq++);
@@ -77,9 +81,16 @@ public class LlmInterpretationExecutionWorker implements IntegrationExecutionWor
 			row.setInputJson(execution.getInputJson());
 			row.setRawOutput(attempt.rawResponse());
 			row.setOutcome(attempt.transientFailure() ? "TRANSIENT_FAILURE" : "COMPLETED");
+			if (attempt.transientFailure()) {
+				row.setErrorClassification("TRANSIENT_FAILURE");
+			}
+			else if (isLast && validation != null && !validation.reviewable()) {
+				row.setErrorClassification(validation.classification().name());
+			}
 			execution.getAttempts().add(row);
+			execution.setRequestedModelId(attempt.requestedModel());
+			execution.setResolvedModelId(attempt.resolvedModel());
 		}
-		InterpretationValidationResult validation = evidence.lastValidation();
 		execution.setAttemptCount(evidence.attempts().size());
 		execution.setFinishedAt(Instant.now(this.clock));
 		if (validation == null) {

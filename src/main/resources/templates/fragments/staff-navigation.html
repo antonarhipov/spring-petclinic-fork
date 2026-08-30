@@ -3,6 +3,9 @@
 <body>
   <nav th:fragment="staffNav">
     <a th:href="@{/staff/queue}" th:text="#{scheduling.queue.title}">Staff queue</a>
+    <a th:href="@{/staff/calendar}" th:text="#{scheduling.staff.calendar.title}">Staff calendar</a>
+    <a th:href="@{/staff/availability}" th:text="#{scheduling.staff.availability.title}">Availability</a>
+    <a th:href="@{/staff/settings}" th:text="#{scheduling.staff.settings.title}">Clinic settings</a>
   </nav>
 </body>
 </html>

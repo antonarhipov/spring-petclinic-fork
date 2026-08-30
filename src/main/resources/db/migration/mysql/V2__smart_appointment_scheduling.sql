@@ -362,6 +362,7 @@ CREATE TABLE reservation_blocks (
 
 ALTER TABLE visits ADD COLUMN appointment_id BIGINT;
 ALTER TABLE visits ADD COLUMN vet_id INT UNSIGNED;
+ALTER TABLE visits ADD COLUMN category VARCHAR(20);
 ALTER TABLE visits ADD CONSTRAINT uk_visits_appointment UNIQUE (appointment_id);
 ALTER TABLE visits ADD CONSTRAINT fk_visits_appointment FOREIGN KEY (appointment_id) REFERENCES appointments (id);
 ALTER TABLE visits ADD CONSTRAINT fk_visits_vet FOREIGN KEY (vet_id) REFERENCES vets (id);

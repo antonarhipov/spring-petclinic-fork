@@ -6,12 +6,75 @@
     <span class="fa fa-exclamation-circle" aria-hidden="true" th:title="#{scheduling.review.issueIcon}"></span>
     <span th:text="#{scheduling.review.issues}">Please review the interpreted details. Each issue shows a text label and an icon, not color alone.</span>
   </p>
+  <div th:if="${hasIssues}" class="review-issues">
+    <h3 th:text="#{scheduling.review.issuesSummary}">Please resolve the following issues</h3>
+    <ul>
+      <li th:each="issue : ${topIssues}" th:text="${issue}"></li>
+    </ul>
+  </div>
   <form th:object="${form}" method="post" th:action="@{/owner/scheduling-requests/{id}/interpretation(id=${request.id})}">
     <input type="hidden" th:field="*{expectedVersion}" />
     <label th:text="#{scheduling.review.reason}">Reason</label>
     <input type="text" th:field="*{visitReason}" />
+    <span th:each="fi : ${fieldIssues}" th:if="${fi.field == 'visitReason'}" class="field-issue">
+      <span class="fa fa-exclamation-triangle" aria-hidden="true"></span>
+      <span th:text="${fi.code}"></span>
+    </span>
+
     <label th:text="#{scheduling.review.duration}">Duration</label>
     <input type="number" th:field="*{durationMinutes}" />
+    <span th:each="fi : ${fieldIssues}" th:if="${fi.field == 'durationMinutes'}" class="field-issue">
+      <span class="fa fa-exclamation-triangle" aria-hidden="true"></span>
+      <span th:text="${fi.code}"></span>
+    </span>
+
+    <label th:text="#{scheduling.review.vet}">Preferred veterinarian</label>
+    <input type="number" th:field="*{preferredVeterinarianId}" />
+    <span th:each="fi : ${fieldIssues}" th:if="${fi.field == 'preferredVeterinarianId'}" class="field-issue">
+      <span class="fa fa-exclamation-triangle" aria-hidden="true"></span>
+      <span th:text="${fi.code}"></span>
+    </span>
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.allowed}">Allowed windows</legend>
+      <span th:each="fi : ${fieldIssues}" th:if="${fi.field == 'allowedWindows'}" class="field-issue">
+        <span class="fa fa-exclamation-triangle" aria-hidden="true"></span>
+        <span th:text="${fi.code}"></span>
+      </span>
+      <div th:each="row, rowStat : *{allowedWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{allowedWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{allowedWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{allowedWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{allowedWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.preferred}">Preferred windows</legend>
+      <div th:each="row, rowStat : *{preferredWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{preferredWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{preferredWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{preferredWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{preferredWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.excluded}">Excluded windows</legend>
+      <div th:each="row, rowStat : *{excludedWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{excludedWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{excludedWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{excludedWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{excludedWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
     <button type="submit" th:text="#{scheduling.review.save}">Save</button>
   </form>
   <form method="post" th:action="@{/owner/scheduling-requests/{id}/interpretation/confirm(id=${request.id})}">

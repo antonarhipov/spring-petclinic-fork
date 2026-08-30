@@ -2,9 +2,49 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
 <body>
   <h2 th:text="#{scheduling.owner.history.title}">History</h2>
+
+  <h3 th:text="#{scheduling.owner.history.appointments}">Appointments</h3>
   <table>
+    <tr>
+      <th th:text="#{scheduling.owner.appointments.when}">When</th>
+      <th th:text="#{scheduling.owner.appointments.vet}">Veterinarian</th>
+      <th th:text="#{scheduling.owner.appointments.status}">Status</th>
+    </tr>
     <tr th:each="appointment : ${history.appointments}">
+      <td th:text="${appointment.startAt} + ' - ' + ${appointment.endAt}">2026-01-01T09:00:00Z - 2026-01-01T09:30:00Z</td>
+      <td>
+        <span th:text="${appointment.veterinarianName}">Dr. Smith</span>
+        <span th:if="${!#strings.isEmpty(appointment.veterinarianSpecialty)}" th:text="'(' + ${appointment.veterinarianSpecialty} + ')'">(Surgery)</span>
+      </td>
       <td th:text="${appointment.status}">CONFIRMED</td>
+    </tr>
+  </table>
+
+  <h3 th:text="#{scheduling.owner.history.visits}">Completed visits</h3>
+  <table>
+    <tr>
+      <th th:text="#{scheduling.owner.history.visits.date}">Date</th>
+      <th th:text="#{scheduling.owner.history.visits.pet}">Pet</th>
+      <th th:text="#{scheduling.owner.history.visits.description}">Description</th>
+    </tr>
+    <tr th:each="visit : ${history.visits}">
+      <td th:text="${visit.date}">2026-01-01</td>
+      <td th:text="${visit.petName}">Leo</td>
+      <td th:text="${visit.description}">Annual exam</td>
+    </tr>
+  </table>
+
+  <h3 th:text="#{scheduling.owner.history.requests}">Requests</h3>
+  <table>
+    <tr>
+      <th th:text="#{scheduling.owner.history.requests.updated}">Updated</th>
+      <th th:text="#{scheduling.owner.history.requests.state}">State</th>
+      <th th:text="#{scheduling.owner.history.requests.status}">Status</th>
+    </tr>
+    <tr th:each="request : ${history.requests}">
+      <td th:text="${request.updatedAt}">2026-01-01T09:00:00Z</td>
+      <td th:text="${request.state}">CONFIRMED</td>
+      <td th:text="${request.ownerStatusCode}">READY</td>
     </tr>
   </table>
 </body>

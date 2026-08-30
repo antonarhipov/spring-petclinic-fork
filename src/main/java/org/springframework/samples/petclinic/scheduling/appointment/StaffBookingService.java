@@ -34,12 +34,14 @@ public class StaffBookingService {
 
 	private final BookingAuthorizationPolicy policy;
 
+	private final AppointmentAuditService audit;
+
 	private final Clock clock;
 
 	public StaffBookingService(SchedulingRequestRepository requests, AppointmentRepository appointments,
 			OfferRepository offers, HoldRepository holds, ReservationBlockRepository blocks,
 			ReservationService reservations, ActivePetRequestRepository activePets, StaffQueueRepository queueItems,
-			BookingAuthorizationPolicy policy, Clock clock) {
+			BookingAuthorizationPolicy policy, AppointmentAuditService audit, Clock clock) {
 		this.requests = requests;
 		this.appointments = appointments;
 		this.offers = offers;
@@ -49,14 +51,15 @@ public class StaffBookingService {
 		this.activePets = activePets;
 		this.queueItems = queueItems;
 		this.policy = policy;
+		this.audit = audit;
 		this.clock = clock;
 	}
 
 	@Transactional
 	public Appointment bookDirect(Long requestId, CandidateSlot slot, BookingAuthorization authorization,
 			String staffReason) {
-		this.policy.validate(authorization);
 		SchedulingRequest request = this.requests.findById(requestId).orElseThrow();
+		this.policy.validate(authorization, request.getPetId());
 		this.reservations.acquireExact(requestId, slot, "STAFF", "STAFF_DIRECT");
 		Offer offer = this.offers
 			.findFirstByRequestRevisionIdAndStatusOrderByCreatedAtDesc(request.getActiveRequestRevisionId(),
@@ -98,7 +101,15 @@ public class StaffBookingService {
 			item.setResolutionCode("BOOKED");
 			item.setUpdatedAt(now);
 		});
+		this.audit.record("STAFF", authorization.agreementRecordedBy(), "BOOKED", appointment, null,
+				snapshot(appointment));
 		return appointment;
+	}
+
+	private String snapshot(Appointment appointment) {
+		return "{\"id\":" + appointment.getId() + ",\"status\":\"" + appointment.getStatus() + "\",\"vetId\":"
+				+ appointment.getVeterinarianId() + ",\"start\":\"" + appointment.getStartAt() + "\",\"end\":\""
+				+ appointment.getEndAt() + "\",\"basis\":\"" + appointment.getAuthorizationBasis() + "\"}";
 	}
 
 }

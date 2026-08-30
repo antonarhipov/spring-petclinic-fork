@@ -102,28 +102,4 @@ class OfferAcceptanceServiceTests {
 		assertThatThrownBy(() -> service.accept(1L, 1, 8L, null)).isInstanceOf(OfferUnavailableException.class);
 	}
 
-	@Test
-	void rejectReleasesAndReturnsToReady() {
-		SchedulingRequestRepository requests = mock(SchedulingRequestRepository.class);
-		OfferRepository offers = mock(OfferRepository.class);
-		HoldRepository holds = mock(HoldRepository.class);
-		ReservationBlockRepository blocks = mock(ReservationBlockRepository.class);
-		AppointmentRepository appointments = mock(AppointmentRepository.class);
-		ActivePetRequestRepository activePets = mock(ActivePetRequestRepository.class);
-		StaffQueueRepository queueItems = mock(StaffQueueRepository.class);
-		ReservationService reservations = mock(ReservationService.class);
-		SchedulingRequest request = new SchedulingRequest();
-		request.setState(RequestState.OFFER_HELD);
-		when(requests.findByIdAndOwnerId(1L, 1)).thenReturn(Optional.of(request));
-		Offer offer = new Offer();
-		when(offers.findById(8L)).thenReturn(Optional.of(offer));
-		Hold hold = new Hold();
-		when(holds.findByOfferId(8L)).thenReturn(Optional.of(hold));
-		OfferAcceptanceService service = new OfferAcceptanceService(requests, offers, holds, blocks, appointments,
-				activePets, queueItems, reservations, Clock.systemUTC());
-		service.reject(1L, 1, 8L, null);
-		verify(reservations).release(hold, offer, "REJECTED", OfferStatus.REJECTED);
-		assertThat(request.getState()).isEqualTo(RequestState.READY_FOR_SUGGESTION);
-	}
-
 }

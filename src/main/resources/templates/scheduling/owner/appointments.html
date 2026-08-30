@@ -3,7 +3,18 @@
 <body>
   <h2 th:text="#{scheduling.owner.appointments.title}">Appointments</h2>
   <table>
+    <tr>
+      <th th:text="#{scheduling.owner.appointments.when}">When</th>
+      <th th:text="#{scheduling.owner.appointments.vet}">Veterinarian</th>
+      <th th:text="#{scheduling.owner.appointments.status}">Status</th>
+      <th></th>
+    </tr>
     <tr th:each="appointment : ${appointments}">
+      <td th:text="${appointment.startAt} + ' - ' + ${appointment.endAt}">2026-01-01T09:00:00Z - 2026-01-01T09:30:00Z</td>
+      <td>
+        <span th:text="${appointment.veterinarianName}">Dr. Smith</span>
+        <span th:if="${!#strings.isEmpty(appointment.veterinarianSpecialty)}" th:text="'(' + ${appointment.veterinarianSpecialty} + ')'">(Surgery)</span>
+      </td>
       <td th:text="${appointment.status}">CONFIRMED</td>
       <td><a th:href="@{/owner/appointments/{id}(id=${appointment.id})}" th:text="#{scheduling.owner.appointments.open}">Open</a></td>
     </tr>

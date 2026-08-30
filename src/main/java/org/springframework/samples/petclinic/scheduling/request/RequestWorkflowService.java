@@ -4,8 +4,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.EnumSet;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.samples.petclinic.owner.Owner;
@@ -29,6 +36,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RequestWorkflowService {
+
+	/**
+	 * A single owner-entered local date/time window row. Incomplete rows (any null field)
+	 * are treated as blank and dropped before use.
+	 */
+	public record WindowEdit(LocalDate startDate, LocalTime startTime, LocalDate endDate, LocalTime endTime) {
+	}
+
+	private static final Set<RequestState> POST_CONFIRMATION_REVISABLE = EnumSet.of(RequestState.READY_FOR_SUGGESTION,
+			RequestState.MATCHING, RequestState.OFFER_HELD, RequestState.AWAITING_FALLBACK_CHOICE);
 
 	private final SchedulingRequestRepository requests;
 
@@ -212,13 +229,21 @@ public class RequestWorkflowService {
 	@Transactional
 	public RequestRevision saveOwnerEdits(Long requestId, Integer ownerId, Integer expectedVersion, String visitReason,
 			Integer durationMinutes) {
+		return saveOwnerEdits(requestId, ownerId, expectedVersion, visitReason, durationMinutes, null, null, null,
+				null);
+	}
+
+	@Transactional
+	public RequestRevision saveOwnerEdits(Long requestId, Integer ownerId, Integer expectedVersion, String visitReason,
+			Integer durationMinutes, Integer preferredVeterinarianId, List<WindowEdit> allowedWindows,
+			List<WindowEdit> preferredWindows, List<WindowEdit> excludedWindows) {
 		SchedulingRequest request = requireOwned(requestId, ownerId);
 		assertVersion(request, expectedVersion);
 		if (request.getState() != RequestState.INTERPRETATION_REVIEW) {
 			throw new IllegalStateException("INVALID_STATE");
 		}
 		RequestRevision current = this.revisions.findById(request.getActiveRequestRevisionId()).orElseThrow();
-		if (!isEditable("visitReason") || !isEditable("durationMinutes")) {
+		if (!isEditable("visitReason") || !isEditable("durationMinutes") || !isEditable("preferredVeterinarianId")) {
 			throw new IllegalStateException("FIELD_NOT_EDITABLE");
 		}
 		Instant now = Instant.now(this.clock);
@@ -229,10 +254,59 @@ public class RequestWorkflowService {
 		if (durationMinutes != null) {
 			draft.setDurationMinutes(durationMinutes);
 		}
+		if (preferredVeterinarianId != null) {
+			draft.setPreferredVeterinarianId(preferredVeterinarianId);
+		}
 		draft.setStatus("DRAFT");
 		draft = this.revisions.save(draft);
-		copyWindows(current.getId(), draft.getId());
+		String zoneId = this.policies.currentPolicy().getZoneId();
+		replaceOrCopyWindows(current.getId(), draft.getId(), "ALLOWED", allowedWindows, zoneId);
+		replaceOrCopyWindows(current.getId(), draft.getId(), "PREFERRED", preferredWindows, zoneId);
+		replaceOrCopyWindows(current.getId(), draft.getId(), "EXCLUDED", excludedWindows, zoneId);
 		request.setActiveRequestRevisionId(draft.getId());
+		request.setUpdatedAt(now);
+		return draft;
+	}
+
+	/**
+	 * Post-confirmation structured revision: an owner may still change confirmed
+	 * availability windows, duration, or preferred veterinarian after an offer has been
+	 * made (but before the appointment itself is booked). Per FR-049, this releases any
+	 * active hold (handled by the caller, {@link RequestRevisionService}), retains prior
+	 * offer history, and starts a fresh revision whose rejection count and exclusion list
+	 * both start empty because none of the prior revision's windows are copied forward.
+	 */
+	@Transactional
+	public RequestRevision reviseConfirmedFields(Long requestId, Integer ownerId, Long accountId,
+			Integer expectedVersion, Integer durationMinutes, Integer preferredVeterinarianId,
+			List<WindowEdit> allowedWindows, List<WindowEdit> preferredWindows, List<WindowEdit> excludedWindows) {
+		SchedulingRequest request = requireOwned(requestId, ownerId);
+		assertVersion(request, expectedVersion);
+		if (!POST_CONFIRMATION_REVISABLE.contains(request.getState())) {
+			throw new IllegalStateException("INVALID_STATE");
+		}
+		List<WindowEdit> allowed = filterValid(allowedWindows);
+		if (allowed.isEmpty() || durationMinutes == null || durationMinutes <= 0) {
+			throw new IllegalArgumentException("REVISION_NOT_CONFIRMABLE");
+		}
+		RequestRevision current = this.revisions.findById(request.getActiveRequestRevisionId()).orElseThrow();
+		Instant now = Instant.now(this.clock);
+		RequestRevision draft = copyRevision(current, this.revisions.countByRequestId(requestId) + 1, now);
+		draft.setDurationMinutes(durationMinutes);
+		if (preferredVeterinarianId != null) {
+			draft.setPreferredVeterinarianId(preferredVeterinarianId);
+		}
+		draft.setStatus("CONFIRMED");
+		draft.setConfirmedByAccountId(accountId);
+		draft.setConfirmedAt(now);
+		draft = this.revisions.save(draft);
+		String zoneId = this.policies.currentPolicy().getZoneId();
+		saveWindowEdits(draft.getId(), "ALLOWED", allowed, zoneId);
+		saveWindowEdits(draft.getId(), "PREFERRED", filterValid(preferredWindows), zoneId);
+		saveWindowEdits(draft.getId(), "EXCLUDED", filterValid(excludedWindows), zoneId);
+		request.setActiveRequestRevisionId(draft.getId());
+		request.setState(RequestState.READY_FOR_SUGGESTION);
+		request.setOwnerStatusCode("READY_FOR_SUGGESTION");
 		request.setUpdatedAt(now);
 		return draft;
 	}
@@ -294,13 +368,14 @@ public class RequestWorkflowService {
 		record.setSchemaVersion("1.0");
 		record.setRecognizedOutputJson(validation.recognizedJson());
 		try {
-			record.setUnknownFieldsJson(
-					new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(validation.unknownFields()));
-			record.setValidationIssuesJson(
-					new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(validation.issueCodes()));
+			com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+			record.setUnknownFieldsJson(mapper.writeValueAsString(validation.unknownFields()));
+			record.setValidationIssuesJson(mapper.writeValueAsString(validation.issueCodes()));
+			record.setUncertaintiesJson(mapper.writeValueAsString(validation.recognized().uncertainties()));
 		}
 		catch (Exception ex) {
 			record.setUnknownFieldsJson("{}");
+			record.setUncertaintiesJson("[]");
 		}
 		record.setOutcome(validation.classification().name());
 		record.setCreatedAt(now);
@@ -391,6 +466,67 @@ public class RequestWorkflowService {
 			copy.setSourcePhrase(window.getSourcePhrase());
 			copy.setFallbackAllowed(window.isFallbackAllowed());
 			this.windows.save(copy);
+		}
+	}
+
+	/**
+	 * If the owner touched any field of any row of {@code edits} for this window kind,
+	 * the valid rows replace the kind entirely; otherwise the prior revision's windows of
+	 * that kind carry forward unchanged, so an owner saving unrelated fields (e.g. just
+	 * the visit reason) never silently loses their windows.
+	 */
+	private void replaceOrCopyWindows(Long fromId, Long toId, String kind, List<WindowEdit> edits, String zoneId) {
+		if (!hasAnyContent(edits)) {
+			for (RequestWindow window : this.windows.findByRequestRevisionId(fromId)) {
+				if (!kind.equals(window.getKind())) {
+					continue;
+				}
+				RequestWindow copy = new RequestWindow();
+				copy.setRequestRevisionId(toId);
+				copy.setKind(window.getKind());
+				copy.setStartAt(window.getStartAt());
+				copy.setEndAt(window.getEndAt());
+				copy.setSourcePhrase(window.getSourcePhrase());
+				copy.setFallbackAllowed(window.isFallbackAllowed());
+				this.windows.save(copy);
+			}
+			return;
+		}
+		saveWindowEdits(toId, kind, filterValid(edits), zoneId);
+	}
+
+	private boolean hasAnyContent(List<WindowEdit> edits) {
+		if (edits == null) {
+			return false;
+		}
+		return edits.stream()
+			.anyMatch(edit -> edit.startDate() != null || edit.startTime() != null || edit.endDate() != null
+					|| edit.endTime() != null);
+	}
+
+	private List<WindowEdit> filterValid(List<WindowEdit> edits) {
+		if (edits == null) {
+			return List.of();
+		}
+		return edits.stream()
+			.filter(edit -> edit.startDate() != null && edit.startTime() != null && edit.endDate() != null
+					&& edit.endTime() != null)
+			.filter(edit -> LocalDateTime.of(edit.startDate(), edit.startTime())
+				.isBefore(LocalDateTime.of(edit.endDate(), edit.endTime())))
+			.toList();
+	}
+
+	private void saveWindowEdits(Long revisionId, String kind, List<WindowEdit> edits, String zoneId) {
+		ZoneId zone = ZoneId.of(zoneId);
+		for (WindowEdit edit : edits) {
+			RequestWindow window = new RequestWindow();
+			window.setRequestRevisionId(revisionId);
+			window.setKind(kind);
+			window.setStartAt(LocalDateTime.of(edit.startDate(), edit.startTime()).atZone(zone).toInstant());
+			window.setEndAt(LocalDateTime.of(edit.endDate(), edit.endTime()).atZone(zone).toInstant());
+			window.setSourcePhrase("owner-edit");
+			window.setFallbackAllowed(true);
+			this.windows.save(window);
 		}
 	}
 

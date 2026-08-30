@@ -51,6 +51,9 @@ public class Visit extends BaseEntity {
 	@Column(name = "vet_id")
 	private Integer vetId;
 
+	@Column(name = "category")
+	private String category;
+
 	/**
 	 * Creates a new instance of Visit for tomorrow
 	 */
@@ -96,6 +99,19 @@ public class Visit extends BaseEntity {
 
 	public void setVetId(Integer vetId) {
 		this.vetId = vetId;
+	}
+
+	public String getCategory() {
+		return this.category;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
+	}
+
+	public boolean isDocumentedFollowUpOrRecheck() {
+		return VisitCategory.FOLLOW_UP.name().equals(this.category)
+				|| VisitCategory.RECHECK.name().equals(this.category);
 	}
 
 }

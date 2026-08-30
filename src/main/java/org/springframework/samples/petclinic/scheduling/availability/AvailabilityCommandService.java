@@ -94,6 +94,7 @@ public class AvailabilityCommandService {
 	public VetRecurringShift addShift(int veterinarianId, DayOfWeek day, LocalTime start, LocalTime end,
 			Long actorAccountId) {
 		assertGrid(start, end);
+		assertNoShiftOverlap(veterinarianId, day, start, end);
 		VetRecurringShift shift = new VetRecurringShift();
 		shift.setVeterinarianId(veterinarianId);
 		shift.setDayOfWeek(day);
@@ -188,6 +189,16 @@ public class AvailabilityCommandService {
 	private void assertGrid(LocalTime start, LocalTime end) {
 		if (start.getMinute() % 15 != 0 || end.getMinute() % 15 != 0 || !end.isAfter(start)) {
 			throw new PolicyValidationException("GRID_ALIGNMENT");
+		}
+	}
+
+	private void assertNoShiftOverlap(int veterinarianId, DayOfWeek day, LocalTime start, LocalTime end) {
+		boolean overlaps = this.shifts.findByVeterinarianId(veterinarianId)
+			.stream()
+			.filter(shift -> shift.getDayOfWeek() == day)
+			.anyMatch(shift -> start.isBefore(shift.getEndLocalTime()) && shift.getStartLocalTime().isBefore(end));
+		if (overlaps) {
+			throw new PolicyValidationException("SHIFT_OVERLAP");
 		}
 	}
 

@@ -1,5 +1,7 @@
 package org.springframework.samples.petclinic.scheduling.request;
 
+import java.util.List;
+
 import org.springframework.samples.petclinic.scheduling.appointment.Hold;
 import org.springframework.samples.petclinic.scheduling.appointment.HoldRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.HoldStatus;
@@ -51,6 +53,30 @@ public class RequestRevisionService {
 		}
 		this.workflow.reviseSourceText(requestId, ownerId, expectedVersion, sourceText);
 		this.audit.offerOutcome(requestId, "REQUEST_REVISED", "{\"state\":\"AWAITING_CONSENT\"}");
+	}
+
+	/**
+	 * Owner-initiated post-confirmation revision (FR-049 / US3 AC4): validates and builds
+	 * the new confirmed revision first so a rejected edit never touches an existing hold,
+	 * then releases any active hold so a fresh automated match can run against the new
+	 * revision.
+	 */
+	@Transactional
+	public RequestRevision reviseConfirmed(Long requestId, Integer ownerId, Long accountId, Integer expectedVersion,
+			Integer durationMinutes, Integer preferredVeterinarianId,
+			List<RequestWorkflowService.WindowEdit> allowedWindows,
+			List<RequestWorkflowService.WindowEdit> preferredWindows,
+			List<RequestWorkflowService.WindowEdit> excludedWindows) {
+		RequestRevision draft = this.workflow.reviseConfirmedFields(requestId, ownerId, accountId, expectedVersion,
+				durationMinutes, preferredVeterinarianId, allowedWindows, preferredWindows, excludedWindows);
+		for (Hold hold : this.holds.findByRequestId(requestId)) {
+			if (hold.getState() == HoldStatus.ACTIVE) {
+				Offer offer = this.offers.findById(hold.getOfferId()).orElseThrow();
+				this.reservations.release(hold, offer, "REVISED", OfferStatus.RELEASED);
+			}
+		}
+		this.audit.offerOutcome(requestId, "REQUEST_REVISED", "{\"state\":\"READY_FOR_SUGGESTION\"}");
+		return draft;
 	}
 
 }

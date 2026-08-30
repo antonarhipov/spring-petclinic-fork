@@ -15,6 +15,7 @@ import org.springframework.samples.petclinic.scheduling.appointment.OfferDecisio
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.request.OwnerRequestHistoryService;
 import org.springframework.samples.petclinic.scheduling.request.OwnerResumeRouteResolver;
+import org.springframework.samples.petclinic.scheduling.request.RequestRevisionRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevisionService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.RequestWithdrawalService;
@@ -49,6 +50,9 @@ class OwnerRequestRecoveryControllerTests {
 
 	@MockitoBean
 	RequestRevisionService revisions;
+
+	@MockitoBean
+	RequestRevisionRepository revisionRepository;
 
 	@MockitoBean
 	RequestWithdrawalService withdrawals;

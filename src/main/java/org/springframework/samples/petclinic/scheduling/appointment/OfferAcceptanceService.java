@@ -97,21 +97,6 @@ public class OfferAcceptanceService {
 	}
 
 	@Transactional
-	public void reject(Long requestId, Integer ownerId, Long offerId, Integer expectedVersion) {
-		SchedulingRequest request = this.requests.findByIdAndOwnerId(requestId, ownerId)
-			.orElseThrow(OwnerResourceNotFoundException::new);
-		if (expectedVersion != null && request.getVersion() != null && !expectedVersion.equals(request.getVersion())) {
-			throw new StaleStateException("stale", request.getState().name(), null);
-		}
-		Offer offer = this.offers.findById(offerId).orElseThrow(OwnerResourceNotFoundException::new);
-		Hold hold = this.holds.findByOfferId(offerId).orElseThrow(OwnerResourceNotFoundException::new);
-		this.reservations.release(hold, offer, "REJECTED", OfferStatus.REJECTED);
-		request.setState(RequestState.READY_FOR_SUGGESTION);
-		request.setOwnerStatusCode("READY_FOR_SUGGESTION");
-		request.setUpdatedAt(Instant.now(this.clock));
-	}
-
-	@Transactional
 	public void expireIfNeeded(SchedulingRequest request, Offer offer, Hold hold, Instant now) {
 		if (hold.getState() == HoldStatus.ACTIVE && !hold.getExpiresAt().isAfter(now)) {
 			this.reservations.release(hold, offer, "EXPIRED", OfferStatus.EXPIRED);

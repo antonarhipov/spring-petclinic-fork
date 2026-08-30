@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.samples.petclinic.owner.VisitRepository;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
 import org.springframework.samples.petclinic.scheduling.queue.QueueState;
 import org.springframework.samples.petclinic.scheduling.queue.StaffQueueItem;
@@ -58,7 +59,8 @@ class StaffBookingServiceTests {
 		StaffQueueItem item = new StaffQueueItem();
 		when(queueItems.findByRequestId(1L)).thenReturn(Optional.of(item));
 		StaffBookingService service = new StaffBookingService(requests, appointments, offers, holds, blocks,
-				reservations, activePets, queueItems, new BookingAuthorizationPolicy(),
+				reservations, activePets, queueItems, new BookingAuthorizationPolicy(mock(VisitRepository.class)),
+				mock(AppointmentAuditService.class),
 				Clock.fixed(Instant.parse("2026-03-16T14:00:00Z"), ZoneOffset.UTC));
 		CandidateSlot slot = new CandidateSlot("1@t", 1, Instant.parse("2026-03-16T15:00:00Z"),
 				Instant.parse("2026-03-16T15:30:00Z"), "STAFF", 0);

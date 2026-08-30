@@ -17,6 +17,7 @@ import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingPolicy;
+import org.springframework.samples.petclinic.scheduling.request.InterpretationRecordRepository;
 import org.springframework.samples.petclinic.scheduling.request.OwnerDashboardService;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevision;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevisionRepository;
@@ -66,6 +67,9 @@ class OwnerInterpretationControllerTests {
 
 	@MockitoBean
 	RequestWindowRepository windows;
+
+	@MockitoBean
+	InterpretationRecordRepository interpretations;
 
 	@MockitoBean
 	org.springframework.samples.petclinic.scheduling.request.OwnerSchedulingQueryService schedulingQueries;

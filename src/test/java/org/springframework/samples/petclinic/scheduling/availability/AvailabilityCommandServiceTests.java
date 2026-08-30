@@ -24,6 +24,7 @@ import org.springframework.samples.petclinic.scheduling.appointment.ReservationB
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -52,6 +53,27 @@ class AvailabilityCommandServiceTests {
 		assertThat(shift.getDayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
 		assertThatThrownBy(() -> service.addShift(1, DayOfWeek.MONDAY, LocalTime.of(9, 7), LocalTime.of(12, 0), 2L))
 			.isInstanceOf(PolicyValidationException.class);
+	}
+
+	@Test
+	void overlappingSameDayShiftForSameVeterinarianIsRejected() {
+		VetRecurringShiftRepository shifts = mock(VetRecurringShiftRepository.class);
+		when(shifts.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
+		VetRecurringShift existing = new VetRecurringShift();
+		existing.setVeterinarianId(1);
+		existing.setDayOfWeek(DayOfWeek.MONDAY);
+		existing.setStartLocalTime(LocalTime.of(9, 0));
+		existing.setEndLocalTime(LocalTime.of(12, 0));
+		when(shifts.findByVeterinarianId(1)).thenReturn(List.of(existing));
+		AvailabilityCommandService service = new AvailabilityCommandService(shifts,
+				mock(VetDateExceptionRepository.class), mock(VetLeaveRepository.class),
+				mock(ClinicClosureRepository.class), policies(), mock(AvailabilityConflictGuard.class), versions(),
+				mock(CapacityAuditService.class), mock(HoldRepository.class), mock(OfferRepository.class),
+				mock(ReservationBlockRepository.class));
+		assertThatThrownBy(() -> service.addShift(1, DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(13, 0), 2L))
+			.isInstanceOf(PolicyValidationException.class);
+		assertThatCode(() -> service.addShift(1, DayOfWeek.TUESDAY, LocalTime.of(11, 0), LocalTime.of(13, 0), 2L))
+			.doesNotThrowAnyException();
 	}
 
 	@Test

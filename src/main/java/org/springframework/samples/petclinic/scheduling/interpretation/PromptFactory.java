@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PromptFactory {
 
+	private static final String TEMPLATE_VERSION = "appointment-interpretation-v1";
+
 	private final String template;
 
 	public PromptFactory() {
@@ -34,6 +36,10 @@ public class PromptFactory {
 			.replace("{specialties}", vocabulary.specialtyCodes().toString())
 			.replace("{submittedAt}", submittedAt.toString())
 			.replace("{sourceText}", sourceText);
+	}
+
+	public String templateVersion() {
+		return TEMPLATE_VERSION;
 	}
 
 }

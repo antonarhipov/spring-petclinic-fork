@@ -94,12 +94,19 @@ public class OwnerSchedulingQueryService {
 		String vetName = this.vets.findById(appointment.getVeterinarianId())
 			.map(vet -> vet.getFirstName() + " " + vet.getLastName())
 			.orElse("");
+		String specialty = this.vets.findById(appointment.getVeterinarianId())
+			.map(vet -> vet.getSpecialties()
+				.stream()
+				.map(org.springframework.samples.petclinic.vet.Specialty::getName)
+				.reduce((a, b) -> a + ", " + b)
+				.orElse(""))
+			.orElse("");
 		return new OwnerAppointmentView(appointment.getId(), appointment.getStatus().name(), appointment.getStartAt(),
-				appointment.getEndAt(), vetName, appointment.getPetId());
+				appointment.getEndAt(), vetName, specialty, appointment.getPetId());
 	}
 
 	public record OwnerAppointmentView(Long id, String status, Instant startAt, Instant endAt, String veterinarianName,
-			Integer petId) {
+			String veterinarianSpecialty, Integer petId) {
 	}
 
 	public record OwnerVisitView(Integer id, String petName, String date, String description) {

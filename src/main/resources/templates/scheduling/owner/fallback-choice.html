@@ -11,5 +11,8 @@
 <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
 <button type="submit" th:text="#{scheduling.fallback.staff}">Ask the clinic to help</button>
 </form>
+<p>
+<a th:href="@{/owner/scheduling-requests/{id}/revise-request(id=${request.id})}" th:text="#{scheduling.revise.availability}">Revise availability or duration</a>
+</p>
 </body>
 </html>

@@ -7,5 +7,55 @@
     <textarea name="sourceText"></textarea>
     <button type="submit" th:text="#{scheduling.request.submit}">Continue</button>
   </form>
+
+  <h3 th:text="#{scheduling.revise.details.title}">Revise availability or duration</h3>
+  <form th:object="${detailsForm}" method="post"
+        th:action="@{/owner/scheduling-requests/{id}/revise-request/details(id=${request.id})}">
+    <input type="hidden" th:field="*{expectedVersion}" />
+
+    <label th:text="#{scheduling.review.duration}">Duration</label>
+    <input type="number" th:field="*{durationMinutes}" />
+
+    <label th:text="#{scheduling.review.vet}">Preferred veterinarian</label>
+    <input type="number" th:field="*{preferredVeterinarianId}" />
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.allowed}">Allowed windows</legend>
+      <div th:each="row, rowStat : *{allowedWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{allowedWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{allowedWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{allowedWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{allowedWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.preferred}">Preferred windows</legend>
+      <div th:each="row, rowStat : *{preferredWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{preferredWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{preferredWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{preferredWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{preferredWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend th:text="#{scheduling.review.windows.excluded}">Excluded windows</legend>
+      <div th:each="row, rowStat : *{excludedWindows}">
+        <label th:text="#{scheduling.review.windows.start}">Start</label>
+        <input type="date" th:field="*{excludedWindows[__${rowStat.index}__].startDate}" />
+        <input type="time" th:field="*{excludedWindows[__${rowStat.index}__].startTime}" />
+        <label th:text="#{scheduling.review.windows.end}">End</label>
+        <input type="date" th:field="*{excludedWindows[__${rowStat.index}__].endDate}" />
+        <input type="time" th:field="*{excludedWindows[__${rowStat.index}__].endTime}" />
+      </div>
+    </fieldset>
+
+    <button type="submit" th:text="#{scheduling.revise.details.save}">Save changes</button>
+  </form>
 </body>
 </html>

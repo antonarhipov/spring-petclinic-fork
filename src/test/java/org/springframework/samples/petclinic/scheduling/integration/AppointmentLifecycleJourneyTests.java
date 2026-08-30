@@ -1,8 +1,6 @@
 package org.springframework.samples.petclinic.scheduling.integration;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -23,7 +21,6 @@ import org.springframework.samples.petclinic.scheduling.appointment.ReservationB
 import org.springframework.samples.petclinic.scheduling.appointment.ReservationResourceType;
 import org.springframework.samples.petclinic.scheduling.audit.AuditEvent;
 import org.springframework.samples.petclinic.scheduling.audit.AuditEventRepository;
-import org.springframework.samples.petclinic.scheduling.availability.AvailabilityCommandService;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -55,18 +52,12 @@ class AppointmentLifecycleJourneyTests {
 	AppointmentCorrectionService corrections;
 
 	@Autowired
-	AvailabilityCommandService availability;
-
-	@Autowired
 	AccountRepository accounts;
 
 	@Test
 	@Transactional
 	void staffRescheduleCompleteAndCorrectionAreAuditedWithOneVisit() {
 		Long staffId = this.accounts.findByUsername("admin").orElseThrow().getId();
-		for (DayOfWeek day : DayOfWeek.values()) {
-			this.availability.addShift(1, day, LocalTime.of(8, 0), LocalTime.of(18, 0), staffId);
-		}
 		Instant originalStart = Instant.parse("2020-03-16T14:00:00Z");
 		Instant originalEnd = Instant.parse("2020-03-16T14:30:00Z");
 		Appointment appointment = new Appointment();

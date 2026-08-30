@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.samples.petclinic.owner.Visit;
+import org.springframework.samples.petclinic.owner.VisitCategory;
+import org.springframework.samples.petclinic.owner.VisitRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.BookingAuthorization;
 import org.springframework.samples.petclinic.scheduling.appointment.BookingAuthorizationPolicy;
 import org.springframework.samples.petclinic.scheduling.appointment.StaffBookingService;
@@ -13,6 +16,7 @@ import org.springframework.samples.petclinic.scheduling.request.ConsentRecord;
 import org.springframework.samples.petclinic.scheduling.request.ConsentRecordRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -39,16 +43,23 @@ class StaffAssistedSchedulingServiceTests {
 
 	@Test
 	void ownerAgreementAndVisitEvidenceAreRequired() {
-		BookingAuthorizationPolicy policy = new BookingAuthorizationPolicy();
-		assertThatThrownBy(() -> policy.validate(null)).isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(
-				() -> policy.validate(new BookingAuthorization("OWNER_AGREEMENT", null, Instant.now(), "PHONE", null)))
+		VisitRepository visits = mock(VisitRepository.class);
+		Visit followUpVisit = new Visit();
+		ReflectionTestUtils.setField(followUpVisit, "id", 12);
+		followUpVisit.setPetId(7);
+		followUpVisit.setDescription("Recheck of ear infection");
+		followUpVisit.setCategory(VisitCategory.RECHECK.name());
+		when(visits.findById(12)).thenReturn(Optional.of(followUpVisit));
+		BookingAuthorizationPolicy policy = new BookingAuthorizationPolicy(visits);
+		assertThatThrownBy(() -> policy.validate(null, 7)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> policy
+			.validate(new BookingAuthorization("OWNER_AGREEMENT", null, Instant.now(), "PHONE", null), 7))
 			.hasMessage("OWNER_AGREEMENT_INCOMPLETE");
-		assertThatThrownBy(
-				() -> policy.validate(new BookingAuthorization("CLINIC_FOLLOW_UP", 1L, Instant.now(), "VISIT", null)))
+		assertThatThrownBy(() -> policy
+			.validate(new BookingAuthorization("CLINIC_FOLLOW_UP", 1L, Instant.now(), "VISIT", null), 7))
 			.hasMessage("SUPPORTING_VISIT_REQUIRED");
-		policy.validate(new BookingAuthorization("OWNER_AGREEMENT", 1L, Instant.now(), "PHONE", null));
-		policy.validate(new BookingAuthorization("CLINIC_RECHECK", 1L, Instant.now(), "VISIT", 12));
+		policy.validate(new BookingAuthorization("OWNER_AGREEMENT", 1L, Instant.now(), "PHONE", null), 7);
+		policy.validate(new BookingAuthorization("CLINIC_RECHECK", 1L, Instant.now(), "VISIT", 12), 7);
 	}
 
 	@Test

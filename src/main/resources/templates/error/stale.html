@@ -3,6 +3,14 @@
 <body>
 	<h2 th:text="#{stale.title}">This page is out of date</h2>
 	<p th:text="#{stale.message}">The information was updated by someone else. Your entered values were kept so you can try again.</p>
+	<div th:if="${currentState != null}">
+		<p th:text="#{stale.currentState}">Current status</p>
+		<p th:text="${currentState}">status</p>
+	</div>
 	<div th:if="${submittedValues != null}" th:text="${submittedValues}">submitted</div>
+	<p>
+		<a href="#" onclick="history.back(); return false;" th:text="#{stale.tryAgain}">Try again</a>
+		<a th:href="@{/}" th:text="#{stale.continue}">Continue</a>
+	</p>
 </body>
 </html>

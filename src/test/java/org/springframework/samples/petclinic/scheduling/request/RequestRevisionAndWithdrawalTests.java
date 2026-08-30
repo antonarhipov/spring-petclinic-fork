@@ -87,8 +87,11 @@ class RequestRevisionAndWithdrawalTests {
 		Offer previous = new Offer();
 		previous.setStatus(OfferStatus.REJECTED);
 		when(offers.findByRequestRevisionIdOrderByCreatedAtDesc(3L)).thenReturn(List.of(previous));
-		OwnerRequestHistoryService history = new OwnerRequestHistoryService(requests, offers);
-		assertThat(history.load(1L, 1).offers()).containsExactly(previous);
+		org.springframework.samples.petclinic.vet.VetRepository vets = mock(
+				org.springframework.samples.petclinic.vet.VetRepository.class);
+		OwnerRequestHistoryService history = new OwnerRequestHistoryService(requests, offers, vets);
+		assertThat(history.load(1L, 1).offers()).extracting(OwnerRequestHistoryService.OwnerOfferHistoryView::status)
+			.containsExactly(OfferStatus.REJECTED);
 	}
 
 }

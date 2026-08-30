@@ -18,12 +18,24 @@
 <button id="accept-button" type="submit" th:text="#{scheduling.offer.accept}">Accept</button>
 </form>
 <form th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/reject(id=${request.id},offerId=${offer.id})}" method="post"
-      data-offer-reject="true" th:attr="data-confirm=#{scheduling.offer.rejectConfirm}">
+      data-offer-reject="true">
 <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
-<button type="submit" th:text="#{scheduling.offer.reject}">This time does not work</button>
+<div id="reject-step-1">
+<button type="button" id="reject-start-button" th:text="#{scheduling.offer.reject}">This time does not work</button>
+</div>
+<div id="reject-step-2" hidden>
+<p th:text="#{scheduling.offer.rejectConfirm}">Decline this time? After you confirm, you cannot undo the rejection.</p>
+<label th:text="#{scheduling.offer.reject.reasonLabel}">Reason (optional)</label>
+<input type="text" name="reason" id="reject-reason"/>
+<button type="submit" id="reject-confirm-button" th:text="#{scheduling.offer.reject.confirmButton}">Confirm decline</button>
+<button type="button" id="reject-cancel-button" th:text="#{scheduling.offer.reject.cancelButton}">Cancel</button>
+</div>
 </form>
 <p id="hold-next-actions" hidden>
 <a th:href="@{/owner/scheduling-requests/{id}/suggestion(id=${request.id})}" th:text="#{scheduling.offer.requestAnother}">Request another suggestion</a>
+</p>
+<p>
+<a th:href="@{/owner/scheduling-requests/{id}/revise-request(id=${request.id})}" th:text="#{scheduling.revise.availability}">Revise availability or duration</a>
 </p>
 <script th:src="@{/resources/js/offer-rejection.js}"></script>
 <script th:src="@{/resources/js/offer-countdown.js}"></script>
