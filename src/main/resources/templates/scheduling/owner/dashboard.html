@@ -1,12 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
 <body>
-  <h2 th:text="#{scheduling.dashboard.title}">Dashboard</h2>
+  <h2 th:text="#{scheduling.dashboard.title}">Your appointments</h2>
+
   <p th:if="${dashboard.resumeUrl != null}">
-    <a th:href="${dashboard.resumeUrl}" th:text="#{scheduling.dashboard.resume}">Resume</a>
+    <a th:href="${dashboard.resumeUrl}" class="btn btn-primary" th:text="#{scheduling.dashboard.resume}">Resume</a>
   </p>
-  <p><a href="/owner/appointments" th:text="#{scheduling.owner.appointments.title}">Appointments</a></p>
-  <p><a href="/owner/history" th:text="#{scheduling.owner.history.title}">History</a></p>
-  <p><a href="/owner/profile" th:text="#{scheduling.owner.profile.title}">Profile</a></p>
+
+  <h3 th:text="#{pets}">Pets</h3>
+  <table class="table table-striped">
+    <tr th:each="pet : ${dashboard.owner.pets}">
+      <td th:text="${pet.name}">Pet</td>
+      <td>
+        <a th:href="@{/owner/pets/{petId}/scheduling-requests/new(petId=${pet.id})}"
+          th:text="#{scheduling.dashboard.book}">Book an appointment</a>
+      </td>
+      <td>
+        <a th:href="@{/owner/pets/{petId}(petId=${pet.id})}" th:text="#{scheduling.dashboard.petDetails}">Details</a>
+      </td>
+    </tr>
+  </table>
+
+  <p><a th:href="@{/owner/appointments}" th:text="#{scheduling.owner.appointments.title}">Appointments</a></p>
+  <p><a th:href="@{/owner/history}" th:text="#{scheduling.owner.history.title}">History</a></p>
+  <p><a th:href="@{/owner/profile}" th:text="#{scheduling.owner.profile.title}">Profile</a></p>
 </body>
 </html>

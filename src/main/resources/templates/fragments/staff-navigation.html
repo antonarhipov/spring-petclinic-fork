@@ -1,11 +1,25 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org">
 <body>
-  <nav th:fragment="staffNav">
-    <a th:href="@{/staff/queue}" th:text="#{scheduling.queue.title}">Staff queue</a>
-    <a th:href="@{/staff/calendar}" th:text="#{scheduling.staff.calendar.title}">Staff calendar</a>
-    <a th:href="@{/staff/availability}" th:text="#{scheduling.staff.availability.title}">Availability</a>
-    <a th:href="@{/staff/settings}" th:text="#{scheduling.staff.settings.title}">Clinic settings</a>
+  <nav th:fragment="staffNav (workspace)" class="mb-4">
+    <ul class="nav nav-pills">
+      <li class="nav-item">
+        <a th:classappend="${workspace == 'queue' ? ' active' : ''}" class="nav-link"
+          th:href="@{/staff/queue}" th:text="#{scheduling.queue.title}">Staff queue</a>
+      </li>
+      <li class="nav-item">
+        <a th:classappend="${workspace == 'calendar' ? ' active' : ''}" class="nav-link"
+          th:href="@{/staff/calendar}" th:text="#{scheduling.staff.calendar.title}">Staff calendar</a>
+      </li>
+      <li class="nav-item">
+        <a th:classappend="${workspace == 'availability' ? ' active' : ''}" class="nav-link"
+          th:href="@{/staff/availability}" th:text="#{scheduling.staff.availability.title}">Availability</a>
+      </li>
+      <li class="nav-item">
+        <a th:classappend="${workspace == 'settings' ? ' active' : ''}" class="nav-link"
+          th:href="@{/staff/settings}" th:text="#{scheduling.staff.settings.title}">Clinic settings</a>
+      </li>
+    </ul>
   </nav>
 </body>
 </html>

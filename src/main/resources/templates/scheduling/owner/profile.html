@@ -1,7 +1,20 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
 <body>
   <h2 th:text="#{scheduling.owner.profile.title}">Profile</h2>
-  <p th:text="${owner.firstName}">Owner</p>
+  <p th:text="|${owner.firstName} ${owner.lastName}|">Owner</p>
+
+  <h3 th:text="#{pets}">Pets</h3>
+  <table class="table table-striped">
+    <tr th:each="p : ${owner.pets}" th:classappend="${pet != null and pet.id == p.id} ? ' table-active' : ''">
+      <td th:text="${p.name}">Pet</td>
+      <td>
+        <a th:href="@{/owner/pets/{petId}/scheduling-requests/new(petId=${p.id})}"
+          th:text="#{scheduling.dashboard.book}">Book an appointment</a>
+      </td>
+    </tr>
+  </table>
+
+  <p><a th:href="@{/owner/dashboard}" th:text="#{scheduling.dashboard.title}">Your appointments</a></p>
 </body>
 </html>

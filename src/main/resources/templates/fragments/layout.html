@@ -23,7 +23,11 @@
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-navbar">
         <span class="navbar-toggler-icon"></span>
       </button>
-      <div class="collapse navbar-collapse" id="main-navbar" style>
+      <div class="collapse navbar-collapse" id="main-navbar" style
+        th:with="roles=${#authentication == null ? null : #authentication.authorities.![authority]},
+                 isOwner=${roles != null and roles.contains('ROLE_OWNER')},
+                 isStaff=${roles != null and roles.contains('ROLE_STAFF')},
+                 isSignedIn=${roles != null and !roles.contains('ROLE_ANONYMOUS')}">
 
         <ul class="navbar-nav me-auto mb-2 mb-lg-0" th:remove="all">
 
@@ -43,15 +47,32 @@
             <span th:text="#{home}">Home</span>
           </li>
 
-          <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
-            <span class="fa fa-search" aria-hidden="true"></span>
-            <span th:text="#{findOwners}">Find owners</span>
-          </li>
+          <th:block th:if="${isOwner}">
+            <li
+              th:replace="~{::menuItem ('/owner/dashboard','appointments','your appointments','calendar-check-o',#{scheduling.dashboard.title})}">
+              <span class="fa fa-calendar-check-o" aria-hidden="true"></span>
+              <span th:text="#{scheduling.dashboard.title}">Your appointments</span>
+            </li>
+          </th:block>
 
-          <li th:replace="~{::menuItem ('/vets.html','vets','veterinarians','th-list',#{vets})}">
-            <span class="fa fa-th-list" aria-hidden="true"></span>
-            <span th:text="#{vets}">Veterinarians</span>
-          </li>
+          <th:block th:if="${isStaff}">
+
+            <li th:replace="~{::menuItem ('/staff/queue','scheduling','scheduling workspaces','inbox',#{nav.scheduling})}">
+              <span class="fa fa-inbox" aria-hidden="true"></span>
+              <span th:text="#{nav.scheduling}">Scheduling</span>
+            </li>
+
+            <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
+              <span class="fa fa-search" aria-hidden="true"></span>
+              <span th:text="#{findOwners}">Find owners</span>
+            </li>
+
+            <li th:replace="~{::menuItem ('/vets.html','vets','veterinarians','th-list',#{vets})}">
+              <span class="fa fa-th-list" aria-hidden="true"></span>
+              <span th:text="#{vets}">Veterinarians</span>
+            </li>
+
+          </th:block>
 
           <li
             th:replace="~{::menuItem ('/oups','error','trigger a RuntimeException to see how it is handled','exclamation-triangle',#{error})}">
@@ -59,6 +80,20 @@
             <span th:text="#{error}">Error</span>
           </li>
 
+        </ul>
+
+        <ul class="nav navbar-nav ms-auto">
+          <th:block th:unless="${isSignedIn}">
+            <li th:replace="~{::menuItem ('/login','login','sign in','sign-in',#{login.submit})}">
+              <span class="fa fa-sign-in" aria-hidden="true"></span>
+              <span th:text="#{login.submit}">Sign in</span>
+            </li>
+          </th:block>
+          <li class="nav-item" th:if="${isSignedIn}">
+            <form th:action="@{/logout}" method="post" class="d-inline">
+              <button type="submit" class="nav-link btn btn-link" th:text="#{nav.signOut}">Sign out</button>
+            </form>
+          </li>
         </ul>
       </div>
     </div>
