@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: Smart Appointment Scheduling Operation Status
+  version: 1.0.0
+  description: Read-only owner polling contract for persisted interpretation and matching operations.
+paths:
+  /api/owner/scheduling-requests/{requestId}/operations/{operationId}:
+    get:
+      operationId: getOwnerOperationStatus
+      summary: Read the current owner-safe state of one persisted operation
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current state. Reading never starts, retries, or mutates work.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerOperationStatus"
+              examples:
+                running:
+                  value:
+                    operationId: 9f296de2-a4fe-4d40-8305-775c3299ae0d
+                    type: INTERPRETATION
+                    state: RUNNING
+                    statusText: We are reviewing your request.
+                    requestVersion: 4
+                    serverTime: "2026-08-30T10:15:30Z"
+                    pollAfterMs: 1000
+                    nextUrl: null
+                complete:
+                  value:
+                    operationId: 9f296de2-a4fe-4d40-8305-775c3299ae0d
+                    type: INTERPRETATION
+                    state: COMPLETE
+                    statusText: Your request is ready to review.
+                    requestVersion: 5
+                    serverTime: "2026-08-30T10:15:33Z"
+                    pollAfterMs: null
+                    nextUrl: /owner/scheduling-requests/41/interpretation
+        "401":
+          description: No authenticated session
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Request or operation is absent or does not belong to the authenticated owner
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SESSION
+  schemas:
+    OwnerOperationStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - operationId
+        - type
+        - state
+        - statusText
+        - requestVersion
+        - serverTime
+        - pollAfterMs
+        - nextUrl
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [INTERPRETATION, MATCHING]
+        state:
+          type: string
+          enum: [QUEUED, RUNNING, COMPLETE, ROUTED_TO_STAFF, SUPERSEDED]
+        statusText:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Approved plain-language copy with no percentage or internal failure detail.
+        requestVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        serverTime:
+          type: string
+          format: date-time
+        pollAfterMs:
+          type: [integer, "null"]
+          minimum: 500
+          maximum: 5000
+          description: Null when polling should stop.
+        nextUrl:
+          type: [string, "null"]
+          pattern: ^/owner/
+          description: Server-generated canonical authorized full page; null while work is active.
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
