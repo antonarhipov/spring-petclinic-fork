@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:petclinic:smart-scheduling:interpretation-output:1",
+  "title": "Scheduling Interpretation Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "visitReason",
+    "urgency",
+    "urgencySignals",
+    "durationMinutes",
+    "preferredVeterinarian",
+    "requiredSpecialty",
+    "availability",
+    "contradictions",
+    "unresolved"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1"
+    },
+    "visitReason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "urgency": {
+      "enum": ["ROUTINE", "PRIORITY", "EMERGENCY_SUSPECTED"]
+    },
+    "urgencySignals": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "minimum": 15,
+      "maximum": 480,
+      "multipleOf": 15
+    },
+    "preferredVeterinarian": {
+      "$ref": "#/$defs/catalogChoiceOrNull"
+    },
+    "requiredSpecialty": {
+      "$ref": "#/$defs/catalogChoiceOrNull"
+    },
+    "availability": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/availabilityWindow"
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/unresolvedItem"
+      }
+    }
+  },
+  "$defs": {
+    "catalogChoiceOrNull": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name"],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          }
+        }
+      ]
+    },
+    "availabilityWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "shape",
+        "startTime",
+        "endTime",
+        "sourceText"
+      ],
+      "properties": {
+        "classification": {
+          "enum": ["ALLOWED", "PREFERRED", "EXCLUDED", "FALLBACK"]
+        },
+        "shape": {
+          "enum": ["ONE_OFF", "WEEKLY"]
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "rangeStart": {
+          "type": "string",
+          "format": "date"
+        },
+        "rangeEnd": {
+          "type": "string",
+          "format": "date"
+        },
+        "weekdays": {
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "MONDAY",
+              "TUESDAY",
+              "WEDNESDAY",
+              "THURSDAY",
+              "FRIDAY",
+              "SATURDAY",
+              "SUNDAY"
+            ]
+          }
+        },
+        "startTime": {
+          "type": "string",
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "endTime": {
+          "type": "string",
+          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "sourceText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "resolutionNote": {
+          "type": ["string", "null"],
+          "maxLength": 300
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "ONE_OFF"
+              }
+            }
+          },
+          "then": {
+            "required": ["date"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "WEEKLY"
+              }
+            }
+          },
+          "then": {
+            "required": ["rangeStart", "rangeEnd", "weekdays"]
+          }
+        }
+      ]
+    },
+    "unresolvedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "properties": {
+        "code": {
+          "enum": [
+            "VISIT_REASON",
+            "AVAILABILITY",
+            "DURATION",
+            "VETERINARIAN",
+            "SPECIALTY",
+            "URGENCY",
+            "RELATIVE_DATE",
+            "CONTRADICTION",
+            "OUTSIDE_CONFIGURATION"
+          ]
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    }
+  }
+}

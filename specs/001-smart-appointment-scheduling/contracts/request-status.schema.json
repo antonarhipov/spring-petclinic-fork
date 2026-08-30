@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:petclinic:smart-scheduling:request-status:1",
+  "title": "Owner Scheduling Request Status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "version",
+    "displayState",
+    "canonicalUrl",
+    "serverNow",
+    "idleExpiresAt",
+    "warningAt",
+    "urgentGuidance",
+    "terminal",
+    "pollAfterMillis"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "displayState": {
+      "enum": [
+        "INTERPRETING_REQUEST",
+        "REVIEW_INTERPRETATION",
+        "FINDING_APPOINTMENT",
+        "APPOINTMENT_OFFERED",
+        "WITH_CLINIC_STAFF",
+        "CONFIRMED",
+        "CLOSED"
+      ]
+    },
+    "canonicalUrl": {
+      "type": "string",
+      "pattern": "^/owner/"
+    },
+    "primaryAction": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "url"],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^/owner/"
+            }
+          }
+        }
+      ]
+    },
+    "serverNow": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "idleExpiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "warningAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "offerExpiresAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "urgentGuidance": {
+      "type": "boolean"
+    },
+    "terminal": {
+      "type": "boolean"
+    },
+    "pollAfterMillis": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 10000
+    }
+  }
+}
