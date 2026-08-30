@@ -1,13 +1,16 @@
 package org.springframework.samples.petclinic.scheduling.matching;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.samples.petclinic.scheduling.appointment.ReservationResourceType;
+import org.springframework.samples.petclinic.scheduling.availability.AvailabilityPrecedence;
 
 import ai.timefold.solver.core.api.score.BendableScore;
 
@@ -63,6 +66,14 @@ public final class SlotScorePolicy {
 				&& !overlaps(snapshot, slot);
 	}
 
+	public static boolean staffEligible(SlotSelectionSnapshot snapshot, CandidateSlot slot) {
+		if (slot == null) {
+			return false;
+		}
+		return gridAligned(snapshot, slot) && clinicOpen(snapshot, slot) && veterinarianWorking(snapshot, slot)
+				&& specialtyAndRequiredVet(snapshot, slot) && !overlaps(snapshot, slot);
+	}
+
 	private static int addHard(List<SlotScoreComponents.NamedComponent> components, String name, int value) {
 		components.add(hard(name, value));
 		return value;
@@ -103,14 +114,45 @@ public final class SlotScorePolicy {
 	}
 
 	private static boolean veterinarianWorking(SlotSelectionSnapshot snapshot, CandidateSlot slot) {
-		List<HoursFact> vetHours = snapshot.veterinarianHours()
-			.stream()
-			.filter(h -> h.veterinarianId() != null && h.veterinarianId() == slot.veterinarianId())
-			.toList();
-		if (vetHours.isEmpty()) {
-			return clinicOpen(snapshot, slot);
+		Instant cursor = slot.startAt();
+		while (cursor.isBefore(slot.endAt())) {
+			Instant next = cursor.plus(Duration.ofMinutes(15));
+			if (!veterinarianAvailableAt(snapshot, slot.veterinarianId(), cursor, next)) {
+				return false;
+			}
+			cursor = next;
 		}
-		return coveredByHours(vetHours, snapshot.zone(), slot);
+		return true;
+	}
+
+	private static boolean veterinarianAvailableAt(SlotSelectionSnapshot snapshot, int veterinarianId, Instant startAt,
+			Instant endAt) {
+		ZoneId zone = snapshot.zone();
+		LocalDate localDate = LocalDateTime.ofInstant(startAt, zone).toLocalDate();
+		DayOfWeek dayOfWeek = localDate.getDayOfWeek();
+		boolean clinicClosed = snapshot.closures()
+			.stream()
+			.anyMatch(c -> !localDate.isBefore(c.startDate()) && !localDate.isAfter(c.endDate()));
+		boolean onLeave = snapshot.vetLeaves()
+			.stream()
+			.filter(l -> l.veterinarianId() != null && l.veterinarianId() == veterinarianId)
+			.anyMatch(l -> !localDate.isBefore(l.startDate()) && !localDate.isAfter(l.endDate()));
+		VetDateExceptionFact exception = snapshot.vetDateExceptions()
+			.stream()
+			.filter(e -> e.veterinarianId() != null && e.veterinarianId() == veterinarianId
+					&& localDate.equals(e.date()))
+			.findFirst()
+			.orElse(null);
+		List<AvailabilityPrecedence.Interval> recurring = snapshot.veterinarianHours()
+			.stream()
+			.filter(h -> h.veterinarianId() != null && h.veterinarianId() == veterinarianId
+					&& h.dayOfWeek() == dayOfWeek)
+			.map(h -> new AvailabilityPrecedence.Interval(h.startLocal(), h.endLocal()))
+			.toList();
+		List<AvailabilityPrecedence.Interval> exceptionIntervals = exception != null ? exception.intervals()
+				: List.of();
+		return AvailabilityPrecedence.isAvailable(clinicClosed, onLeave, exception != null, exceptionIntervals,
+				recurring, zone, startAt, endAt);
 	}
 
 	private static boolean coveredByHours(List<HoursFact> hours, ZoneId zone, CandidateSlot slot) {

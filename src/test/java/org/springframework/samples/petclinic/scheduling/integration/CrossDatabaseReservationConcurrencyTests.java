@@ -40,9 +40,11 @@ import org.springframework.samples.petclinic.scheduling.appointment.StaffBooking
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.config.ClockConfiguration;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
+import org.springframework.samples.petclinic.scheduling.matching.CandidateSlotFactory;
 import org.springframework.samples.petclinic.scheduling.matching.HoursFact;
 import org.springframework.samples.petclinic.scheduling.matching.MatchingMode;
 import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshot;
+import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshotFactory;
 import org.springframework.samples.petclinic.scheduling.matching.TimeWindow;
 import org.springframework.samples.petclinic.scheduling.matching.VetFact;
 import org.springframework.samples.petclinic.scheduling.request.InterpretationRecord;
@@ -65,7 +67,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import({ ReservationService.class, OccupancyQueryService.class, ClockConfiguration.class, OfferAcceptanceService.class,
-		StaffBookingService.class, BookingAuthorizationPolicy.class })
+		StaffBookingService.class, BookingAuthorizationPolicy.class, SlotSelectionSnapshotFactory.class,
+		CandidateSlotFactory.class })
 class CrossDatabaseReservationConcurrencyTests {
 
 	@Autowired
@@ -167,7 +170,7 @@ class CrossDatabaseReservationConcurrencyTests {
 	@Timeout(30)
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	void competingStaffBooksHaveSingleWinnerWithoutPartialReservation() throws Exception {
-		Instant start = Instant.parse("2026-03-16T17:00:00Z");
+		Instant start = Instant.parse("2026-03-16T09:00:00Z");
 		int vetId = newVet();
 		SchedulingRequest first = persistMatchingRequest(1, 1, RequestState.STAFF_HANDLING);
 		SchedulingRequest second = persistMatchingRequest(2, 2, RequestState.STAFF_HANDLING);
@@ -319,7 +322,13 @@ class CrossDatabaseReservationConcurrencyTests {
 	private int newVet() {
 		this.jdbc.update("insert into vets (first_name, last_name) values ('Race', 'Vet')");
 		Integer vetId = this.jdbc.queryForObject("select max(id) from vets", Integer.class);
-		return vetId == null ? 99 : vetId;
+		int id = vetId == null ? 99 : vetId;
+		for (DayOfWeek day : DayOfWeek.values()) {
+			this.jdbc.update(
+					"insert into vet_recurring_shifts (veterinarian_id, day_of_week, start_local_time, end_local_time) values (?, ?, ?, ?)",
+					id, day.name(), LocalTime.of(0, 0), LocalTime.of(23, 59));
+		}
+		return id;
 	}
 
 	private int blockCount(String type, int resourceId, Instant start) {
@@ -382,14 +391,22 @@ class CrossDatabaseReservationConcurrencyTests {
 		return new SlotSelectionSnapshot("1.0", "slot-selection-1", 1L, 1L, 0, MatchingMode.PREFERRED_ONLY, "UTC", now,
 				now.plusSeconds(15 * 60), now.plusSeconds(7 * 24 * 3600), 30, 15, 1L, 1, null, slot.veterinarianId(),
 				"NONE", List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), List.of(), Set.of(),
-				List.of(new VetFact(slot.veterinarianId(), Set.of())), allClinicHours(), List.of(), List.of(),
-				List.of(slot));
+				List.of(new VetFact(slot.veterinarianId(), Set.of())), allClinicHours(),
+				allVeterinarianHours(slot.veterinarianId()), List.of(), List.of(slot));
 	}
 
 	private List<HoursFact> allClinicHours() {
 		List<HoursFact> hours = new java.util.ArrayList<>();
 		for (DayOfWeek day : DayOfWeek.values()) {
 			hours.add(new HoursFact(null, day, LocalTime.of(0, 0), LocalTime.of(23, 59)));
+		}
+		return hours;
+	}
+
+	private List<HoursFact> allVeterinarianHours(int veterinarianId) {
+		List<HoursFact> hours = new java.util.ArrayList<>();
+		for (DayOfWeek day : DayOfWeek.values()) {
+			hours.add(new HoursFact(veterinarianId, day, LocalTime.of(0, 0), LocalTime.of(23, 59)));
 		}
 		return hours;
 	}

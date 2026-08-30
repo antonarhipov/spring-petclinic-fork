@@ -5,16 +5,27 @@
 <p th:text="${veterinarianName}">Veterinarian</p>
 <p th:text="${offer.startAt}">start</p>
 <p th:text="${offer.endAt}">end</p>
-<p id="hold-countdown" th:attr="data-expires-at=${offer.expiresAt}" th:text="${offer.expiresAt}">expires</p>
-<form th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/accept(id=${request.id},offerId=${offer.id})}" method="post">
+<div id="hold-status" th:attr="data-expires-at=${hold.expiresAt},data-clinic-zone=${clinicZone}">
+<p><span th:text="#{scheduling.offer.expiresAtLabel}">Hold expires at</span>
+   <strong id="hold-expiry-exact" th:text="${hold.expiresAt}">expires</strong></p>
+<p><span th:text="#{scheduling.offer.countdownLabel}">Time remaining</span>
+   <strong id="hold-countdown" th:text="#{scheduling.offer.countdownPlaceholder}">--:--</strong></p>
+<p id="hold-warning" class="alert alert-warning" hidden th:text="#{scheduling.offer.warningMessage}">Less than two minutes remain.</p>
+<p id="hold-expired-message" class="alert alert-danger" hidden th:text="#{scheduling.offer.expiredMessage}">This offer has expired.</p>
+</div>
+<form id="accept-form" th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/accept(id=${request.id},offerId=${offer.id})}" method="post">
 <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
-<button type="submit" th:text="#{scheduling.offer.accept}">Accept</button>
+<button id="accept-button" type="submit" th:text="#{scheduling.offer.accept}">Accept</button>
 </form>
 <form th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/reject(id=${request.id},offerId=${offer.id})}" method="post"
       data-offer-reject="true" th:attr="data-confirm=#{scheduling.offer.rejectConfirm}">
 <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
 <button type="submit" th:text="#{scheduling.offer.reject}">This time does not work</button>
 </form>
+<p id="hold-next-actions" hidden>
+<a th:href="@{/owner/scheduling-requests/{id}/suggestion(id=${request.id})}" th:text="#{scheduling.offer.requestAnother}">Request another suggestion</a>
+</p>
 <script th:src="@{/resources/js/offer-rejection.js}"></script>
+<script th:src="@{/resources/js/offer-countdown.js}"></script>
 </body>
 </html>

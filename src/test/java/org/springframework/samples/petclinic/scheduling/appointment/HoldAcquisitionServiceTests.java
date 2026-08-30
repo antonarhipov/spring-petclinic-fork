@@ -17,6 +17,7 @@ import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
 import org.springframework.samples.petclinic.scheduling.matching.HoursFact;
 import org.springframework.samples.petclinic.scheduling.matching.MatchingMode;
 import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshot;
+import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshotFactory;
 import org.springframework.samples.petclinic.scheduling.matching.TimeWindow;
 import org.springframework.samples.petclinic.scheduling.matching.VetFact;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
@@ -59,6 +60,7 @@ class HoldAcquisitionServiceTests {
 		});
 		when(blocks.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 		ReservationService service = new ReservationService(requests, offers, holds, blocks, policies, occupancy,
+				mock(SlotSelectionSnapshotFactory.class),
 				Clock.fixed(Instant.parse("2026-03-16T14:00:00Z"), ZoneOffset.UTC));
 		Instant start = Instant.parse("2026-03-16T15:00:00Z");
 		CandidateSlot slot = new CandidateSlot("1@" + start, 1, start, start.plusSeconds(1800), "STANDARD", 0);
@@ -85,7 +87,7 @@ class HoldAcquisitionServiceTests {
 			.thenReturn(List.of(new org.springframework.samples.petclinic.scheduling.matching.OccupancyFact(
 					ReservationResourceType.VETERINARIAN, 1, start)));
 		ReservationService service = new ReservationService(requests, offers, holds, blocks, policies, occupancy,
-				Clock.systemUTC());
+				mock(SlotSelectionSnapshotFactory.class), Clock.systemUTC());
 		CandidateSlot slot = new CandidateSlot("1@" + start, 1, start, start.plusSeconds(1800), "STANDARD", 0);
 		assertThat(service.acquire(1L, UUID.randomUUID(), slot, snapshot(start, slot), "EARLIEST_AVAILABLE"))
 			.isEqualTo(HoldAcquisitionOutcome.STALE);
@@ -97,8 +99,9 @@ class HoldAcquisitionServiceTests {
 				now.plusSeconds(15 * 60), now.plusSeconds(7 * 24 * 3600), 30, 15, 1L, 7, null, 1, "NONE",
 				List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), List.of(), Set.of(),
 				List.of(new VetFact(1, Set.of())),
-				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
-				List.of(), List.of(slot));
+				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))),
+				List.of(new HoursFact(1, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
+				List.of(slot));
 	}
 
 }

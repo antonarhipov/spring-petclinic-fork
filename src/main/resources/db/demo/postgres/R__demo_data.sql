@@ -15,6 +15,14 @@ INSERT INTO vet_specialties VALUES (3, 3) ON CONFLICT (vet_id, specialty_id) DO 
 INSERT INTO vet_specialties VALUES (4, 2) ON CONFLICT (vet_id, specialty_id) DO NOTHING;
 INSERT INTO vet_specialties VALUES (5, 1) ON CONFLICT (vet_id, specialty_id) DO NOTHING;
 
+INSERT INTO vet_recurring_shifts (veterinarian_id, day_of_week, start_local_time, end_local_time)
+SELECT vet_id, day_of_week, '09:00:00', '17:00:00'
+FROM (VALUES (1), (2), (3), (4), (5), (6)) AS vet(vet_id)
+CROSS JOIN (VALUES ('MONDAY'), ('TUESDAY'), ('WEDNESDAY'), ('THURSDAY'), ('FRIDAY')) AS day(day_of_week)
+WHERE NOT EXISTS (
+  SELECT 1 FROM vet_recurring_shifts s WHERE s.veterinarian_id = vet.vet_id AND s.day_of_week = day.day_of_week
+);
+
 INSERT INTO types (name) SELECT 'cat' WHERE NOT EXISTS (SELECT * FROM types WHERE name='cat');
 INSERT INTO types (name) SELECT 'dog' WHERE NOT EXISTS (SELECT * FROM types WHERE name='dog');
 INSERT INTO types (name) SELECT 'lizard' WHERE NOT EXISTS (SELECT * FROM types WHERE name='lizard');

@@ -8,8 +8,10 @@ import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
+import org.springframework.samples.petclinic.scheduling.matching.MatchingMode;
 import org.springframework.samples.petclinic.scheduling.matching.SlotScorePolicy;
 import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshot;
+import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshotFactory;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
@@ -32,17 +34,20 @@ public class ReservationService {
 
 	private final OccupancyQueryService occupancy;
 
+	private final SlotSelectionSnapshotFactory snapshots;
+
 	private final Clock clock;
 
 	public ReservationService(SchedulingRequestRepository requests, OfferRepository offers, HoldRepository holds,
 			ReservationBlockRepository blocks, AvailabilityRepository policies, OccupancyQueryService occupancy,
-			Clock clock) {
+			SlotSelectionSnapshotFactory snapshots, Clock clock) {
 		this.requests = requests;
 		this.offers = offers;
 		this.holds = holds;
 		this.blocks = blocks;
 		this.policies = policies;
 		this.occupancy = occupancy;
+		this.snapshots = snapshots;
 		this.clock = clock;
 	}
 
@@ -118,6 +123,10 @@ public class ReservationService {
 		SchedulingRequest request = this.requests.findById(requestId).orElseThrow();
 		if (request.getState() != RequestState.STAFF_HANDLING && request.getState() != RequestState.MATCHING) {
 			return HoldAcquisitionOutcome.SUPERSEDED;
+		}
+		SlotSelectionSnapshot snapshot = this.snapshots.createFacts(requestId, MatchingMode.ALLOWED_FALLBACK);
+		if (!SlotScorePolicy.staffEligible(snapshot, slot)) {
+			return HoldAcquisitionOutcome.STALE;
 		}
 		Instant now = Instant.now(this.clock);
 		Instant expiresAt = now.plus(Duration.ofMinutes(this.policies.currentPolicy().getHoldDurationMinutes()));

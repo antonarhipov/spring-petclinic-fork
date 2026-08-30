@@ -71,8 +71,9 @@ class TimefoldMatchingServiceTests {
 				List.of(new TimeWindow(start, preferredStart.plusSeconds(3600), false)),
 				List.of(new TimeWindow(preferredStart, preferredStart.plusSeconds(3600), false)), List.of(), Set.of(),
 				List.of(new VetFact(1, Set.of())),
-				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
-				List.of(), candidates);
+				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))),
+				List.of(new HoursFact(1, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
+				candidates);
 	}
 
 }

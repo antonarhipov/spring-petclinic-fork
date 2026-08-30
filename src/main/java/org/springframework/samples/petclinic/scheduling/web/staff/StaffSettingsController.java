@@ -45,7 +45,8 @@ public class StaffSettingsController {
 		if (form.getExpectedVersion() != null && !form.getExpectedVersion().equals(policy.getVersion())) {
 			throw new StaleStateException("stale", policy, form);
 		}
-		this.policies.assertZoneImmutable(form.getZoneId() == null ? policy.getZoneId() : form.getZoneId());
+		this.policies.changeZone(form.getZoneId() == null ? policy.getZoneId() : form.getZoneId(),
+				staff(authentication).getId());
 		this.policies.updateBounds(form.getBookingHorizonDays(), form.getHoldDurationMinutes(),
 				staff(authentication).getId());
 		if (form.getUrgentCareGuidance() != null) {

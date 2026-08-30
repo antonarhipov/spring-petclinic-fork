@@ -12,6 +12,7 @@ import org.springframework.samples.petclinic.account.AccountRepository;
 import org.springframework.samples.petclinic.account.AccountRole;
 import org.springframework.samples.petclinic.account.SecurityConfiguration;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferDecisionService;
+import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.request.OwnerRequestHistoryService;
 import org.springframework.samples.petclinic.scheduling.request.OwnerResumeRouteResolver;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevisionService;
@@ -69,6 +70,9 @@ class OwnerRequestRecoveryControllerTests {
 
 	@MockitoBean
 	org.springframework.samples.petclinic.vet.VetRepository vets;
+
+	@MockitoBean
+	AvailabilityRepository policies;
 
 	@Test
 	@WithMockUser(username = "george", roles = "OWNER")

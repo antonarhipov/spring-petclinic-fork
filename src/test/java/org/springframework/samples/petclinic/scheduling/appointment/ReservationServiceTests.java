@@ -25,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.scheduling.config.ClockConfiguration;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
+import org.springframework.samples.petclinic.scheduling.matching.CandidateSlotFactory;
 import org.springframework.samples.petclinic.scheduling.matching.HoursFact;
 import org.springframework.samples.petclinic.scheduling.matching.MatchingMode;
 import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshot;
+import org.springframework.samples.petclinic.scheduling.matching.SlotSelectionSnapshotFactory;
 import org.springframework.samples.petclinic.scheduling.matching.TimeWindow;
 import org.springframework.samples.petclinic.scheduling.matching.VetFact;
 import org.springframework.samples.petclinic.scheduling.request.InterpretationRecord;
@@ -45,7 +47,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import({ ReservationService.class, OccupancyQueryService.class, ClockConfiguration.class })
+@Import({ ReservationService.class, OccupancyQueryService.class, ClockConfiguration.class,
+		SlotSelectionSnapshotFactory.class, CandidateSlotFactory.class })
 class ReservationServiceTests {
 
 	@Autowired
@@ -117,13 +120,42 @@ class ReservationServiceTests {
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	void acquireExactHoldsStaffSlotWithoutPreferredEligibilityCheck() {
+	void acquireExactRejectsStaffSlotWhenVeterinarianHasNoConfiguredAvailability() {
+		this.jdbc.update("delete from reservation_blocks");
+		this.jdbc.update("delete from holds");
+		this.jdbc.update("delete from offers");
 		this.jdbc.update("insert into vets (first_name, last_name) values ('Helen', 'Leary')");
-		Integer vetId = this.jdbc.queryForObject("select min(id) from vets", Integer.class);
+		Integer vetId = this.jdbc.queryForObject("select max(id) from vets", Integer.class);
 		SchedulingRequest request = persistMatchingRequest();
 		this.jdbc.update("update scheduling_requests set state = ? where id = ?", RequestState.STAFF_HANDLING.name(),
 				request.getId());
-		Instant start = Instant.parse("2026-03-16T18:00:00Z");
+		Instant start = Instant.parse("2026-03-16T09:00:00Z");
+		CandidateSlot slot = new CandidateSlot(vetId + "@" + start, vetId, start, start.plusSeconds(1800), "STAFF", 0);
+		HoldAcquisitionOutcome outcome = this.reservations.acquireExact(request.getId(), slot, "STAFF", "STAFF_HOLD");
+		assertThat(outcome).isEqualTo(HoldAcquisitionOutcome.STALE);
+		assertThat(this.offers.findAll()).isEmpty();
+		assertThat(this.holds.findAll()).isEmpty();
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void acquireExactHoldsStaffSlotWhenPriorAvailabilityExceptionCoversIt() {
+		this.jdbc.update("delete from reservation_blocks");
+		this.jdbc.update("delete from holds");
+		this.jdbc.update("delete from offers");
+		this.jdbc.update("insert into vets (first_name, last_name) values ('Helen', 'Leary')");
+		Integer vetId = this.jdbc.queryForObject("select max(id) from vets", Integer.class);
+		this.jdbc.update("insert into vet_date_exceptions (veterinarian_id, exception_date) values (?, ?)", vetId,
+				java.time.LocalDate.of(2026, 3, 16));
+		Long exceptionId = this.jdbc.queryForObject("select id from vet_date_exceptions where veterinarian_id = ?",
+				Long.class, vetId);
+		this.jdbc.update(
+				"insert into vet_date_exception_intervals (exception_id, start_local_time, end_local_time) values (?, ?, ?)",
+				exceptionId, LocalTime.of(9, 0), LocalTime.of(18, 0));
+		SchedulingRequest request = persistMatchingRequest();
+		this.jdbc.update("update scheduling_requests set state = ? where id = ?", RequestState.STAFF_HANDLING.name(),
+				request.getId());
+		Instant start = Instant.parse("2026-03-16T09:00:00Z");
 		CandidateSlot slot = new CandidateSlot(vetId + "@" + start, vetId, start, start.plusSeconds(1800), "STAFF", 0);
 		HoldAcquisitionOutcome outcome = this.reservations.acquireExact(request.getId(), slot, "STAFF", "STAFF_HOLD");
 		assertThat(outcome).isEqualTo(HoldAcquisitionOutcome.HELD);
@@ -212,10 +244,12 @@ class ReservationServiceTests {
 	private SlotSelectionSnapshot snapshot(Instant start, CandidateSlot slot) {
 		Instant now = Instant.parse("2026-03-16T14:00:00Z");
 		return new SlotSelectionSnapshot("1.0", "slot-selection-1", 1L, 1L, 0, MatchingMode.PREFERRED_ONLY, "UTC", now,
-				now.plusSeconds(15 * 60), now.plusSeconds(7 * 24 * 3600), 30, 15, 1L, 1, null, 1, "NONE",
-				List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), List.of(), Set.of(),
+				now.plusSeconds(15 * 60), now.plusSeconds(7 * 24 * 3600), 30, 15, 1L, 1, null, slot.veterinarianId(),
+				"NONE", List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), List.of(), Set.of(),
 				List.of(new VetFact(slot.veterinarianId(), Set.of())),
-				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
+				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))),
+				List.of(new HoursFact(slot.veterinarianId(), DayOfWeek.MONDAY, LocalTime.of(0, 0),
+						LocalTime.of(23, 59))),
 				List.of(), List.of(slot));
 	}
 

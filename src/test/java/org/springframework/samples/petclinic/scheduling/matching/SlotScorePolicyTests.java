@@ -55,6 +55,26 @@ class SlotScorePolicyTests {
 	}
 
 	@Test
+	void unconfiguredVeterinarianHasNoBookableSlots() {
+		Instant start = Instant.parse("2026-03-16T15:00:00Z");
+		SlotSelectionSnapshot snapshot = snapshot(MatchingMode.PREFERRED_ONLY,
+				List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), 1, "NONE");
+		CandidateSlot slot = new CandidateSlot("1@" + start, 1, start, start.plusSeconds(1800), "STANDARD", 0);
+		assertThat(SlotScorePolicy.baseEligible(snapshot, slot)).isFalse();
+	}
+
+	@Test
+	void configuredVeterinarianHoursMakeSlotBookable() {
+		Instant start = Instant.parse("2026-03-16T15:00:00Z");
+		SlotSelectionSnapshot snapshot = snapshot(MatchingMode.PREFERRED_ONLY,
+				List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), 1, "NONE");
+		snapshot = withVeterinarianHours(snapshot,
+				List.of(new HoursFact(1, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))));
+		CandidateSlot slot = new CandidateSlot("1@" + start, 1, start, start.plusSeconds(1800), "STANDARD", 0);
+		assertThat(SlotScorePolicy.baseEligible(snapshot, slot)).isTrue();
+	}
+
+	@Test
 	void namedHardComponentsCoverEligibility() {
 		Instant start = Instant.parse("2026-03-16T15:00:00Z");
 		SlotSelectionSnapshot snapshot = snapshot(MatchingMode.PREFERRED_ONLY,
@@ -75,6 +95,18 @@ class SlotScorePolicyTests {
 				allowed, preferred, List.of(), Set.of(), List.of(new VetFact(1, Set.of()), new VetFact(2, Set.of())),
 				List.of(new HoursFact(null, DayOfWeek.MONDAY, LocalTime.of(0, 0), LocalTime.of(23, 59))), List.of(),
 				List.of(), List.of(unused));
+	}
+
+	private SlotSelectionSnapshot withVeterinarianHours(SlotSelectionSnapshot source,
+			List<HoursFact> veterinarianHours) {
+		return new SlotSelectionSnapshot(source.snapshotSchemaVersion(), source.solverConfigurationVersion(),
+				source.requestId(), source.requestRevisionId(), source.requestRevisionVersion(), source.mode(),
+				source.clinicZone(), source.now(), source.noticeBoundary(), source.horizonEnd(),
+				source.durationMinutes(), source.gridMinutes(), source.configurationVersion(), source.petId(),
+				source.requiredSpecialtyId(), source.preferredVeterinarianId(), source.veterinarianPreferenceStrength(),
+				source.allowedWindows(), source.preferredWindows(), source.excludedWindows(), source.exclusionKeys(),
+				source.veterinarians(), source.clinicHours(), veterinarianHours, source.occupancies(),
+				source.candidates());
 	}
 
 	private SlotSelectionSnapshot withOccupancy(SlotSelectionSnapshot source, OccupancyFact occupancy) {

@@ -12,10 +12,15 @@ import org.springframework.samples.petclinic.scheduling.appointment.Offer;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferStatus;
 import org.springframework.samples.petclinic.scheduling.appointment.OccupancyQueryService;
+import org.springframework.samples.petclinic.scheduling.availability.AvailabilityPrecedence;
 import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
+import org.springframework.samples.petclinic.scheduling.availability.ClinicClosureRepository;
 import org.springframework.samples.petclinic.scheduling.availability.ClinicHours;
 import org.springframework.samples.petclinic.scheduling.availability.ClinicHoursRepository;
 import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingPolicy;
+import org.springframework.samples.petclinic.scheduling.availability.VetDateExceptionRepository;
+import org.springframework.samples.petclinic.scheduling.availability.VetLeaveRepository;
+import org.springframework.samples.petclinic.scheduling.availability.VetRecurringShiftRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevision;
 import org.springframework.samples.petclinic.scheduling.request.RequestRevisionRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestWindow;
@@ -42,6 +47,14 @@ public class SlotSelectionSnapshotFactory {
 
 	private final VetRepository vets;
 
+	private final VetRecurringShiftRepository vetRecurringShifts;
+
+	private final VetDateExceptionRepository vetDateExceptions;
+
+	private final VetLeaveRepository vetLeaves;
+
+	private final ClinicClosureRepository clinicClosures;
+
 	private final OccupancyQueryService occupancies;
 
 	private final OfferRepository offers;
@@ -52,7 +65,9 @@ public class SlotSelectionSnapshotFactory {
 
 	public SlotSelectionSnapshotFactory(SchedulingRequestRepository requests, RequestRevisionRepository revisions,
 			RequestWindowRepository windows, AvailabilityRepository policies, ClinicHoursRepository clinicHours,
-			VetRepository vets, OccupancyQueryService occupancies, OfferRepository offers,
+			VetRepository vets, VetRecurringShiftRepository vetRecurringShifts,
+			VetDateExceptionRepository vetDateExceptions, VetLeaveRepository vetLeaves,
+			ClinicClosureRepository clinicClosures, OccupancyQueryService occupancies, OfferRepository offers,
 			CandidateSlotFactory candidates, Clock clock) {
 		this.requests = requests;
 		this.revisions = revisions;
@@ -60,6 +75,10 @@ public class SlotSelectionSnapshotFactory {
 		this.policies = policies;
 		this.clinicHours = clinicHours;
 		this.vets = vets;
+		this.vetRecurringShifts = vetRecurringShifts;
+		this.vetDateExceptions = vetDateExceptions;
+		this.vetLeaves = vetLeaves;
+		this.clinicClosures = clinicClosures;
 		this.occupancies = occupancies;
 		this.offers = offers;
 		this.candidates = candidates;
@@ -67,6 +86,23 @@ public class SlotSelectionSnapshotFactory {
 	}
 
 	public SlotSelectionSnapshot create(Long requestId, MatchingMode mode) {
+		SlotSelectionSnapshot withoutCandidates = createFacts(requestId, mode);
+		List<CandidateSlot> enumerated = this.candidates.enumerate(withoutCandidates);
+		return new SlotSelectionSnapshot(withoutCandidates.snapshotSchemaVersion(),
+				withoutCandidates.solverConfigurationVersion(), withoutCandidates.requestId(),
+				withoutCandidates.requestRevisionId(), withoutCandidates.requestRevisionVersion(),
+				withoutCandidates.mode(), withoutCandidates.clinicZone(), withoutCandidates.now(),
+				withoutCandidates.noticeBoundary(), withoutCandidates.horizonEnd(), withoutCandidates.durationMinutes(),
+				withoutCandidates.gridMinutes(), withoutCandidates.configurationVersion(), withoutCandidates.petId(),
+				withoutCandidates.requiredSpecialtyId(), withoutCandidates.preferredVeterinarianId(),
+				withoutCandidates.veterinarianPreferenceStrength(), withoutCandidates.allowedWindows(),
+				withoutCandidates.preferredWindows(), withoutCandidates.excludedWindows(),
+				withoutCandidates.exclusionKeys(), withoutCandidates.veterinarians(), withoutCandidates.clinicHours(),
+				withoutCandidates.veterinarianHours(), withoutCandidates.closures(), withoutCandidates.vetLeaves(),
+				withoutCandidates.vetDateExceptions(), withoutCandidates.occupancies(), enumerated);
+	}
+
+	public SlotSelectionSnapshot createFacts(Long requestId, MatchingMode mode) {
 		SchedulingRequest request = this.requests.findById(requestId).orElseThrow();
 		RequestRevision revision = this.revisions.findById(request.getActiveRequestRevisionId()).orElseThrow();
 		ClinicSchedulingPolicy policy = this.policies.currentPolicy();
@@ -79,30 +115,44 @@ public class SlotSelectionSnapshotFactory {
 		List<TimeWindow> excluded = map(allWindows, "EXCLUDED");
 		List<HoursFact> hours = this.clinicHours.findByPolicyId(policy.getId()).stream().map(this::toHours).toList();
 		List<VetFact> vetFacts = this.vets.findAll().stream().map(this::toVet).toList();
+		List<HoursFact> vetHours = vetFacts.stream()
+			.flatMap(vet -> this.vetRecurringShifts.findByVeterinarianId(vet.veterinarianId())
+				.stream()
+				.map(shift -> new HoursFact(vet.veterinarianId(), shift.getDayOfWeek(), shift.getStartLocalTime(),
+						shift.getEndLocalTime())))
+			.toList();
+		List<ClosureFact> closures = this.clinicClosures.findByPolicyId(policy.getId())
+			.stream()
+			.map(closure -> new ClosureFact(closure.getStartLocalDate(), closure.getEndLocalDate()))
+			.toList();
+		List<VetLeaveFact> vetLeaveFacts = vetFacts.stream()
+			.flatMap(vet -> this.vetLeaves.findByVeterinarianId(vet.veterinarianId())
+				.stream()
+				.map(leave -> new VetLeaveFact(vet.veterinarianId(), leave.getStartLocalDate(),
+						leave.getEndLocalDate())))
+			.toList();
+		List<VetDateExceptionFact> vetDateExceptionFacts = vetFacts.stream()
+			.flatMap(vet -> this.vetDateExceptions.findByVeterinarianId(vet.veterinarianId())
+				.stream()
+				.map(exception -> new VetDateExceptionFact(vet.veterinarianId(), exception.getExceptionDate(),
+						exception.getIntervals()
+							.stream()
+							.map(interval -> new AvailabilityPrecedence.Interval(interval.getStartLocalTime(),
+									interval.getEndLocalTime()))
+							.toList())))
+			.toList();
 		List<OccupancyFact> occupancy = this.occupancies.activeBlocks();
 		Set<String> exclusionKeys = this.offers.findByRequestRevisionIdOrderByCreatedAtDesc(revision.getId())
 			.stream()
 			.filter(offer -> offer.getStatus() == OfferStatus.REJECTED || offer.getStatus() == OfferStatus.EXPIRED)
 			.map(offer -> offer.getVeterinarianId() + "@" + offer.getStartAt())
 			.collect(Collectors.toSet());
-		SlotSelectionSnapshot withoutCandidates = new SlotSelectionSnapshot("1.0", "slot-selection-1", request.getId(),
-				revision.getId(), revision.getVersion(), mode, policy.getZoneId(), now, notice, horizon,
-				revision.getDurationMinutes(), policy.getGridMinutes(), policy.getConfigurationVersion(),
-				request.getPetId(), revision.getSpecialtyId(), revision.getPreferredVeterinarianId(),
+		return new SlotSelectionSnapshot("1.0", "slot-selection-1", request.getId(), revision.getId(),
+				revision.getVersion(), mode, policy.getZoneId(), now, notice, horizon, revision.getDurationMinutes(),
+				policy.getGridMinutes(), policy.getConfigurationVersion(), request.getPetId(),
+				revision.getSpecialtyId(), revision.getPreferredVeterinarianId(),
 				revision.getVeterinarianPreferenceStrength(), allowed, preferred, excluded, exclusionKeys, vetFacts,
-				hours, List.of(), occupancy, List.of());
-		List<CandidateSlot> enumerated = this.candidates.enumerate(withoutCandidates);
-		return new SlotSelectionSnapshot(withoutCandidates.snapshotSchemaVersion(),
-				withoutCandidates.solverConfigurationVersion(), withoutCandidates.requestId(),
-				withoutCandidates.requestRevisionId(), withoutCandidates.requestRevisionVersion(),
-				withoutCandidates.mode(), withoutCandidates.clinicZone(), withoutCandidates.now(),
-				withoutCandidates.noticeBoundary(), withoutCandidates.horizonEnd(), withoutCandidates.durationMinutes(),
-				withoutCandidates.gridMinutes(), withoutCandidates.configurationVersion(), withoutCandidates.petId(),
-				withoutCandidates.requiredSpecialtyId(), withoutCandidates.preferredVeterinarianId(),
-				withoutCandidates.veterinarianPreferenceStrength(), withoutCandidates.allowedWindows(),
-				withoutCandidates.preferredWindows(), withoutCandidates.excludedWindows(),
-				withoutCandidates.exclusionKeys(), withoutCandidates.veterinarians(), withoutCandidates.clinicHours(),
-				withoutCandidates.veterinarianHours(), withoutCandidates.occupancies(), enumerated);
+				hours, vetHours, closures, vetLeaveFacts, vetDateExceptionFacts, occupancy, List.of());
 	}
 
 	private List<TimeWindow> map(List<RequestWindow> source, String kind) {

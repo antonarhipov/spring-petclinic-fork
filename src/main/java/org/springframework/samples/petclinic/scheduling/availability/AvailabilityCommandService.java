@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.samples.petclinic.scheduling.appointment.Hold;
 import org.springframework.samples.petclinic.scheduling.appointment.HoldRepository;
@@ -65,26 +66,28 @@ public class AvailabilityCommandService {
 		if (!startAt.atZone(zone).toLocalDate().equals(endAt.atZone(zone).toLocalDate())) {
 			return false;
 		}
-		for (ClinicClosure closure : this.closures.findByPolicyId(policy.getId())) {
-			if (!date.isBefore(closure.getStartLocalDate()) && !date.isAfter(closure.getEndLocalDate())) {
-				return false;
-			}
-		}
-		for (VetLeave leave : this.leaves.findByVeterinarianId(veterinarianId)) {
-			if (!date.isBefore(leave.getStartLocalDate()) && !date.isAfter(leave.getEndLocalDate())) {
-				return false;
-			}
-		}
-		return this.exceptions.findByVeterinarianIdAndExceptionDate(veterinarianId, date)
-			.map(exception -> covered(exception.getIntervals()
+		boolean clinicClosed = this.closures.findByPolicyId(policy.getId())
+			.stream()
+			.anyMatch(
+					closure -> !date.isBefore(closure.getStartLocalDate()) && !date.isAfter(closure.getEndLocalDate()));
+		boolean veterinarianOnLeave = this.leaves.findByVeterinarianId(veterinarianId)
+			.stream()
+			.anyMatch(leave -> !date.isBefore(leave.getStartLocalDate()) && !date.isAfter(leave.getEndLocalDate()));
+		Optional<VetDateException> exception = this.exceptions.findByVeterinarianIdAndExceptionDate(veterinarianId,
+				date);
+		List<AvailabilityPrecedence.Interval> exceptionIntervals = exception
+			.map(found -> found.getIntervals()
 				.stream()
-				.map(i -> new Interval(i.getStartLocalTime(), i.getEndLocalTime()))
-				.toList(), zone, startAt, endAt))
-			.orElseGet(() -> covered(this.shifts.findByVeterinarianId(veterinarianId)
-				.stream()
-				.filter(shift -> shift.getDayOfWeek() == date.getDayOfWeek())
-				.map(shift -> new Interval(shift.getStartLocalTime(), shift.getEndLocalTime()))
-				.toList(), zone, startAt, endAt));
+				.map(i -> new AvailabilityPrecedence.Interval(i.getStartLocalTime(), i.getEndLocalTime()))
+				.toList())
+			.orElse(List.of());
+		List<AvailabilityPrecedence.Interval> shiftIntervals = this.shifts.findByVeterinarianId(veterinarianId)
+			.stream()
+			.filter(shift -> shift.getDayOfWeek() == date.getDayOfWeek())
+			.map(shift -> new AvailabilityPrecedence.Interval(shift.getStartLocalTime(), shift.getEndLocalTime()))
+			.toList();
+		return AvailabilityPrecedence.isAvailable(clinicClosed, veterinarianOnLeave, exception.isPresent(),
+				exceptionIntervals, shiftIntervals, zone, startAt, endAt);
 	}
 
 	@Transactional
@@ -180,23 +183,6 @@ public class AvailabilityCommandService {
 				this.offers.findById(hold.getOfferId()).ifPresent(offer -> offer.setStatus(OfferStatus.EXPIRED));
 			}
 		}
-	}
-
-	private boolean covered(List<Interval> intervals, ZoneId zone, Instant startAt, Instant endAt) {
-		if (intervals.isEmpty()) {
-			return false;
-		}
-		Instant cursor = startAt;
-		while (cursor.isBefore(endAt)) {
-			LocalTime local = cursor.atZone(zone).toLocalTime();
-			boolean open = intervals.stream()
-				.anyMatch(interval -> !local.isBefore(interval.start()) && local.isBefore(interval.end()));
-			if (!open) {
-				return false;
-			}
-			cursor = cursor.plusSeconds(15 * 60);
-		}
-		return true;
 	}
 
 	private void assertGrid(LocalTime start, LocalTime end) {

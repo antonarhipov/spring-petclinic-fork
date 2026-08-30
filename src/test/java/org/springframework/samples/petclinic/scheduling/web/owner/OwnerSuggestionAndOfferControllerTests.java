@@ -19,6 +19,8 @@ import org.springframework.samples.petclinic.scheduling.appointment.OfferAccepta
 import org.springframework.samples.petclinic.scheduling.appointment.OfferService;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferStatus;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferUnavailableException;
+import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
+import org.springframework.samples.petclinic.scheduling.availability.ClinicSchedulingPolicy;
 import org.springframework.samples.petclinic.scheduling.matching.MatchingCoordinator;
 import org.springframework.samples.petclinic.scheduling.matching.MatchingMode;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
@@ -67,6 +69,9 @@ class OwnerSuggestionAndOfferControllerTests {
 	@MockitoBean
 	VetRepository vets;
 
+	@MockitoBean
+	AvailabilityRepository policies;
+
 	@Test
 	@WithMockUser(username = "george", roles = "OWNER")
 	void requestSuggestionRedirectsToProcessing() throws Exception {
@@ -100,6 +105,7 @@ class OwnerSuggestionAndOfferControllerTests {
 	void offerPageSeedsHeldOfferWithoutScores() throws Exception {
 		given(this.accounts.findByUsername("george")).willReturn(Optional.of(ownerAccount()));
 		given(this.vets.findAll()).willReturn(List.of());
+		given(this.policies.currentPolicy()).willReturn(clinicPolicy());
 		SchedulingRequest request = new SchedulingRequest();
 		request.setOwnerId(1);
 		request.setState(RequestState.OFFER_HELD);
@@ -115,6 +121,34 @@ class OwnerSuggestionAndOfferControllerTests {
 			.andExpect(view().name("scheduling/owner/offer"))
 			.andExpect(model().attributeDoesNotExist("errorClassification"))
 			.andExpect(model().attributeDoesNotExist("score"));
+	}
+
+	@Test
+	@WithMockUser(username = "george", roles = "OWNER")
+	void offerPageExposesClinicZoneAndHoldExpiryForCountdown() throws Exception {
+		given(this.accounts.findByUsername("george")).willReturn(Optional.of(ownerAccount()));
+		given(this.vets.findAll()).willReturn(List.of());
+		given(this.policies.currentPolicy()).willReturn(clinicPolicy());
+		SchedulingRequest request = new SchedulingRequest();
+		request.setOwnerId(1);
+		request.setState(RequestState.OFFER_HELD);
+		Offer offer = new Offer();
+		offer.setStatus(OfferStatus.HELD);
+		offer.setVeterinarianId(1);
+		offer.setExpiresAt(Instant.parse("2099-01-01T00:00:00Z"));
+		Hold hold = new Hold();
+		hold.setExpiresAt(Instant.parse("2099-01-01T00:00:00Z"));
+		given(this.offers.loadOwned(5L, 1, 8L)).willReturn(new OfferService.OfferView(request, offer, hold));
+		this.mockMvc.perform(get("/owner/scheduling-requests/5/offers/8"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("clinicZone", "Europe/Amsterdam"))
+			.andExpect(model().attribute("hold", hold));
+	}
+
+	private ClinicSchedulingPolicy clinicPolicy() {
+		ClinicSchedulingPolicy policy = new ClinicSchedulingPolicy();
+		policy.setZoneId("Europe/Amsterdam");
+		return policy;
 	}
 
 	@Test

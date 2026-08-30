@@ -5,8 +5,10 @@ import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.EmergencyTerm;
 import org.springframework.samples.petclinic.scheduling.interpretation.EmergencyTermRepository;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,9 +29,14 @@ public class ClinicPolicyService {
 
 	private final CapacityAuditService audit;
 
+	private final SchedulingRequestRepository requests;
+
+	private final AppointmentRepository appointments;
+
 	public ClinicPolicyService(AvailabilityRepository policies, AllowedDurationRepository durations,
 			ClinicHoursRepository hours, NamedPeriodRepository periods, EmergencyTermRepository terms,
-			ConfigurationVersionService versions, CapacityAuditService audit) {
+			ConfigurationVersionService versions, CapacityAuditService audit, SchedulingRequestRepository requests,
+			AppointmentRepository appointments) {
 		this.policies = policies;
 		this.durations = durations;
 		this.hours = hours;
@@ -37,6 +44,8 @@ public class ClinicPolicyService {
 		this.terms = terms;
 		this.versions = versions;
 		this.audit = audit;
+		this.requests = requests;
+		this.appointments = appointments;
 	}
 
 	@Transactional
@@ -143,9 +152,24 @@ public class ClinicPolicyService {
 	}
 
 	public void assertZoneImmutable(String proposedZone) {
-		if (!current().getZoneId().equals(proposedZone)) {
+		if (!current().getZoneId().equals(proposedZone)
+				&& (this.requests.count() > 0 || this.appointments.count() > 0)) {
 			throw new PolicyValidationException("ZONE_IMMUTABLE");
 		}
+	}
+
+	@Transactional
+	public ClinicSchedulingPolicy changeZone(String proposedZone, Long actorAccountId) {
+		assertZoneImmutable(proposedZone);
+		ClinicSchedulingPolicy policy = this.policies.currentPolicy();
+		if (!policy.getZoneId().equals(proposedZone)) {
+			String before = "{\"zoneId\":\"" + policy.getZoneId() + "\"}";
+			policy.setZoneId(proposedZone);
+			this.versions.bump();
+			this.audit.record(actorAccountId, "ZONE_UPDATED", "POLICY", String.valueOf(policy.getId()), before,
+					"{\"zoneId\":\"" + proposedZone + "\"}");
+		}
+		return policy;
 	}
 
 	public DayOfWeek[] days() {

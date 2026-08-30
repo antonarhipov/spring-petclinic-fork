@@ -5,9 +5,12 @@ import java.time.LocalTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.EmergencyTermRepository;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -22,10 +25,25 @@ class ClinicPolicyServiceTests {
 	}
 
 	@Test
-	void zoneIsImmutable() {
-		ClinicPolicyService service = service();
+	void zoneIsImmutableOnceSchedulingDataExists() {
+		SchedulingRequestRepository requests = mock(SchedulingRequestRepository.class);
+		AppointmentRepository appointments = mock(AppointmentRepository.class);
+		when(requests.count()).thenReturn(1L);
+		when(appointments.count()).thenReturn(0L);
+		ClinicPolicyService service = service(requests, appointments);
 		assertThatThrownBy(() -> service.assertZoneImmutable("America/New_York"))
 			.isInstanceOf(PolicyValidationException.class);
+	}
+
+	@Test
+	void zoneIsMutableBeforeAnySchedulingDataExists() {
+		SchedulingRequestRepository requests = mock(SchedulingRequestRepository.class);
+		AppointmentRepository appointments = mock(AppointmentRepository.class);
+		when(requests.count()).thenReturn(0L);
+		when(appointments.count()).thenReturn(0L);
+		ClinicPolicyService service = service(requests, appointments);
+		ClinicSchedulingPolicy policy = service.changeZone("America/New_York", 1L);
+		assertThat(policy.getZoneId()).isEqualTo("America/New_York");
 	}
 
 	@Test
@@ -38,7 +56,8 @@ class ClinicPolicyServiceTests {
 		when(periods.findByPolicyId(1L)).thenReturn(List.of(existing));
 		ClinicPolicyService service = new ClinicPolicyService(policies(), mock(AllowedDurationRepository.class),
 				mock(ClinicHoursRepository.class), periods, mock(EmergencyTermRepository.class), versions(),
-				mock(CapacityAuditService.class));
+				mock(CapacityAuditService.class), mock(SchedulingRequestRepository.class),
+				mock(AppointmentRepository.class));
 		NamedPeriod next = new NamedPeriod();
 		next.setCode("MIDDAY");
 		next.setStartLocalTime(LocalTime.of(11, 0));
@@ -47,9 +66,14 @@ class ClinicPolicyServiceTests {
 	}
 
 	private ClinicPolicyService service() {
+		return service(mock(SchedulingRequestRepository.class), mock(AppointmentRepository.class));
+	}
+
+	private ClinicPolicyService service(SchedulingRequestRepository requests, AppointmentRepository appointments) {
 		return new ClinicPolicyService(policies(), mock(AllowedDurationRepository.class),
 				mock(ClinicHoursRepository.class), mock(NamedPeriodRepository.class),
-				mock(EmergencyTermRepository.class), versions(), mock(CapacityAuditService.class));
+				mock(EmergencyTermRepository.class), versions(), mock(CapacityAuditService.class), requests,
+				appointments);
 	}
 
 	private AvailabilityRepository policies() {

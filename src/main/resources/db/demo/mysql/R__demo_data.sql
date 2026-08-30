@@ -15,6 +15,26 @@ INSERT IGNORE INTO vet_specialties VALUES (3, 3);
 INSERT IGNORE INTO vet_specialties VALUES (4, 2);
 INSERT IGNORE INTO vet_specialties VALUES (5, 1);
 
+INSERT IGNORE INTO vet_recurring_shifts (id, veterinarian_id, day_of_week, start_local_time, end_local_time) VALUES
+  (1, 1, 'MONDAY', '09:00:00', '17:00:00'), (2, 1, 'TUESDAY', '09:00:00', '17:00:00'),
+  (3, 1, 'WEDNESDAY', '09:00:00', '17:00:00'), (4, 1, 'THURSDAY', '09:00:00', '17:00:00'),
+  (5, 1, 'FRIDAY', '09:00:00', '17:00:00'),
+  (6, 2, 'MONDAY', '09:00:00', '17:00:00'), (7, 2, 'TUESDAY', '09:00:00', '17:00:00'),
+  (8, 2, 'WEDNESDAY', '09:00:00', '17:00:00'), (9, 2, 'THURSDAY', '09:00:00', '17:00:00'),
+  (10, 2, 'FRIDAY', '09:00:00', '17:00:00'),
+  (11, 3, 'MONDAY', '09:00:00', '17:00:00'), (12, 3, 'TUESDAY', '09:00:00', '17:00:00'),
+  (13, 3, 'WEDNESDAY', '09:00:00', '17:00:00'), (14, 3, 'THURSDAY', '09:00:00', '17:00:00'),
+  (15, 3, 'FRIDAY', '09:00:00', '17:00:00'),
+  (16, 4, 'MONDAY', '09:00:00', '17:00:00'), (17, 4, 'TUESDAY', '09:00:00', '17:00:00'),
+  (18, 4, 'WEDNESDAY', '09:00:00', '17:00:00'), (19, 4, 'THURSDAY', '09:00:00', '17:00:00'),
+  (20, 4, 'FRIDAY', '09:00:00', '17:00:00'),
+  (21, 5, 'MONDAY', '09:00:00', '17:00:00'), (22, 5, 'TUESDAY', '09:00:00', '17:00:00'),
+  (23, 5, 'WEDNESDAY', '09:00:00', '17:00:00'), (24, 5, 'THURSDAY', '09:00:00', '17:00:00'),
+  (25, 5, 'FRIDAY', '09:00:00', '17:00:00'),
+  (26, 6, 'MONDAY', '09:00:00', '17:00:00'), (27, 6, 'TUESDAY', '09:00:00', '17:00:00'),
+  (28, 6, 'WEDNESDAY', '09:00:00', '17:00:00'), (29, 6, 'THURSDAY', '09:00:00', '17:00:00'),
+  (30, 6, 'FRIDAY', '09:00:00', '17:00:00');
+
 INSERT IGNORE INTO types VALUES (1, 'cat');
 INSERT IGNORE INTO types VALUES (2, 'dog');
 INSERT IGNORE INTO types VALUES (3, 'lizard');

@@ -303,14 +303,22 @@ class SchedulingPocScaleTests {
 		return new SlotSelectionSnapshot("1.0", "slot-selection-1", 1L, 1L, 0, MatchingMode.PREFERRED_ONLY, "UTC", now,
 				now.plusSeconds(15 * 60), now.plusSeconds(7 * 24 * 3600), 30, 15, 1L, 1, null, slot.veterinarianId(),
 				"NONE", List.of(new TimeWindow(start, start.plusSeconds(3600), false)), List.of(), List.of(), Set.of(),
-				List.of(new VetFact(slot.veterinarianId(), Set.of())), allClinicHours(), List.of(), List.of(),
-				List.of(slot));
+				List.of(new VetFact(slot.veterinarianId(), Set.of())), allClinicHours(),
+				allVeterinarianHours(slot.veterinarianId()), List.of(), List.of(slot));
 	}
 
 	private List<HoursFact> allClinicHours() {
 		List<HoursFact> hours = new ArrayList<>();
 		for (DayOfWeek day : DayOfWeek.values()) {
 			hours.add(new HoursFact(null, day, LocalTime.of(0, 0), LocalTime.of(23, 59)));
+		}
+		return hours;
+	}
+
+	private List<HoursFact> allVeterinarianHours(int veterinarianId) {
+		List<HoursFact> hours = new ArrayList<>();
+		for (DayOfWeek day : DayOfWeek.values()) {
+			hours.add(new HoursFact(veterinarianId, day, LocalTime.of(0, 0), LocalTime.of(23, 59)));
 		}
 		return hours;
 	}

@@ -6,6 +6,7 @@ import org.springframework.samples.petclinic.scheduling.appointment.OfferDecisio
 import org.springframework.samples.petclinic.scheduling.appointment.OfferService;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferStatus;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferUnavailableException;
+import org.springframework.samples.petclinic.scheduling.availability.AvailabilityRepository;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -28,13 +29,17 @@ public class OwnerOfferController {
 
 	private final VetRepository vets;
 
+	private final AvailabilityRepository policies;
+
 	public OwnerOfferController(CurrentOwnerAccount currentOwner, OfferService offers,
-			OfferAcceptanceService acceptance, OfferDecisionService decisions, VetRepository vets) {
+			OfferAcceptanceService acceptance, OfferDecisionService decisions, VetRepository vets,
+			AvailabilityRepository policies) {
 		this.currentOwner = currentOwner;
 		this.offers = offers;
 		this.acceptance = acceptance;
 		this.decisions = decisions;
 		this.vets = vets;
+		this.policies = policies;
 	}
 
 	@GetMapping("/owner/scheduling-requests/{id}/offers/{offerId}")
@@ -51,6 +56,7 @@ public class OwnerOfferController {
 		model.addAttribute("offer", view.offer());
 		model.addAttribute("hold", view.hold());
 		model.addAttribute("veterinarianName", veterinarianName(view.offer().getVeterinarianId()));
+		model.addAttribute("clinicZone", this.policies.currentPolicy().getZoneId());
 		return "scheduling/owner/offer";
 	}
 

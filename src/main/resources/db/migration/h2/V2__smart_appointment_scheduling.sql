@@ -409,7 +409,7 @@ CREATE TABLE audit_events (
 
 INSERT INTO clinic_scheduling_policies (zone_id, grid_minutes, booking_horizon_days, hold_duration_minutes,
   owner_minimum_notice_minutes, urgent_care_guidance, consent_copy_version, configuration_version, created_at, updated_at, version)
-VALUES ('America/Chicago', 15, 30, 15, 120, 'If this may be an emergency, contact urgent care immediately.', 'consent-v1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
+VALUES ('Europe/Amsterdam', 15, 90, 10, 120, 'If this may be an emergency, contact urgent care immediately.', 'consent-v1', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0);
 
 INSERT INTO allowed_durations (policy_id, duration_minutes) VALUES (1, 15), (1, 30), (1, 45), (1, 60);
 INSERT INTO clinic_hours (policy_id, day_of_week, start_local_time, end_local_time) VALUES

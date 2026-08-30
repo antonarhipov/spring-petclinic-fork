@@ -15,6 +15,26 @@ INSERT INTO vet_specialties VALUES (3, 3);
 INSERT INTO vet_specialties VALUES (4, 2);
 INSERT INTO vet_specialties VALUES (5, 1);
 
+INSERT INTO vet_recurring_shifts (veterinarian_id, day_of_week, start_local_time, end_local_time) VALUES
+  (1, 'MONDAY', '09:00:00', '17:00:00'), (1, 'TUESDAY', '09:00:00', '17:00:00'),
+  (1, 'WEDNESDAY', '09:00:00', '17:00:00'), (1, 'THURSDAY', '09:00:00', '17:00:00'),
+  (1, 'FRIDAY', '09:00:00', '17:00:00'),
+  (2, 'MONDAY', '09:00:00', '17:00:00'), (2, 'TUESDAY', '09:00:00', '17:00:00'),
+  (2, 'WEDNESDAY', '09:00:00', '17:00:00'), (2, 'THURSDAY', '09:00:00', '17:00:00'),
+  (2, 'FRIDAY', '09:00:00', '17:00:00'),
+  (3, 'MONDAY', '09:00:00', '17:00:00'), (3, 'TUESDAY', '09:00:00', '17:00:00'),
+  (3, 'WEDNESDAY', '09:00:00', '17:00:00'), (3, 'THURSDAY', '09:00:00', '17:00:00'),
+  (3, 'FRIDAY', '09:00:00', '17:00:00'),
+  (4, 'MONDAY', '09:00:00', '17:00:00'), (4, 'TUESDAY', '09:00:00', '17:00:00'),
+  (4, 'WEDNESDAY', '09:00:00', '17:00:00'), (4, 'THURSDAY', '09:00:00', '17:00:00'),
+  (4, 'FRIDAY', '09:00:00', '17:00:00'),
+  (5, 'MONDAY', '09:00:00', '17:00:00'), (5, 'TUESDAY', '09:00:00', '17:00:00'),
+  (5, 'WEDNESDAY', '09:00:00', '17:00:00'), (5, 'THURSDAY', '09:00:00', '17:00:00'),
+  (5, 'FRIDAY', '09:00:00', '17:00:00'),
+  (6, 'MONDAY', '09:00:00', '17:00:00'), (6, 'TUESDAY', '09:00:00', '17:00:00'),
+  (6, 'WEDNESDAY', '09:00:00', '17:00:00'), (6, 'THURSDAY', '09:00:00', '17:00:00'),
+  (6, 'FRIDAY', '09:00:00', '17:00:00');
+
 INSERT INTO types VALUES (default, 'cat');
 INSERT INTO types VALUES (default, 'dog');
 INSERT INTO types VALUES (default, 'lizard');

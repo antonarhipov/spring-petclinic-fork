@@ -27,10 +27,11 @@ class ClinicPolicyRepositoryTests {
 	@Test
 	void seedPolicyHasDefaultsAndVersion() {
 		ClinicSchedulingPolicy policy = this.policies.currentPolicy();
+		assertThat(policy.getZoneId()).isEqualTo("Europe/Amsterdam");
 		assertThat(policy.getGridMinutes()).isEqualTo(15);
 		assertThat(policy.getOwnerMinimumNoticeMinutes()).isEqualTo(120);
-		assertThat(policy.getBookingHorizonDays()).isBetween(1, 365);
-		assertThat(policy.getHoldDurationMinutes()).isBetween(1, 60);
+		assertThat(policy.getBookingHorizonDays()).isEqualTo(90);
+		assertThat(policy.getHoldDurationMinutes()).isEqualTo(10);
 		assertThat(policy.getConfigurationVersion()).isGreaterThanOrEqualTo(1);
 		assertThat(policy.getVersion()).isNotNull();
 		List<AllowedDuration> allowed = this.durations.findByPolicyId(policy.getId());
