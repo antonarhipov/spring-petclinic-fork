@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.scheduling.appointment.Offer;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.OfferStatus;
@@ -34,6 +36,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SlotSelectionSnapshotFactory {
+
+	private static final Logger logger = LoggerFactory.getLogger(SlotSelectionSnapshotFactory.class);
 
 	private final SchedulingRequestRepository requests;
 
@@ -88,6 +92,7 @@ public class SlotSelectionSnapshotFactory {
 	public SlotSelectionSnapshot create(Long requestId, MatchingMode mode) {
 		SlotSelectionSnapshot withoutCandidates = createFacts(requestId, mode);
 		List<CandidateSlot> enumerated = this.candidates.enumerate(withoutCandidates);
+		logSnapshot(withoutCandidates, enumerated);
 		return new SlotSelectionSnapshot(withoutCandidates.snapshotSchemaVersion(),
 				withoutCandidates.solverConfigurationVersion(), withoutCandidates.requestId(),
 				withoutCandidates.requestRevisionId(), withoutCandidates.requestRevisionVersion(),
@@ -153,6 +158,40 @@ public class SlotSelectionSnapshotFactory {
 				revision.getSpecialtyId(), revision.getPreferredVeterinarianId(),
 				revision.getVeterinarianPreferenceStrength(), allowed, preferred, excluded, exclusionKeys, vetFacts,
 				hours, vetHours, closures, vetLeaveFacts, vetDateExceptionFacts, occupancy, List.of());
+	}
+
+	private void logSnapshot(SlotSelectionSnapshot facts, List<CandidateSlot> enumerated) {
+		logger.info(
+				"Solver input for requestId={} revisionId={} mode={}: candidateSlots={}, veterinarians={}, "
+						+ "vetShiftRows={}, clinicHourRows={}, closures={}, vetLeaves={}, vetDateExceptions={}, "
+						+ "activeOccupancies={}, excludedOfferKeys={}",
+				facts.requestId(), facts.requestRevisionId(), facts.mode(), enumerated.size(),
+				facts.veterinarians().size(), facts.veterinarianHours().size(), facts.clinicHours().size(),
+				facts.closures().size(), facts.vetLeaves().size(), facts.vetDateExceptions().size(),
+				facts.occupancies().size(), facts.exclusionKeys().size());
+		logger.info(
+				"Solver constraints for requestId={}: zone={}, durationMinutes={}, gridMinutes={}, "
+						+ "noticeBoundary={}, horizonEnd={}, requiredSpecialtyId={}, preferredVeterinarianId={} ({}), "
+						+ "allowedWindows={}, preferredWindows={}, excludedWindows={}",
+				facts.requestId(), facts.clinicZone(), facts.durationMinutes(), facts.gridMinutes(),
+				facts.noticeBoundary(), facts.horizonEnd(), facts.requiredSpecialtyId(),
+				facts.preferredVeterinarianId(), facts.veterinarianPreferenceStrength(), facts.allowedWindows().size(),
+				facts.preferredWindows().size(), facts.excludedWindows().size());
+		if (enumerated.isEmpty()) {
+			logger.warn(
+					"Solver input for requestId={} has NO candidate slots: no suggestion is possible. Check "
+							+ "veterinarian recurring shifts ({} rows), clinic hours ({} rows) and the request "
+							+ "windows ({} allowed).",
+					facts.requestId(), facts.veterinarianHours().size(), facts.clinicHours().size(),
+					facts.allowedWindows().size());
+		}
+		if (logger.isDebugEnabled()) {
+			logger.debug("Solver candidate slots for requestId={}: {}", facts.requestId(),
+					enumerated.stream()
+						.limit(50)
+						.map(slot -> slot.veterinarianId() + "@" + slot.startAt() + "/" + slot.preferenceClass())
+						.toList());
+		}
 	}
 
 	private List<TimeWindow> map(List<RequestWindow> source, String kind) {

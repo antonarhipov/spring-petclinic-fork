@@ -71,3 +71,18 @@ INSERT IGNORE INTO visits (id, pet_id, visit_date, description) VALUES (1, 7, '2
 INSERT IGNORE INTO visits (id, pet_id, visit_date, description) VALUES (2, 8, '2011-03-04', 'rabies shot');
 INSERT IGNORE INTO visits (id, pet_id, visit_date, description) VALUES (3, 8, '2009-06-04', 'neutered');
 INSERT IGNORE INTO visits (id, pet_id, visit_date, description) VALUES (4, 7, '2008-09-04', 'spayed');
+
+-- Clinic vocabulary: named booking periods and emergency screening terms.
+-- Both tables ship empty from V2, which leaves the staff settings screens blank and
+-- forces EmergencyScreeningService onto its hardcoded fallback list.
+INSERT IGNORE INTO named_periods (id, policy_id, code, label, start_local_time, end_local_time) VALUES
+  (1, 1, 'MORNING', 'Morning', '09:00:00', '12:00:00'),
+  (2, 1, 'AFTERNOON', 'Afternoon', '12:00:00', '17:00:00'),
+  (3, 1, 'EARLY_MORNING', 'Early morning', '09:00:00', '10:30:00'),
+  (4, 1, 'LATE_AFTERNOON', 'Late afternoon', '15:00:00', '17:00:00');
+INSERT IGNORE INTO emergency_terms (id, policy_id, term, rule_set_version) VALUES
+  (1, 1, 'bleeding', 'emergency-v1'),
+  (2, 1, 'unconscious', 'emergency-v1'),
+  (3, 1, 'seizure', 'emergency-v1'),
+  (4, 1, 'poison', 'emergency-v1'),
+  (5, 1, 'collapse', 'emergency-v1');

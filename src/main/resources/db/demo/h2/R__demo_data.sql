@@ -71,3 +71,18 @@ INSERT INTO visits (pet_id, visit_date, description) VALUES (7, '2013-01-01', 'r
 INSERT INTO visits (pet_id, visit_date, description) VALUES (8, '2013-01-02', 'rabies shot');
 INSERT INTO visits (pet_id, visit_date, description) VALUES (8, '2013-01-03', 'neutered');
 INSERT INTO visits (pet_id, visit_date, description) VALUES (7, '2013-01-04', 'spayed');
+
+-- Clinic vocabulary: named booking periods and emergency screening terms.
+-- Both tables ship empty from V2, which leaves the staff settings screens blank and
+-- forces EmergencyScreeningService onto its hardcoded fallback list.
+INSERT INTO named_periods (policy_id, code, label, start_local_time, end_local_time) VALUES
+  (1, 'MORNING', 'Morning', '09:00:00', '12:00:00'),
+  (1, 'AFTERNOON', 'Afternoon', '12:00:00', '17:00:00'),
+  (1, 'EARLY_MORNING', 'Early morning', '09:00:00', '10:30:00'),
+  (1, 'LATE_AFTERNOON', 'Late afternoon', '15:00:00', '17:00:00');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version) VALUES
+  (1, 'bleeding', 'emergency-v1'),
+  (1, 'unconscious', 'emergency-v1'),
+  (1, 'seizure', 'emergency-v1'),
+  (1, 'poison', 'emergency-v1'),
+  (1, 'collapse', 'emergency-v1');

@@ -59,3 +59,34 @@ INSERT INTO visits (pet_id, visit_date, description) SELECT 7, '2010-03-04', 'ra
 INSERT INTO visits (pet_id, visit_date, description) SELECT 8, '2011-03-04', 'rabies shot' WHERE NOT EXISTS (SELECT * FROM visits WHERE id=2);
 INSERT INTO visits (pet_id, visit_date, description) SELECT 8, '2009-06-04', 'neutered' WHERE NOT EXISTS (SELECT * FROM visits WHERE id=3);
 INSERT INTO visits (pet_id, visit_date, description) SELECT 7, '2008-09-04', 'spayed' WHERE NOT EXISTS (SELECT * FROM visits WHERE id=4);
+
+-- Clinic vocabulary: named booking periods and emergency screening terms.
+-- Both tables ship empty from V2, which leaves the staff settings screens blank and
+-- forces EmergencyScreeningService onto its hardcoded fallback list.
+INSERT INTO named_periods (policy_id, code, label, start_local_time, end_local_time)
+  SELECT 1, 'MORNING', 'Morning', '09:00:00', '12:00:00'
+  WHERE NOT EXISTS (SELECT 1 FROM named_periods WHERE code = 'MORNING');
+INSERT INTO named_periods (policy_id, code, label, start_local_time, end_local_time)
+  SELECT 1, 'AFTERNOON', 'Afternoon', '12:00:00', '17:00:00'
+  WHERE NOT EXISTS (SELECT 1 FROM named_periods WHERE code = 'AFTERNOON');
+INSERT INTO named_periods (policy_id, code, label, start_local_time, end_local_time)
+  SELECT 1, 'EARLY_MORNING', 'Early morning', '09:00:00', '10:30:00'
+  WHERE NOT EXISTS (SELECT 1 FROM named_periods WHERE code = 'EARLY_MORNING');
+INSERT INTO named_periods (policy_id, code, label, start_local_time, end_local_time)
+  SELECT 1, 'LATE_AFTERNOON', 'Late afternoon', '15:00:00', '17:00:00'
+  WHERE NOT EXISTS (SELECT 1 FROM named_periods WHERE code = 'LATE_AFTERNOON');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version)
+  SELECT 1, 'bleeding', 'emergency-v1'
+  WHERE NOT EXISTS (SELECT 1 FROM emergency_terms WHERE term = 'bleeding' AND rule_set_version = 'emergency-v1');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version)
+  SELECT 1, 'unconscious', 'emergency-v1'
+  WHERE NOT EXISTS (SELECT 1 FROM emergency_terms WHERE term = 'unconscious' AND rule_set_version = 'emergency-v1');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version)
+  SELECT 1, 'seizure', 'emergency-v1'
+  WHERE NOT EXISTS (SELECT 1 FROM emergency_terms WHERE term = 'seizure' AND rule_set_version = 'emergency-v1');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version)
+  SELECT 1, 'poison', 'emergency-v1'
+  WHERE NOT EXISTS (SELECT 1 FROM emergency_terms WHERE term = 'poison' AND rule_set_version = 'emergency-v1');
+INSERT INTO emergency_terms (policy_id, term, rule_set_version)
+  SELECT 1, 'collapse', 'emergency-v1'
+  WHERE NOT EXISTS (SELECT 1 FROM emergency_terms WHERE term = 'collapse' AND rule_set_version = 'emergency-v1');

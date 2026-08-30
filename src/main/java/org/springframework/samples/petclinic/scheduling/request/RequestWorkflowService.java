@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.scheduling.audit.AuditService;
@@ -36,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RequestWorkflowService {
+
+	private static final Logger logger = LoggerFactory.getLogger(RequestWorkflowService.class);
 
 	/**
 	 * A single owner-entered local date/time window row. Incomplete rows (any null field)
@@ -419,6 +423,8 @@ public class RequestWorkflowService {
 	}
 
 	private void routeToStaff(SchedulingRequest request, String reason, Instant now) {
+		logger.warn("Routing requestId={} to STAFF_HANDLING: reason={}, suspectedEmergency={}, previousState={}",
+				request.getId(), reason, request.isSuspectedEmergency(), request.getState());
 		request.setState(RequestState.STAFF_HANDLING);
 		request.setOwnerStatusCode("STAFF_HANDLING");
 		request.setUpdatedAt(now);

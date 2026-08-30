@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.scheduling.appointment.HoldAcquisitionOutcome;
 import org.springframework.samples.petclinic.scheduling.appointment.ReservationService;
 import org.springframework.samples.petclinic.scheduling.appointment.StaleAcquisitionException;
@@ -22,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MatchingCoordinator {
+
+	private static final Logger logger = LoggerFactory.getLogger(MatchingCoordinator.class);
 
 	private final SchedulingRequestRepository requests;
 
@@ -73,6 +77,8 @@ public class MatchingCoordinator {
 				+ ":TIMEFOLD_MATCH";
 		IntegrationExecution existing = this.executions.findByTriggerKey(triggerKey).orElse(null);
 		if (existing != null) {
+			logger.info("Reusing in-flight matching execution {} for requestId={} mode={}", existing.getId(), requestId,
+					mode);
 			return existing.getId();
 		}
 		IntegrationExecution execution = new IntegrationExecution();
@@ -90,6 +96,8 @@ public class MatchingCoordinator {
 		request.setState(RequestState.MATCHING);
 		request.setOwnerStatusCode("MATCHING");
 		request.setUpdatedAt(now);
+		logger.info("Matching requested for requestId={} mode={}: executionId={}, state {} -> MATCHING, deadline={}",
+				requestId, mode, execution.getId(), required, execution.getDeadlineAt());
 		this.dispatcher.dispatchAfterCommit(execution.getId());
 		return execution.getId();
 	}
@@ -112,6 +120,11 @@ public class MatchingCoordinator {
 		SchedulingRequest request = this.requests.findById(execution.getRequestId()).orElseThrow();
 		if (request.getState() != RequestState.MATCHING
 				|| !execution.getRequestRevisionId().equals(request.getActiveRequestRevisionId())) {
+			logger.info(
+					"Matching execution {} SUPERSEDED for requestId={}: state={}, executionRevision={}, "
+							+ "activeRevision={}",
+					executionId, request.getId(), request.getState(), execution.getRequestRevisionId(),
+					request.getActiveRequestRevisionId());
 			execution.setState("SUPERSEDED");
 			execution.setOutcome("SUPERSEDED");
 			execution.setFinishedAt(Instant.now(this.clock));
@@ -120,6 +133,7 @@ public class MatchingCoordinator {
 		}
 		MatchingMode mode = execution.getInputJson().contains("ALLOWED_FALLBACK") ? MatchingMode.ALLOWED_FALLBACK
 				: MatchingMode.PREFERRED_ONLY;
+		logger.info("Matching execution {} starting for requestId={} mode={}", executionId, request.getId(), mode);
 		SlotSelectionSnapshot snapshot = this.snapshots.create(request.getId(), mode);
 		SlotSelectionResult result = this.solver.solve(snapshot, execution.getDeadlineAt());
 		apply(execution, request, snapshot, result, false);
@@ -133,6 +147,8 @@ public class MatchingCoordinator {
 			try {
 				HoldAcquisitionOutcome hold = this.reservations.acquire(request.getId(), execution.getId(),
 						result.selectedCandidate(), snapshot, result.score().publicExplanationCode());
+				logger.info("Hold acquisition for requestId={} slot {}@{} returned {}", request.getId(),
+						result.selectedCandidate().veterinarianId(), result.selectedCandidate().startAt(), hold);
 				if (hold == HoldAcquisitionOutcome.HELD) {
 					execution.setState("COMPLETE");
 					execution.setOutcome("SELECTED");
@@ -141,6 +157,8 @@ public class MatchingCoordinator {
 					return;
 				}
 				if (hold == HoldAcquisitionOutcome.STALE && !retried && now.isBefore(execution.getDeadlineAt())) {
+					logger.info("Hold was stale for requestId={}; re-snapshotting and re-solving once",
+							request.getId());
 					SlotSelectionSnapshot refreshed = this.snapshots.create(request.getId(), snapshot.mode());
 					SlotSelectionResult retry = this.solver.solve(refreshed, execution.getDeadlineAt());
 					apply(execution, request, refreshed, retry, true);
@@ -150,6 +168,8 @@ public class MatchingCoordinator {
 				return;
 			}
 			catch (StaleAcquisitionException ex) {
+				logger.warn("Stale acquisition while holding a slot for requestId={} (retried={})", request.getId(),
+						retried, ex);
 				if (!retried && Instant.now(this.clock).isBefore(execution.getDeadlineAt())) {
 					SlotSelectionSnapshot refreshed = this.snapshots.create(request.getId(), snapshot.mode());
 					SlotSelectionResult retry = this.solver.solve(refreshed, execution.getDeadlineAt());
@@ -161,6 +181,8 @@ public class MatchingCoordinator {
 			}
 		}
 		if ("NO_PREFERRED_MATCH".equals(result.outcome())) {
+			logger.info("No preferred-window match for requestId={}: state -> AWAITING_FALLBACK_CHOICE",
+					request.getId());
 			request.setState(RequestState.AWAITING_FALLBACK_CHOICE);
 			request.setOwnerStatusCode("AWAITING_FALLBACK_CHOICE");
 			request.setUpdatedAt(now);
@@ -174,6 +196,8 @@ public class MatchingCoordinator {
 	}
 
 	private void routeStaff(SchedulingRequest request, IntegrationExecution execution, String outcome, Instant now) {
+		logger.warn("Routing requestId={} to STAFF_HANDLING from execution {}: outcome={}", request.getId(),
+				execution.getId(), outcome);
 		request.setState(RequestState.STAFF_HANDLING);
 		request.setOwnerStatusCode("STAFF_HANDLING");
 		request.setUpdatedAt(now);

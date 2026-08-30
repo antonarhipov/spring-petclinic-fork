@@ -461,3 +461,30 @@ This is the minimum independently testable increment. It deliberately creates no
 - [X] T161 Render the current request/hold/appointment/queue status and a refresh-or-continue action on `src/main/resources/templates/error/stale.html`, which currently only dumps raw `submittedValues` without the `currentState` that `src/main/java/org/springframework/samples/petclinic/scheduling/system/SchedulingExceptionHandler.java` already supplies to the model, per FR-093 (partial)
 - [X] T162 Reject a new recurring veterinarian shift that overlaps an existing same-day shift for the same veterinarian in `src/main/java/org/springframework/samples/petclinic/scheduling/availability/AvailabilityCommandService.java` `addShift`, which today validates only 15-minute grid alignment, per FR-067 (partial)
 - [X] T163 Remove the dead, unreachable `OfferAcceptanceService.reject` method in `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/OfferAcceptanceService.java`, which duplicates `OfferDecisionService.reject` (the method actually called by `OwnerOfferController.java`) but omits exclusion-window creation, reason capture, and automation-limit enforcement, or justify retaining it per plan: appointment/offer services (unrequested)
+
+---
+
+## Phase 15: Reachability, observability, and the stubbed integrations
+
+**Purpose**: Close the gaps that two convergence passes could not see. Phases 13 and 14
+compared code against `spec.md` and found real defects, but every oracle in the loop was
+derived from the same document and every integration test mocks `InterpretationPort` and
+`TimefoldSlotSolver`, so three classes of gap survived: pages nothing links to, a pipeline
+that logs nothing, and integration points that are stubs. Tasks T164-T167 are complete;
+T168-T172 remain.
+
+- [X] T164 Wire site-wide navigation so every scheduling workspace is reachable from `/`: role-aware owner and staff entries plus sign in/out in `src/main/resources/templates/fragments/layout.html`, `th:replace` of the previously orphaned `src/main/resources/templates/fragments/staff-navigation.html` into `scheduling/staff/queue.html`, `calendar.html`, `availability.html` and `settings.html`, and per-pet **Book an appointment** actions on `scheduling/owner/dashboard.html` and `profile.html`, per FR-090, FR-099 (missing)
+- [X] T165 Add `src/test/java/org/springframework/samples/petclinic/system/NavigationReachabilityTests.java`: a per-role crawl from `/` that follows only rendered links and asserts the staff workspaces, the owner scheduling pages and a per-pet booking form are reached with no 4xx/5xx, plus a check that no `templates/fragments/*.html` file is left uninserted, per FR-099
+- [X] T166 Instrument the interpretation and matching pipeline per FR-100 in `NoOpStructuredChatGateway.java`, `SpringAiOllamaInterpretationAdapter.java`, `InterpretationCoordinator.java`, `LlmInterpretationExecutionWorker.java`, `SlotSelectionSnapshotFactory.java`, `TimefoldSlotSolver.java`, `MatchingCoordinator.java` and `RequestWorkflowService.routeToStaff`, with the level defaults documented in `src/main/resources/application.properties`; the application previously contained no logger at all (missing)
+- [X] T167 Seed the `named_periods` and `emergency_terms` rows that ship empty from `V2`, in `src/main/resources/db/demo/{h2,mysql,postgres}/R__demo_data.sql`, using exactly the terms `EmergencyScreeningService.defaultTerms()` falls back to so screening behaviour is unchanged (missing)
+- [ ] T168 Implement a real `StructuredChatGateway` that calls the configured Ollama model through Spring AI, since `NoOpStructuredChatGateway` is the only implementation and `src/main/java` contains no Spring AI code at all: every owner request therefore fails interpretation and routes to staff. Populate `resolvedModel` from the actual response and classify connection, model-missing, timeout and malformed-output errors distinctly, per FR-027, FR-095, FR-096, FR-097 (missing)
+- [ ] T169 Add an end-to-end test that exercises the real `StructuredChatGateway` and the real `TimefoldSlotSolver` together without mocking either, because `OwnerSuggestionJourneyTests`, `OwnerRecoveryJourneyTests`, `SmartSchedulingEndToEndTests` and `SchedulingPocScaleTests` all `@MockitoBean` both boundaries, which is why 320 green tests never revealed T168; gate the LLM leg on a reachable Ollama and skip rather than fail when absent, per FR-094, FR-095 (missing)
+- [ ] T170 Pass the clinic's named periods into the interpretation prompt: `PromptFactory.render` replaces the template's `{namedPeriods}` placeholder with the empty string unconditionally, so the model never receives the vocabulary the seeded `named_periods` rows describe. Extend `ClinicVocabulary` and `ClinicVocabularyFactory` to carry them, per FR-021, FR-095 (partial)
+- [ ] T171 Call or remove `src/main/java/org/springframework/samples/petclinic/scheduling/request/NamedPeriodSnapshotService.java`: no production or test code invokes `snapshot(...)`, so named-period window resolution is dead, and its `findByCode(...).orElseThrow()` would throw if it were reached with the table unseeded, per plan: request windows (unrequested)
+- [ ] T172 Restore the nohttp checkstyle scan to project sources only rather than excluding agent tooling directories in `pom.xml`, or move `.claude/`, `.github/skills/` and `.junie/` out of the scanned tree; commit `9770efb` added a skill reference document containing `http://` URLs, which failed `validate` and left the build red until Phase 15 (contradicts)
+
+**Notes**
+
+- The build was red from `9770efb` to Phase 15. Run `./mvnw test` after every convergence pass; a green suite is a precondition for claiming a gap is closed, not a separate concern.
+- A gap that no artifact describes is invisible to `speckit-converge`. FR-099 and FR-100 exist so the next pass can see reachability and observability at all.
+- Mocking an integration boundary in every test that crosses it makes the integration itself unfalsifiable. Prefer one unmocked test per boundary, skipped when the dependency is absent.

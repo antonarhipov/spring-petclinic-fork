@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.scheduling.audit.IntegrationAttempt;
 import org.springframework.samples.petclinic.scheduling.audit.IntegrationExecution;
 import org.springframework.samples.petclinic.scheduling.audit.IntegrationExecutionRepository;
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class LlmInterpretationExecutionWorker implements IntegrationExecutionWorker {
+
+	private static final Logger logger = LoggerFactory.getLogger(LlmInterpretationExecutionWorker.class);
 
 	private final IntegrationExecutionRepository executions;
 
@@ -66,6 +70,12 @@ public class LlmInterpretationExecutionWorker implements IntegrationExecutionWor
 		InterpretationPort.InterpretationCallRequest request = new InterpretationPort.InterpretationCallRequest(
 				text.getSourceText(), text.getSubmittedAt(), execution.getDeadlineAt(), prompt,
 				"schemas/llm-interpretation-v1.schema.json", vocabulary);
+		logger.info(
+				"LLM interpretation starting: executionId={}, requestId={}, textRevisionId={}, "
+						+ "promptTemplateVersion={}, promptChars={}, deadline={}",
+				executionId, execution.getRequestId(), execution.getTextRevisionId(), this.prompts.templateVersion(),
+				prompt == null ? 0 : prompt.length(), execution.getDeadlineAt());
+		logger.debug("LLM prompt for executionId={}:\n{}", executionId, prompt);
 		InterpretationExecutionEvidence evidence = this.coordinator.interpret(request);
 		InterpretationValidationResult validation = evidence.lastValidation();
 		execution.setPromptTemplateVersion(this.prompts.templateVersion());
@@ -96,10 +106,17 @@ public class LlmInterpretationExecutionWorker implements IntegrationExecutionWor
 		if (validation == null) {
 			execution.setState("FAILED");
 			execution.setOutcome("NO_RESULT");
+			logger.error("LLM interpretation FAILED with no result: executionId={}, requestId={}, attempts={}",
+					executionId, execution.getRequestId(), execution.getAttemptCount());
 			return;
 		}
 		execution.setOutcome(validation.classification().name());
 		execution.setState("COMPLETE");
+		logger.info(
+				"LLM interpretation complete: executionId={}, requestId={}, attempts={}, classification={}, "
+						+ "reviewable={}, issueCodes={}",
+				executionId, execution.getRequestId(), execution.getAttemptCount(), validation.classification(),
+				validation.reviewable(), validation.issueCodes());
 		this.workflow.applyInterpretation(execution.getRequestId(), execution.getTextRevisionId(), validation,
 				vocabulary);
 	}
