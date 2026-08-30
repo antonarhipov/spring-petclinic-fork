@@ -18,7 +18,6 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -26,47 +25,52 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationPreparedEvent;
-import org.springframework.boot.restclient.RestTemplateBuilder;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.PropertySource;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.support.StaffHttpSupport;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestTemplate;
-import org.testcontainers.DockerClientFactory;
+import org.springframework.test.context.aot.DisabledInAotMode;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = { "spring.docker.compose.skip.in-tests=false", //
-		"spring.docker.compose.start.arguments=--force-recreate,--renew-anon-volumes,postgres" })
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
+		properties = { "petclinic.account.bootstrap-enabled=true",
+				"spring.flyway.locations=classpath:db/migration/${database},classpath:db/demo/${database}",
+				"spring.docker.compose.enabled=false" })
 @ActiveProfiles("postgres")
+@Testcontainers(disabledWithoutDocker = true)
 @DisabledInNativeImage
+@DisabledInAotMode
 public class PostgresIntegrationTests {
+
+	@ServiceConnection
+	@Container
+	static PostgreSQLContainer container = new PostgreSQLContainer(DockerImageName.parse("postgres:17"));
 
 	@LocalServerPort
 	int port;
 
 	@Autowired
 	private VetRepository vets;
-
-	@Autowired
-	private RestTemplateBuilder builder;
-
-	@BeforeAll
-	static void available() {
-		assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker not available");
-	}
 
 	public static void main(String[] args) {
 		new SpringApplicationBuilder(PetClinicApplication.class) //
@@ -85,10 +89,12 @@ public class PostgresIntegrationTests {
 	}
 
 	@Test
-	void ownerDetails() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void ownerDetails() throws Exception {
+		HttpClient client = StaffHttpSupport.loginAsAdmin(this.port);
+		HttpResponse<String> result = client.send(
+				HttpRequest.newBuilder(URI.create("http://localhost:" + this.port + "/owners/1")).GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(result.statusCode()).isEqualTo(200);
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {

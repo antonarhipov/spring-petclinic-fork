@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+<body>
+	<h2 th:text="#{account.provision.title}">Owner account</h2>
+	<p th:text="${owner.firstName + ' ' + owner.lastName}">Owner</p>
+	<form th:if="${account == null}" th:action="@{/staff/owners/{ownerId}/account(ownerId=${owner.id})}"
+		th:object="${accountProvisioningForm}" method="post">
+		<input type="hidden" th:field="*{expectedVersion}"/>
+		<div class="mb-3">
+			<label for="username" th:text="#{account.provision.username}">Username</label>
+			<input type="text" id="username" th:field="*{username}" class="form-control"/>
+			<div th:if="${#fields.hasErrors('username')}" class="text-danger" th:errors="*{username}"></div>
+		</div>
+		<button type="submit" class="btn btn-primary" th:text="#{account.provision.submit}">Create account</button>
+	</form>
+	<form th:if="${account != null}" th:action="@{/staff/owners/{ownerId}/account/reset(ownerId=${owner.id})}" method="post">
+		<input type="hidden" name="expectedVersion" th:value="${accountProvisioningForm.expectedVersion}"/>
+		<p th:text="#{account.reset.username(${account.username})}">Username</p>
+		<div class="mb-3 form-check">
+			<input type="checkbox" id="confirm" name="confirm" value="true" class="form-check-input"/>
+			<label for="confirm" class="form-check-label" th:text="#{account.reset.confirm}">Reset this owner password and sign them out</label>
+		</div>
+		<button type="submit" class="btn btn-primary" th:text="#{account.reset.submit}">Reset password</button>
+	</form>
+</body>
+</html>

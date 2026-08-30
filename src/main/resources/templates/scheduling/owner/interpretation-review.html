@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.review.title}">Review</h2>
+  <p>
+    <span class="fa fa-exclamation-circle" aria-hidden="true" th:title="#{scheduling.review.issueIcon}"></span>
+    <span th:text="#{scheduling.review.issues}">Please review the interpreted details. Each issue shows a text label and an icon, not color alone.</span>
+  </p>
+  <form th:object="${form}" method="post" th:action="@{/owner/scheduling-requests/{id}/interpretation(id=${request.id})}">
+    <input type="hidden" th:field="*{expectedVersion}" />
+    <label th:text="#{scheduling.review.reason}">Reason</label>
+    <input type="text" th:field="*{visitReason}" />
+    <label th:text="#{scheduling.review.duration}">Duration</label>
+    <input type="number" th:field="*{durationMinutes}" />
+    <button type="submit" th:text="#{scheduling.review.save}">Save</button>
+  </form>
+  <form method="post" th:action="@{/owner/scheduling-requests/{id}/interpretation/confirm(id=${request.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${request.version}" />
+    <button type="submit" th:disabled="${!confirmEnabled}" th:text="#{scheduling.review.confirm}">Confirm</button>
+  </form>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.request.title}">New request</h2>
+  <p th:text="${urgentCareGuidance}">Guidance</p>
+  <form th:object="${form}" method="post" th:action="@{/owner/scheduling-requests}">
+    <input type="hidden" th:field="*{petId}" />
+    <label th:text="#{scheduling.request.source}">Description</label>
+    <textarea th:field="*{sourceText}"></textarea>
+    <button type="submit" th:text="#{scheduling.request.submit}">Continue</button>
+  </form>
+</body>
+</html>

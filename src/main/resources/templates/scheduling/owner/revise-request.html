@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owner')}">
+<body>
+  <h2 th:text="#{scheduling.revise.title}">Revise request</h2>
+  <form method="post" th:action="@{/owner/scheduling-requests/{id}/revise-request(id=${request.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+    <textarea name="sourceText"></textarea>
+    <button type="submit" th:text="#{scheduling.request.submit}">Continue</button>
+  </form>
+</body>
+</html>

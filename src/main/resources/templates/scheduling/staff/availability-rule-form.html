@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.staff.availability.rule}">Rule</h2>
+  <form method="post" th:action="@{/staff/availability/shifts}" th:object="${form}">
+    <input type="hidden" th:field="*{expectedVersion}"/>
+    <input th:field="*{veterinarianId}"/>
+    <input th:field="*{dayOfWeek}"/>
+    <input th:field="*{startLocalTime}"/>
+    <input th:field="*{endLocalTime}"/>
+    <button type="submit" th:text="#{scheduling.staff.availability.addShift}">Add shift</button>
+  </form>
+</body>
+</html>

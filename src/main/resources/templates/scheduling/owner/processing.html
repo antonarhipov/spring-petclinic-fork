@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.processing.title}">Working</h2>
+  <p id="status-text" th:text="#{scheduling.processing.message}">We are reviewing your request.</p>
+  <div th:replace="~{fragments/scheduling-progress :: progress('interpreting')}"></div>
+  <script th:src="@{/resources/js/scheduling-status.js}"></script>
+</body>
+</html>

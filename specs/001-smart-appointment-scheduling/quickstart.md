@@ -30,6 +30,11 @@ Run both supported builds:
 ./gradlew test
 ```
 
+Recorded 2026-08-30 on Java 21:
+
+- `./mvnw test` — BUILD SUCCESS, Tests run: 300, Failures: 0, Errors: 0, Skipped: 1
+- `./gradlew test` — BUILD SUCCESSFUL
+
 Expected coverage:
 
 - existing PetClinic behavior remains green;
@@ -155,7 +160,19 @@ docker compose up -d postgres
 SPRING_PROFILES_ACTIVE=postgres,demo ./mvnw spring-boot:run
 ```
 
-Expected on a fresh database: Flyway runs V1 then V2 and demo fixtures are available. For a copy of a pre-Flyway populated schema, use the one-time migration profile documented by the implementation: Flyway baselines it at version 1, applies version 2, and record-count checks prove every legacy row remains.
+Expected on a fresh database: Flyway runs V1 then V2 and demo fixtures are available.
+
+### Controlled one-time adoption of a pre-Flyway database
+
+Use this procedure once against a backup of a populated PetClinic schema that predates Flyway:
+
+1. Keep a full backup of the target database.
+2. Start with the `migration` profile in addition to the store profile, for example `SPRING_PROFILES_ACTIVE=mysql,migration` or `SPRING_PROFILES_ACTIVE=postgres,migration`.
+3. Flyway baselines the existing catalog at version 1 (`spring.flyway.baseline-on-migrate=true` and `spring.flyway.baseline-version=1` in `application-migration.properties`) and then applies `V2__smart_appointment_scheduling.sql`.
+4. Confirm owner, pet, veterinarian, specialty, and visit row counts are unchanged and that legacy visits have a null `appointment_id`.
+5. Remove the `migration` profile after this one-time adoption so later startups do not baseline other databases.
+
+`LegacyDataPreservationAcceptanceTests` covers the fresh and one-time-baseline record-count/constraint checks on H2, MySQL, and PostgreSQL.
 
 For each database, repeat the automated reservation race. Exactly one transaction may reserve overlapping veterinarian/pet blocks; the loser must receive a controlled conflict or stale-rerun outcome, never a partial hold.
 
@@ -170,3 +187,4 @@ For each database, repeat the automated reservation race. Exactly one transactio
 - Authorization, ownership, CSRF, stale form, and session-reset checks pass.
 - Manual desktop owner/staff journeys satisfy the UX behavior above.
 - No mobile or formal accessibility conformance claim is made for the POC.
+- Owner/staff copy uses text-plus-icon field issues, explicit confirmation language with no undo, and a desktop-only POC notice (`scheduling.poc.desktop`).

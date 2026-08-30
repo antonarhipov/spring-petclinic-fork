@@ -37,6 +37,8 @@
     Owner</a>
   <a th:href="@{__${owner.id}__/pets/new}" class="btn btn-primary" th:text="#{addNewPet}">Add
     New Pet</a>
+  <a th:href="@{/staff/owners/{ownerId}/account(ownerId=${owner.id})}" class="btn btn-primary"
+    th:text="#{account.provision.link}">Owner account</a>
 
   <br />
   <br />

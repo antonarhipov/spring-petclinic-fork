@@ -1,0 +1,8 @@
+package org.springframework.samples.petclinic.scheduling.request;
+
+public enum RequestState {
+
+	AWAITING_CONSENT, INTERPRETING, INTERPRETATION_REVIEW, READY_FOR_SUGGESTION, MATCHING, OFFER_HELD,
+	AWAITING_FALLBACK_CHOICE, CONFIRMED, STAFF_HANDLING, CLOSED
+
+}

@@ -59,4 +59,7 @@ public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 	 */
 	Optional<Owner> findById(Integer id);
 
+	@org.springframework.data.jpa.repository.Query("select o from Owner o join o.pets p where p.id = :petId")
+	Optional<Owner> findByPetId(Integer petId);
+
 }

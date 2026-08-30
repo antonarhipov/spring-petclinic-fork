@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.staff.appointment.outcome}">Outcome</h2>
+  <form method="post" th:action="@{/staff/appointments/{id}/complete(id=${appointment.id})}" th:object="${form}">
+    <textarea th:field="*{note}"></textarea>
+    <button type="submit" th:text="#{scheduling.staff.appointment.complete}">Complete</button>
+  </form>
+  <form method="post" th:action="@{/staff/appointments/{id}/no-show(id=${appointment.id})}" th:object="${form}">
+    <textarea th:field="*{note}"></textarea>
+    <button type="submit" th:text="#{scheduling.staff.appointment.noShow}">No-show</button>
+  </form>
+</body>
+</html>

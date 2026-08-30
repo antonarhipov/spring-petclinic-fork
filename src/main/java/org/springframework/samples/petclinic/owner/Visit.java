@@ -42,11 +42,20 @@ public class Visit extends BaseEntity {
 	@NotBlank
 	private String description;
 
+	@Column(name = "pet_id")
+	private Integer petId;
+
+	@Column(name = "appointment_id")
+	private Long appointmentId;
+
+	@Column(name = "vet_id")
+	private Integer vetId;
+
 	/**
 	 * Creates a new instance of Visit for tomorrow
 	 */
 	public Visit() {
-		this.date = LocalDate.now().plusDays(1);
+		this.date = LocalDate.now();
 	}
 
 	public LocalDate getDate() {
@@ -63,6 +72,30 @@ public class Visit extends BaseEntity {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public Integer getPetId() {
+		return this.petId;
+	}
+
+	public void setPetId(Integer petId) {
+		this.petId = petId;
+	}
+
+	public Long getAppointmentId() {
+		return this.appointmentId;
+	}
+
+	public void setAppointmentId(Long appointmentId) {
+		this.appointmentId = appointmentId;
+	}
+
+	public Integer getVetId() {
+		return this.vetId;
+	}
+
+	public void setVetId(Integer vetId) {
+		this.vetId = vetId;
 	}
 
 }

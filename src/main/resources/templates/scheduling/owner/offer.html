@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owner')}">
+<body>
+<h2 th:text="#{scheduling.offer.title}">Suggested appointment</h2>
+<p th:text="${veterinarianName}">Veterinarian</p>
+<p th:text="${offer.startAt}">start</p>
+<p th:text="${offer.endAt}">end</p>
+<p id="hold-countdown" th:attr="data-expires-at=${offer.expiresAt}" th:text="${offer.expiresAt}">expires</p>
+<form th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/accept(id=${request.id},offerId=${offer.id})}" method="post">
+<input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+<button type="submit" th:text="#{scheduling.offer.accept}">Accept</button>
+</form>
+<form th:action="@{/owner/scheduling-requests/{id}/offers/{offerId}/reject(id=${request.id},offerId=${offer.id})}" method="post"
+      data-offer-reject="true" th:attr="data-confirm=#{scheduling.offer.rejectConfirm}">
+<input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+<button type="submit" th:text="#{scheduling.offer.reject}">This time does not work</button>
+</form>
+<script th:src="@{/resources/js/offer-rejection.js}"></script>
+</body>
+</html>

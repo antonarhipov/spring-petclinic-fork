@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owner')}">
+<body>
+<h2 th:text="#{scheduling.fallback.title}">No preferred time</h2>
+<p th:text="#{scheduling.fallback.lead}">We could not find a preferred time.</p>
+<form th:action="@{/owner/scheduling-requests/{id}/suggestions/alternative(id=${request.id})}" method="post">
+<input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+<button type="submit" th:text="#{scheduling.fallback.alternative}">Find an alternative</button>
+</form>
+<form th:action="@{/owner/scheduling-requests/{id}/forward-to-staff(id=${request.id})}" method="post">
+<input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+<button type="submit" th:text="#{scheduling.fallback.staff}">Ask the clinic to help</button>
+</form>
+</body>
+</html>

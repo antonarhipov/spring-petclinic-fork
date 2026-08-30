@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.staff.appointment.title}">Appointment</h2>
+  <p th:text="${appointment.status}">CONFIRMED</p>
+  <a th:href="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" th:text="#{scheduling.staff.appointment.reschedule}">Reschedule</a>
+  <a th:href="@{/staff/appointments/{id}/outcome(id=${appointment.id})}" th:text="#{scheduling.staff.appointment.outcome}">Outcome</a>
+</body>
+</html>

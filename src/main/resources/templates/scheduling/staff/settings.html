@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.staff.settings.title}">Settings</h2>
+  <form method="post" th:action="@{/staff/settings}" th:object="${form}">
+    <input type="hidden" th:field="*{expectedVersion}"/>
+    <label th:text="#{scheduling.staff.settings.horizon}">Horizon</label>
+    <input th:field="*{bookingHorizonDays}"/>
+    <label th:text="#{scheduling.staff.settings.hold}">Hold minutes</label>
+    <input th:field="*{holdDurationMinutes}"/>
+    <label th:text="#{scheduling.staff.settings.guidance}">Guidance</label>
+    <textarea th:field="*{urgentCareGuidance}"></textarea>
+    <input type="hidden" th:field="*{zoneId}"/>
+    <button type="submit" th:text="#{scheduling.staff.settings.save}">Save</button>
+  </form>
+</body>
+</html>

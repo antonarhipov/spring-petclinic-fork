@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.dashboard.title}">Dashboard</h2>
+  <p th:if="${dashboard.resumeUrl != null}">
+    <a th:href="${dashboard.resumeUrl}" th:text="#{scheduling.dashboard.resume}">Resume</a>
+  </p>
+  <p><a href="/owner/appointments" th:text="#{scheduling.owner.appointments.title}">Appointments</a></p>
+  <p><a href="/owner/history" th:text="#{scheduling.owner.history.title}">History</a></p>
+  <p><a href="/owner/profile" th:text="#{scheduling.owner.profile.title}">Profile</a></p>
+</body>
+</html>

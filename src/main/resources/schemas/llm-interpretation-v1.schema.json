@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:petclinic:smart-scheduling:llm-interpretation:1.0",
+  "title": "PetClinic scheduling interpretation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "visitReason",
+    "durationMinutes",
+    "careType",
+    "requiredSpecialtyCode",
+    "allowedWindows",
+    "preferredWindows",
+    "excludedWindows",
+    "preferredVeterinarianCode",
+    "veterinarianPreferenceStrength",
+    "urgency",
+    "unresolvedDates",
+    "uncertainties"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "visitReason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "careType": {
+      "enum": ["GENERAL", "SPECIALTY", "UNRESOLVED"]
+    },
+    "requiredSpecialtyCode": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 80 }
+      ]
+    },
+    "allowedWindows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/window" }
+    },
+    "preferredWindows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/window" }
+    },
+    "excludedWindows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/window" }
+    },
+    "preferredVeterinarianCode": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 80 }
+      ]
+    },
+    "veterinarianPreferenceStrength": {
+      "enum": ["NONE", "PREFERRED", "REQUIRED", "UNRESOLVED"]
+    },
+    "urgency": {
+      "enum": ["POSSIBLE_EMERGENCY", "NO_CONCERN_IDENTIFIED", "UNRESOLVED"]
+    },
+    "unresolvedDates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unresolvedDate" }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/uncertainty" }
+    }
+  },
+  "$defs": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourcePhrase",
+        "resolvedStart",
+        "resolvedEnd",
+        "resolution",
+        "fallbackAllowed"
+      ],
+      "properties": {
+        "sourcePhrase": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "resolvedStart": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "resolvedEnd": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "resolution": {
+          "enum": ["RESOLVED", "UNRESOLVED"]
+        },
+        "fallbackAllowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "unresolvedDate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePhrase", "reason"],
+      "properties": {
+        "sourcePhrase": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "reason": {
+          "enum": [
+            "AMBIGUOUS_DATE",
+            "AMBIGUOUS_TIME",
+            "OUTSIDE_BOOKING_HORIZON",
+            "DAYLIGHT_SAVING_AMBIGUITY",
+            "UNSUPPORTED_EXPRESSION"
+          ]
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldPath", "code"],
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "code": {
+          "enum": [
+            "MISSING_INFORMATION",
+            "AMBIGUOUS_AVAILABILITY",
+            "AMBIGUOUS_CLINICAL_INTENT",
+            "AMBIGUOUS_SPECIALTY",
+            "AMBIGUOUS_URGENCY",
+            "UNRESOLVED_DATE",
+            "CONTRADICTORY_WINDOWS",
+            "UNSUPPORTED_VALUE"
+          ]
+        }
+      }
+    }
+  }
+}

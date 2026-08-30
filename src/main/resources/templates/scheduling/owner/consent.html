@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.consent.title}">Consent</h2>
+  <p th:text="#{scheduling.consent.copy}">We use your description to interpret the request.</p>
+  <form method="post" th:action="@{/owner/scheduling-requests/{id}/consent/interpret(id=${request.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${request.version}" />
+    <label>
+      <input type="checkbox" name="agree" value="true" />
+      <span th:text="#{scheduling.consent.agree}">I agree</span>
+    </label>
+    <button type="submit" th:text="#{scheduling.consent.interpret}">Continue with interpretation</button>
+  </form>
+  <form method="post" th:action="@{/owner/scheduling-requests/{id}/consent/manual(id=${request.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${request.version}" />
+    <button type="submit" th:text="#{scheduling.consent.decline}">Ask staff instead</button>
+  </form>
+</body>
+</html>

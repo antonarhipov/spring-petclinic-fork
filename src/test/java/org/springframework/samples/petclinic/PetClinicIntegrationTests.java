@@ -19,19 +19,21 @@ package org.springframework.samples.petclinic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.support.StaffHttpSupport;
 import org.springframework.samples.petclinic.vet.VetRepository;
-import org.springframework.web.client.RestTemplate;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "logging.level.sql=DEBUG")
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
+		properties = { "logging.level.sql=DEBUG", "petclinic.account.bootstrap-enabled=true" })
 public class PetClinicIntegrationTests {
 
 	@LocalServerPort
@@ -40,9 +42,6 @@ public class PetClinicIntegrationTests {
 	@Autowired
 	private VetRepository vets;
 
-	@Autowired
-	private RestTemplateBuilder builder;
-
 	@Test
 	void findAll() {
 		vets.findAll();
@@ -50,17 +49,21 @@ public class PetClinicIntegrationTests {
 	}
 
 	@Test
-	void ownerDetails() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void ownerDetails() throws Exception {
+		HttpClient client = StaffHttpSupport.loginAsAdmin(this.port);
+		HttpResponse<String> result = client.send(
+				HttpRequest.newBuilder(URI.create("http://localhost:" + this.port + "/owners/1")).GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(result.statusCode()).isEqualTo(200);
 	}
 
 	@Test
-	void ownerList() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners?lastName=").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void ownerList() throws Exception {
+		HttpClient client = StaffHttpSupport.loginAsAdmin(this.port);
+		HttpResponse<String> result = client.send(
+				HttpRequest.newBuilder(URI.create("http://localhost:" + this.port + "/owners?lastName=")).GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(result.statusCode()).isEqualTo(200);
 	}
 
 	public static void main(String[] args) {

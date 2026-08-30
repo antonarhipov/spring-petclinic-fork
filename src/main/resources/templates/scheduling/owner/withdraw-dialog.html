@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owner')}">
+<body>
+  <h2 th:text="#{scheduling.withdraw.title}">Withdraw request</h2>
+  <p th:text="#{scheduling.withdraw.confirm}">This cannot be undone.</p>
+  <form th:action="@{/owner/scheduling-requests/{id}/withdraw(id=${request.id})}" method="post">
+    <input type="hidden" name="expectedVersion" th:value="${request.version}"/>
+    <button type="submit" th:text="#{scheduling.withdraw.submit}">Withdraw</button>
+  </form>
+</body>
+</html>

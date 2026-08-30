@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.staff.appointment.reschedule}">Reschedule</h2>
+  <form method="post" th:action="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" th:object="${form}">
+    <input type="hidden" th:field="*{expectedVersion}"/>
+    <input th:field="*{veterinarianId}"/>
+    <input th:field="*{startAt}"/>
+    <input th:field="*{endAt}"/>
+    <input th:field="*{reasonCategory}"/>
+    <textarea th:field="*{note}"></textarea>
+    <button type="submit" th:text="#{scheduling.staff.appointment.save}">Save</button>
+  </form>
+</body>
+</html>

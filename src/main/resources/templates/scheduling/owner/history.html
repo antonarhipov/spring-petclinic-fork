@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.owner.history.title}">History</h2>
+  <table>
+    <tr th:each="appointment : ${history.appointments}">
+      <td th:text="${appointment.status}">CONFIRMED</td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -20,12 +20,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ImportRuntimeHints;
 
+import ai.timefold.solver.spring.boot.autoconfigure.TimefoldSolverAutoConfiguration;
+
 /**
  * PetClinic Spring Boot Application.
  *
  * @author Dave Syer
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = TimefoldSolverAutoConfiguration.class)
 @ImportRuntimeHints(PetClinicRuntimeHints.class)
 public class PetClinicApplication {
 

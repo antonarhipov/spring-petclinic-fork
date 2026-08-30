@@ -29,6 +29,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -92,8 +97,11 @@ class CrashControllerIntegrationTests {
 				"This application has no explicit mapping for");
 	}
 
-	@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class,
-			DataSourceTransactionManagerAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
+	@SpringBootApplication(
+			exclude = { DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
+					HibernateJpaAutoConfiguration.class, SecurityAutoConfiguration.class,
+					SecurityFilterAutoConfiguration.class, UserDetailsServiceAutoConfiguration.class,
+					ServletWebSecurityAutoConfiguration.class, ManagementWebSecurityAutoConfiguration.class })
 	static class TestConfiguration {
 
 	}

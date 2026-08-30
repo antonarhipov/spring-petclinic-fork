@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'home')}">
+<body>
+  <h2 th:text="#{scheduling.queue.item}">Queue item</h2>
+  <p th:text="${item.priority}">NORMAL</p>
+  <p th:text="${request.ownerStatusCode}">status</p>
+  <form method="post" th:action="@{/staff/queue/{id}/claim(id=${item.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${item.version}" />
+    <button type="submit" th:text="#{scheduling.queue.claim}">Claim</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/unclaim(id=${item.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${item.version}" />
+    <input name="reason" />
+    <button type="submit" th:text="#{scheduling.queue.unclaim}">Unclaim</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/notes(id=${item.id})}">
+    <textarea name="body"></textarea>
+    <button type="submit" th:text="#{scheduling.queue.note}">Add note</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/reassign(id=${item.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${item.version}" />
+    <input name="assigneeId" />
+    <input name="reason" />
+    <button type="submit" th:text="#{scheduling.queue.reassign}">Reassign</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/interpretation(id=${item.id})}">
+    <input name="visitReason" />
+    <input name="durationMinutes" value="30" />
+    <input name="careType" value="GENERAL" />
+    <input name="urgency" value="NO_CONCERN_IDENTIFIED" />
+    <button type="submit" th:text="#{scheduling.queue.interpretation}">Save interpretation</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/hold(id=${item.id})}">
+    <input name="veterinarianId" />
+    <input name="startAt" />
+    <input name="endAt" />
+    <button type="submit" th:text="#{scheduling.queue.hold}">Hold slot</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/book(id=${item.id})}">
+    <input name="veterinarianId" />
+    <input name="startAt" />
+    <input name="endAt" />
+    <input name="authorizationBasis" />
+    <input name="agreementAt" />
+    <input name="agreementMethod" />
+    <input name="supportingVisitId" />
+    <input name="staffReason" />
+    <button type="submit" th:text="#{scheduling.queue.book}">Book</button>
+  </form>
+  <form method="post" th:action="@{/staff/queue/{id}/close(id=${item.id})}">
+    <input type="hidden" name="expectedVersion" th:value="${item.version}" />
+    <input name="resolution" />
+    <button type="submit" th:text="#{scheduling.queue.close}">Close</button>
+  </form>
+</body>
+</html>
