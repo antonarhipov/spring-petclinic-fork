@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout(~{::main}, 'dashboard')}">
+<body>
+<main>
+  <div class="card shadow-sm border-danger">
+    <div class="card-header bg-danger text-white">
+      <h4 class="mb-0"><span class="fa fa-times-circle"></span> Cancel Appointment</h4>
+    </div>
+    <div class="card-body">
+      <p class="lead">Are you sure you want to cancel this upcoming appointment?</p>
+      
+      <div class="alert alert-secondary" th:if="${appointment != null}">
+        <strong>Date & Time:</strong> <span th:text="${#temporals.format(appointment.startAt, 'EEEE, MMMM d, yyyy HH:mm')}">Time</span>
+      </div>
+
+      <form th:action="@{/owner/appointments/{id}/cancel(id=${appointment.id})}" method="post">
+        <div class="mb-3">
+          <label class="form-label">Reason for cancellation (optional)</label>
+          <input type="text" name="reason" class="form-control" placeholder="e.g. Conflict in schedule..." />
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/owner/appointments/{id}(id=${appointment.id})}" class="btn btn-outline-secondary">Go Back</a>
+          <button type="submit" class="btn btn-danger"><span class="fa fa-times"></span> Confirm Cancellation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

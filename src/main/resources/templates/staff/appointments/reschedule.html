@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'calendar')}">
+<body>
+<main>
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><span class="fa fa-calendar"></span> Reschedule Appointment</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Move appointment to a new slot with recorded owner agreement.</p>
+
+      <form th:action="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" th:object="${form}" method="post">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Veterinarian</label>
+            <select class="form-select" th:field="*{vetId}" required>
+              <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="'Dr. ' + ${vet.firstName} + ' ' + ${vet.lastName}">Dr. Vet</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Duration (Minutes)</label>
+            <input type="number" class="form-control" th:field="*{durationMinutes}" min="15" step="15" required />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Date</label>
+            <input type="date" class="form-control" th:field="*{date}" required />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Start Time</label>
+            <input type="time" class="form-control" th:field="*{startTime}" required />
+          </div>
+        </div>
+
+        <div class="card bg-light mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Agreement & Justification</h5>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" th:field="*{ownerAgreementRecorded}" id="ownerAgreementCheck" required>
+              <label class="form-check-label font-weight-bold" for="ownerAgreementCheck">
+                Owner agreement has been obtained and verified.
+              </label>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Agreement Medium</label>
+                <select class="form-select" th:field="*{agreementMedium}">
+                  <option value="PHONE">Phone Call</option>
+                  <option value="IN_PERSON">In Person</option>
+                  <option value="ONLINE">Online Portal</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Internal Reason (Staff)</label>
+                <input type="text" class="form-control" th:field="*{internalReason}" placeholder="e.g. Owner requested earlier day" required />
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Owner-Facing Explanation</label>
+              <input type="text" class="form-control" th:field="*{ownerExplanation}" placeholder="e.g. Rescheduled as agreed by phone" />
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary"><span class="fa fa-save"></span> Reschedule Appointment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

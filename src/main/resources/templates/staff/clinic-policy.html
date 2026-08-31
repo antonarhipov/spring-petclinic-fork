@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Clinic Policy & Operating Settings</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <form th:action="@{/staff/clinic-policy}" th:object="${policy}" method="post" class="form-horizontal">
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Time Zone</label>
+      <div class="col-sm-6">
+        <input type="text" th:field="*{zoneId}" class="form-control" readonly />
+        <small class="text-muted">Time zone is configured per clinic installation.</small>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Booking Horizon (Days)</label>
+      <div class="col-sm-6">
+        <input type="number" th:field="*{bookingHorizonDays}" min="1" max="365" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Hold Duration (Minutes)</label>
+      <div class="col-sm-6">
+        <input type="number" th:field="*{holdDurationMinutes}" min="1" max="60" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Owner Notice Period (Minutes)</label>
+      <div class="col-sm-6">
+        <input type="number" th:field="*{ownerNoticeMinutes}" min="0" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Start Grid (Minutes)</label>
+      <div class="col-sm-6">
+        <input type="number" th:field="*{startGridMinutes}" min="5" max="60" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Clinic Phone</label>
+      <div class="col-sm-6">
+        <input type="text" th:field="*{clinicPhone}" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Contact Hours</label>
+      <div class="col-sm-6">
+        <input type="text" th:field="*{contactHours}" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-3 col-form-label">Urgent Care Guidance</label>
+      <div class="col-sm-9">
+        <textarea th:field="*{urgentCareGuidance}" rows="3" class="form-control" required></textarea>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-offset-3 col-sm-9">
+        <button type="submit" class="btn btn-primary">Save Policy Changes</button>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

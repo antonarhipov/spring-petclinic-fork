@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout (~{::body}, 'calendar')}">
+<body>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Appointments Table View</h2>
+    <div>
+      <a th:href="@{/staff/appointments/direct-book}" class="btn btn-success me-2">Direct Book</a>
+      <a th:href="@{/staff/calendar/week}" class="btn btn-outline-primary">Week View</a>
+      <a th:href="@{/staff/calendar/table}" class="btn btn-primary active">Table View</a>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form th:action="@{/staff/calendar/table}" method="get" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Start Date</label>
+          <input type="date" name="startDate" th:value="${startDate}" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">End Date</label>
+          <input type="date" name="endDate" th:value="${endDate}" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Veterinarian</label>
+          <select name="vetId" class="form-select">
+            <option value="">All Veterinarians</option>
+            <option th:each="v : ${allVets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}" th:selected="${v.id == filterVetId}"></option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary">Filter Appointments</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <table class="table table-striped align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Date & Time</th>
+        <th>Veterinarian</th>
+        <th>Owner</th>
+        <th>Pet</th>
+        <th>Booking Status</th>
+        <th>Outcome</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(appointments)}">
+        <td colspan="7" class="text-center text-muted py-3">No appointments scheduled for this period.</td>
+      </tr>
+      <tr th:each="app : ${appointments}">
+        <td th:text="${#temporals.format(app.start, 'yyyy-MM-dd HH:mm') + ' - ' + #temporals.format(app.end, 'HH:mm')}">2026-09-01 10:00 - 10:30</td>
+        <td th:text="${app.vetName}">Dr. Helen Leary</td>
+        <td th:text="${app.ownerName}">George Franklin</td>
+        <td th:text="${app.petName}">Leo</td>
+        <td>
+          <span class="badge bg-success" th:if="${app.bookingState == 'CONFIRMED'}">CONFIRMED</span>
+          <span class="badge bg-secondary" th:if="${app.bookingState == 'CANCELLED'}">CANCELLED</span>
+        </td>
+        <td>
+          <span class="badge bg-primary" th:text="${app.outcomeState}">PENDING</span>
+        </td>
+        <td>
+          <a th:href="@{/staff/appointments/{id}(id=${app.id})}" class="btn btn-sm btn-outline-primary">View</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

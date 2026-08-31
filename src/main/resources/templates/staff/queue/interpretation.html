@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'queue')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Manual Interpretation for Queue Item <span th:text="${'#' + queueItem.id}">#1</span></h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Original Owner Request</strong></div>
+    <div class="card-body">
+      <p class="mb-2"><strong>Owner:</strong> <span th:text="${queueItem.ownerName}">George Franklin</span></p>
+      <p class="mb-2"><strong>Pet:</strong> <span th:text="${queueItem.petName}">Leo</span></p>
+      <div class="p-3 bg-light rounded border" th:text="${queueItem.originalProse}">Prose text</div>
+    </div>
+  </div>
+
+  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/interpretation'}" th:object="${interpretationForm}" method="post">
+    <div class="card mb-4">
+      <div class="card-header bg-light"><strong>Structured Interpretation Form</strong></div>
+      <div class="card-body">
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Visit Reason</label>
+          <div class="col-sm-6">
+            <textarea th:field="*{visitReason}" rows="2" class="form-control" placeholder="Clinical visit reason (encrypted)"></textarea>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Duration</label>
+          <div class="col-sm-6">
+            <select th:field="*{durationMinutes}" class="form-select" required>
+              <option th:each="dur : ${allowedDurations}" th:value="${dur}" th:text="${dur + ' minutes'}">30 minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Preferred Veterinarian</label>
+          <div class="col-sm-6">
+            <select th:field="*{preferredVetId}" class="form-select">
+              <option value="">-- Any Available Veterinarian --</option>
+              <option th:each="v : ${allVets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}"></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Required Specialty</label>
+          <div class="col-sm-6">
+            <select th:field="*{requiredSpecialtyId}" class="form-select">
+              <option value="">-- None / General Care --</option>
+              <option th:each="s : ${allSpecialties}" th:value="${s.id}" th:text="${s.name}"></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Urgency Level</label>
+          <div class="col-sm-6">
+            <select th:field="*{urgency}" class="form-select" required>
+              <option value="ROUTINE">ROUTINE - Standard routine care</option>
+              <option value="PRIORITY">PRIORITY - Urgent/priority non-emergency</option>
+              <option value="EMERGENCY_SUSPECTED">EMERGENCY_SUSPECTED - Potential emergency symptoms</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Owner Preferred Date Range</label>
+          <div class="col-sm-3">
+            <label class="form-label small">Start Date</label>
+            <input type="date" th:field="*{startDate}" class="form-control" />
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label small">End Date</label>
+            <input type="date" th:field="*{endDate}" class="form-control" />
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <div class="col-sm-offset-3 col-sm-9">
+            <div class="form-check">
+              <input type="checkbox" th:field="*{requestOwnerConfirmation}" class="form-check-input" id="confirmCheck" />
+              <label class="form-check-label" for="confirmCheck">
+                Require owner review and confirmation in the portal before matching
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-6">
+        <button type="submit" class="btn btn-primary">Save Interpretation</button>
+        <a th:href="@{'/staff/queue/' + ${queueItem.id}}" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

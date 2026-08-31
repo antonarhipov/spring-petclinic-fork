@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'legacy-visits')}">
+<body>
+<main>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="h3 mb-0">Future Legacy Visits Reconciliation</h2>
+      <p class="text-muted mb-0">Review legacy visits dated in the future and convert them into scheduled appointments with owner agreement.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Visit ID</th>
+              <th>Date</th>
+              <th>Pet</th>
+              <th>Owner</th>
+              <th>Description</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:if="${#lists.isEmpty(visits)}">
+              <td colspan="6" class="text-center py-4 text-muted">
+                <span class="fa fa-info-circle"></span> No unreconciled future legacy visits found.
+              </td>
+            </tr>
+            <tr th:each="visit : ${visits}">
+              <td th:text="${visit.visitId}">1</td>
+              <td th:text="${#temporals.format(visit.visitDate, 'yyyy-MM-dd')}">2026-09-01</td>
+              <td>
+                <span class="fw-bold" th:text="${visit.petName}">Pet Name</span>
+                <span class="text-muted small" th:text="'(ID: ' + ${visit.petId} + ')'">(ID: 1)</span>
+              </td>
+              <td>
+                <span th:text="${visit.ownerName}">Owner Name</span>
+                <span class="text-muted small" th:if="${visit.ownerId != null}" th:text="'(ID: ' + ${visit.ownerId} + ')'">(ID: 1)</span>
+              </td>
+              <td th:text="${visit.description}">Checkup</td>
+              <td class="text-end">
+                <a th:href="@{/staff/legacy-visits/{id}/reconcile(id=${visit.visitId})}" class="btn btn-sm btn-primary">
+                  <span class="fa fa-calendar-plus-o"></span> Reconcile
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

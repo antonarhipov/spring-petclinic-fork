@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Recurring Veterinarian Shifts</h2>
+    <div>
+      <a th:href="@{/staff/availability/shifts/new}" class="btn btn-primary">Add New Shift</a>
+      <a th:href="@{/staff/availability/exceptions}" class="btn btn-outline-secondary">Exception Days</a>
+      <a th:href="@{/staff/availability/leave}" class="btn btn-outline-secondary">Leave</a>
+      <a th:href="@{/staff/availability/closures}" class="btn btn-outline-secondary">Closures</a>
+    </div>
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Veterinarian</th>
+        <th>Weekday</th>
+        <th>Shift Hours</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="shift : ${shifts}">
+        <td>
+          <span th:each="vet : ${vets}" th:if="${vet.id == shift.vetId}" th:text="${vet.firstName + ' ' + vet.lastName}">Dr. Name</span>
+        </td>
+        <td th:text="${shift.weekday}">MONDAY</td>
+        <td th:text="${shift.localStart + ' - ' + shift.localEnd}">09:00 - 17:00</td>
+        <td>
+          <a th:href="@{/staff/availability/shifts/{id}/edit(id=${shift.id})}" class="btn btn-sm btn-outline-primary">Edit</a>
+          <form th:action="@{/staff/availability/shifts/{id}/delete(id=${shift.id})}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this shift?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

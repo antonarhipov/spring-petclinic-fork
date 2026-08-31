@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
+<body>
+  <div class="alert alert-danger mb-4" role="alert">
+    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency hotline immediately or visit the nearest 24-hour veterinary hospital.
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Owner Dashboard</h2>
+    <a th:href="@{/owner/requests/new}" class="btn btn-primary">
+      <span class="fa fa-calendar-plus-o"></span> Request Appointment
+    </a>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <!-- Active Scheduling Requests -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><span class="fa fa-clock-o"></span> Scheduling Requests</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted" th:if="${requests == null || requests.empty}">No active scheduling requests.</p>
+          <div class="table-responsive" th:if="${requests != null && !requests.empty}">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Pet</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="req : ${requests}">
+                  <td><strong th:text="${req.petName}">Pet</strong></td>
+                  <td>
+                    <span class="badge bg-info text-dark" th:text="${req.displayState}">STATE</span>
+                    <div class="small text-muted" th:text="${req.statusMessage}">Status message</div>
+                  </td>
+                  <td>
+                    <a th:href="@{'/owner/requests/' + ${req.requestId}}" class="btn btn-sm btn-outline-primary">
+                      View Request
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Appointments -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><span class="fa fa-calendar-check-o"></span> Confirmed Appointments</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted" th:if="${appointments == null || appointments.empty}">No confirmed appointments scheduled.</p>
+          <div class="table-responsive" th:if="${appointments != null && !appointments.empty}">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="apt : ${appointments}">
+                  <td th:text="${apt.startAt}">2026-09-01 10:00</td>
+                  <td th:text="${apt.durationMinutes + ' min'}">30 min</td>
+                  <td><span class="badge bg-success" th:text="${apt.state}">CONFIRMED</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <!-- Pets -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0"><span class="fa fa-paw"></span> My Pets</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted" th:if="${owner.pets == null || owner.pets.empty}">No pets registered for this owner.</p>
+          <ul class="list-group list-group-flush" th:if="${owner.pets != null && !owner.pets.empty}">
+            <li class="list-group-item d-flex justify-content-between align-items-center" th:each="pet : ${owner.pets}">
+              <div>
+                <strong th:text="${pet.name}">Pet Name</strong>
+                <span class="text-muted small d-block" th:text="${pet.type != null ? pet.type.name : 'Pet'}">Dog</span>
+              </div>
+              <a th:href="@{/owner/requests/new(petId=${pet.id})}" class="btn btn-sm btn-outline-success">
+                Book
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

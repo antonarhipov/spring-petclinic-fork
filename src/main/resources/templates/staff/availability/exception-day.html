@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Availability Exception Days (Replacement Schedules)</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header">Set Single-Day Schedule Exception</div>
+    <div class="card-body">
+      <form th:action="@{/staff/availability/exceptions}" th:object="${exceptionForm}" method="post">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Veterinarian</label>
+            <select th:field="*{vetId}" class="form-select" required>
+              <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}"></option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Date</label>
+            <input type="date" th:field="*{date}" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Start Time</label>
+            <input type="time" th:field="*{localStart}" step="900" class="form-control" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">End Time</label>
+            <input type="time" th:field="*{localEnd}" step="900" class="form-control" />
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check mb-2">
+              <input type="checkbox" th:field="*{unavailableAllDay}" class="form-check-input" id="unavailCheck" />
+              <label class="form-check-label" for="unavailCheck">Off all day</label>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">Save Exception Day</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h3>Configured Exception Days</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Veterinarian</th>
+        <th>Date</th>
+        <th>Replacement Intervals</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="ex : ${exceptions}">
+        <td>
+          <span th:each="vet : ${vets}" th:if="${vet.id == ex.vetId}" th:text="${vet.firstName + ' ' + vet.lastName}">Dr. Name</span>
+        </td>
+        <td th:text="${ex.localDate}">2026-09-01</td>
+        <td>
+          <span th:if="${#lists.isEmpty(ex.intervals)}" class="badge bg-secondary">Unavailable all day</span>
+          <span th:each="int : ${ex.intervals}" class="badge bg-info text-dark me-1" th:text="${int.localStart + ' - ' + int.localEnd}">09:00 - 13:00</span>
+        </td>
+        <td>
+          <form th:action="@{/staff/availability/exceptions/{vetId}/{date}/delete(vetId=${ex.vetId}, date=${ex.localDate})}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this exception day?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

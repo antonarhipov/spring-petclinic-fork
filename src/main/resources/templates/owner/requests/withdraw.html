@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout(~{::main}, 'dashboard')}">
+<body>
+<main>
+  <div class="card shadow-sm border-danger">
+    <div class="card-header bg-danger text-white">
+      <h4 class="mb-0"><span class="fa fa-ban"></span> Withdraw Scheduling Request</h4>
+    </div>
+    <div class="card-body">
+      <p class="lead">Are you sure you want to withdraw this scheduling request?</p>
+      <p class="text-muted">Withdrawing will cancel any active search, release any held offers, and close the request. This action cannot be undone.</p>
+
+      <form th:action="@{/owner/requests/{id}/withdraw(id=${requestId})}" method="post">
+        <div class="mb-3">
+          <label class="form-label">Reason for withdrawal (optional)</label>
+          <input type="text" name="reason" class="form-control" placeholder="e.g. Schedule resolved, no longer need care..." />
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/owner/requests/{id}(id=${requestId})}" class="btn btn-outline-secondary">Go Back</a>
+          <button type="submit" class="btn btn-danger"><span class="fa fa-trash"></span> Confirm Withdrawal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

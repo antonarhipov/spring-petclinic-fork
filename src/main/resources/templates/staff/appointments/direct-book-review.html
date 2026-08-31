@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'calendar')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Review Direct Appointment Booking</h2>
+
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white"><strong>Booking Summary</strong></div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Owner:</div>
+        <div class="col-sm-9" th:text="${owner.firstName + ' ' + owner.lastName + ' (Phone: ' + owner.telephone + ')'}">George Franklin</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Pet:</div>
+        <div class="col-sm-9" th:text="${pet.name + ' (' + pet.type.name + ')'}">Leo (cat)</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Veterinarian:</div>
+        <div class="col-sm-9" th:text="${vet.firstName + ' ' + vet.lastName}">Dr. Helen Leary</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Appointment Date:</div>
+        <div class="col-sm-9" th:text="${form.date}">2026-09-01</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Time Window:</div>
+        <div class="col-sm-9" th:text="${form.startTime + ' (' + form.durationMinutes + ' minutes)'}">10:00 (30 minutes)</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Agreement Medium:</div>
+        <div class="col-sm-9" th:text="${form.agreementMedium}">PHONE</div>
+      </div>
+      <div class="row mb-2" th:if="${form.internalReason != null and !form.internalReason.isEmpty()}">
+        <div class="col-sm-3 fw-bold">Internal Note:</div>
+        <div class="col-sm-9" th:text="${form.internalReason}">Notes</div>
+      </div>
+    </div>
+  </div>
+
+  <form th:action="@{/staff/appointments/direct-book-review}" th:object="${form}" method="post">
+    <input type="hidden" th:field="*{ownerId}" />
+    <input type="hidden" th:field="*{petId}" />
+    <input type="hidden" th:field="*{vetId}" />
+    <input type="hidden" th:field="*{date}" />
+    <input type="hidden" th:field="*{startTime}" />
+    <input type="hidden" th:field="*{durationMinutes}" />
+    <input type="hidden" th:field="*{ownerAgreementRecorded}" />
+    <input type="hidden" th:field="*{agreementMedium}" />
+    <input type="hidden" th:field="*{internalReason}" />
+
+    <button type="submit" class="btn btn-success btn-lg">Confirm & Book Appointment</button>
+    <a th:href="@{/staff/appointments/direct-book(ownerId=${form.ownerId}, vetId=${form.vetId})}" class="btn btn-outline-secondary btn-lg ms-2">Back to Edit</a>
+  </form>
+</body>
+</html>

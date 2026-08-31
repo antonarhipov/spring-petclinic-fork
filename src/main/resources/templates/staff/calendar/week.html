@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout (~{::body}, 'calendar')}">
+<body>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Staff Clinic Calendar</h2>
+    <div>
+      <a th:href="@{/staff/appointments/direct-book}" class="btn btn-success me-2">Direct Book</a>
+      <a th:href="@{/staff/calendar/week}" class="btn btn-primary active">Week View</a>
+      <a th:href="@{/staff/calendar/table}" class="btn btn-outline-primary">Table View</a>
+      <a th:href="@{/staff/availability/shifts}" class="btn btn-outline-secondary ms-2">Manage Availability</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <form th:action="@{/staff/calendar/week}" method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+          <a th:href="@{/staff/calendar/week(date=${weekView.weekStart.minusDays(7)}, vetId=${filterVetId})}" class="btn btn-outline-secondary btn-sm">&laquo; Prev Week</a>
+        </div>
+        <div class="col-auto">
+          <strong th:text="${'Week of ' + weekView.weekStart + ' to ' + weekView.weekEnd}">Week of 2026-08-31 to 2026-09-06</strong>
+        </div>
+        <div class="col-auto">
+          <a th:href="@{/staff/calendar/week(date=${weekView.weekStart.plusDays(7)}, vetId=${filterVetId})}" class="btn btn-outline-secondary btn-sm">Next Week &raquo;</a>
+        </div>
+        <div class="col-auto ms-auto">
+          <select name="vetId" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Veterinarians</option>
+            <option th:each="v : ${allVets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}" th:selected="${v.id == filterVetId}"></option>
+          </select>
+          <input type="hidden" name="date" th:value="${currentDate}" />
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-dark text-center">
+        <tr>
+          <th style="width: 16%;">Veterinarian</th>
+          <th th:each="day : ${weekView.days}" style="width: 12%;">
+            <div th:text="${#temporals.format(day, 'EEE')}">Mon</div>
+            <small th:text="${#temporals.format(day, 'MM/dd')}">08/31</small>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="vetEntry : ${weekView.vetSchedules}">
+          <td class="bg-light fw-bold">
+            <span th:each="v : ${allVets}" th:if="${v.id == vetEntry.key}" th:text="${v.firstName + ' ' + v.lastName}">Dr. Name</span>
+          </td>
+          <td th:each="dayCal : ${vetEntry.value}" class="p-1 align-top">
+            <div th:if="${#lists.isEmpty(dayCal.effectiveAvailability)}" class="text-muted text-center small p-2 bg-light rounded">
+              <em>Off / Closed</em>
+            </div>
+            <div th:if="${not #lists.isEmpty(dayCal.effectiveAvailability)}">
+              <div class="mb-1 text-muted text-center" style="font-size: 0.75rem;">
+                <span th:each="avail : ${dayCal.effectiveAvailability}" class="badge bg-light text-dark border me-1">
+                  <span th:text="${#temporals.format(avail.start, 'HH:mm')} + '-' + ${#temporals.format(avail.end, 'HH:mm')}">09:00-17:00</span>
+                </span>
+              </div>
+              <div th:each="app : ${dayCal.appointments}" class="card mb-1 border-primary bg-primary bg-opacity-10">
+                <div class="card-body p-1" style="font-size: 0.8rem;">
+                  <a th:href="@{/staff/appointments/{id}(id=${app.id})}" class="fw-bold text-decoration-none" th:text="${#temporals.format(app.start, 'HH:mm') + ' - ' + #temporals.format(app.end, 'HH:mm')}">09:00 - 09:30</a>
+                  <div th:text="${app.petName + ' (' + app.ownerName + ')'}">Pet (Owner)</div>
+                  <span class="badge bg-primary" th:text="${app.outcomeState}">PENDING</span>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head></head>
+<body>
+  <!-- Brand logo fragment -->
+  <div th:fragment="logo" class="navbar-brand-wrapper">
+    <a class="navbar-brand" th:href="@{/}">
+      <span></span>
+    </a>
+  </div>
+
+  <!-- Standard footer fragment -->
+  <div th:fragment="footer" class="container mt-5">
+    <div class="row">
+      <div class="col-12 text-center text-muted">
+        <p class="small">&copy; Spring PetClinic - Smart Appointment Scheduling</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session banner / warning modal -->
+  <div th:fragment="session-banner" id="session-banner" class="alert alert-warning alert-dismissible fade show d-none" role="alert">
+    <strong>Session Notice:</strong> Your session will expire in less than 2 minutes.
+    <button type="button" class="btn btn-sm btn-primary ms-2" onclick="extendSession()">Stay Logged In</button>
+  </div>
+</body>
+</html>

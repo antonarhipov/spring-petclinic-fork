@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout (~{::body}, 'owners')}">
+<body>
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h4 class="mb-0">
+            <span class="fa fa-key"></span> Credentials Generated (Owner ID: <span th:text="${ownerId}">1</span>)
+          </h4>
+        </div>
+        <div class="card-body">
+          <div th:if="${provisionResult != null || resetResult != null}">
+            <div class="alert alert-warning">
+              <strong><span class="fa fa-exclamation-circle"></span> Important Security Notice:</strong>
+              These temporary credentials are displayed <strong>ONLY ONCE</strong>. Please copy or securely transmit them to the pet owner now. They will not be shown again.
+            </div>
+
+            <!-- Provision result -->
+            <div th:if="${provisionResult != null}">
+              <div class="mb-3">
+                <label class="form-label fw-bold">Username</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace" readonly th:value="${provisionResult.username}" id="provUsername" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Temporary Password</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace text-danger fw-bold" readonly th:value="${provisionResult.temporaryPassword}" id="provPassword" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Expiry Deadline</label>
+                <p class="text-muted" th:text="${#temporals.format(provisionResult.expiresAt, 'yyyy-MM-dd HH:mm:ss z')}">2026-09-07 10:00:00 UTC</p>
+              </div>
+            </div>
+
+            <!-- Reset result -->
+            <div th:if="${resetResult != null}">
+              <div class="mb-3">
+                <label class="form-label fw-bold">Username</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace" readonly th:value="${resetResult.username}" id="resetUsername" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Temporary Password</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace text-danger fw-bold" readonly th:value="${resetResult.temporaryPassword}" id="resetPassword" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Expiry Deadline</label>
+                <p class="text-muted" th:text="${#temporals.format(resetResult.expiresAt, 'yyyy-MM-dd HH:mm:ss z')}">2026-09-07 10:00:00 UTC</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback when flash attributes expired or page refreshed -->
+          <div th:if="${provisionResult == null && resetResult == null}">
+            <div class="alert alert-info">
+              <strong><span class="fa fa-info-circle"></span> No credentials to display:</strong>
+              Temporary passwords are generated and displayed only once for security reasons. If the owner forgot or misplaced their temporary password, please perform a password reset.
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between mt-4">
+            <a th:href="@{/staff/owners/{ownerId}/account(ownerId=${ownerId})}" class="btn btn-outline-secondary">
+              <span class="fa fa-user-circle"></span> Back to Account Management
+            </a>
+            <a th:href="@{/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-primary">
+              <span class="fa fa-user"></span> Go to Owner Details
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

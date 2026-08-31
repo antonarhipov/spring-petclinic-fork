@@ -7,5 +7,12 @@
 	<suppress files="node[\\/].*" checks=".*"/>
 	<suppress files="build[\\/].*" checks=".*"/>
 	<suppress files="target[\\/].*" checks=".*"/>
+	<suppress files="\.agents[\\/].*" checks=".*"/>
+	<suppress files="\.specify[\\/].*" checks=".*"/>
+	<suppress files="\.junie[\\/].*" checks=".*"/>
+	<suppress files="specs[\\/].*" checks=".*"/>
+	<suppress files="proposal[\\/].*" checks=".*"/>
+	<suppress files="data[\\/].*" checks=".*"/>
+	<suppress files=".*\.txt" checks=".*"/>
 	<suppress files=".+\.(jar|git|ico|p12|gif|jks|jpg|svg|log)" checks="NoHttp"/>
 </suppressions>

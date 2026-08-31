@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'calendar')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Direct Appointment Booking</h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <form th:action="@{/staff/appointments/direct-book}" th:object="${directBookingForm}" method="post" class="form-horizontal">
+    <div class="card mb-4">
+      <div class="card-header bg-light"><strong>Appointment Details</strong></div>
+      <div class="card-body">
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Owner</label>
+          <div class="col-sm-6">
+            <select th:field="*{ownerId}" class="form-select" id="ownerSelect" required onchange="window.location.href='?ownerId=' + this.value">
+              <option value="">-- Select Pet Owner --</option>
+              <option th:each="o : ${allOwners}" th:value="${o.id}" th:text="${o.firstName + ' ' + o.lastName + ' (' + o.city + ')'}"></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Pet</label>
+          <div class="col-sm-6">
+            <select th:field="*{petId}" class="form-select" required>
+              <option value="">-- Select Pet --</option>
+              <option th:each="p : ${pets}" th:value="${p.id}" th:text="${p.name + ' (' + p.type.name + ')'}"></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Veterinarian</label>
+          <div class="col-sm-6">
+            <select th:field="*{vetId}" class="form-select" required>
+              <option value="">-- Select Veterinarian --</option>
+              <option th:each="v : ${allVets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}"></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Date</label>
+          <div class="col-sm-6">
+            <input type="date" th:field="*{date}" class="form-control" required />
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Start Time</label>
+          <div class="col-sm-6">
+            <input type="time" th:field="*{startTime}" step="900" class="form-control" required />
+            <small class="text-muted">Must be aligned to 15-minute grid.</small>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Duration</label>
+          <div class="col-sm-6">
+            <select th:field="*{durationMinutes}" class="form-select" required>
+              <option th:each="dur : ${allowedDurations}" th:value="${dur}" th:text="${dur + ' minutes'}">30 minutes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-light"><strong>Agreement & Internal Notes</strong></div>
+      <div class="card-body">
+        <div class="mb-3 row">
+          <div class="col-sm-offset-3 col-sm-9">
+            <div class="form-check">
+              <input type="checkbox" th:field="*{ownerAgreementRecorded}" class="form-check-input" id="agreementCheck" required />
+              <label class="form-check-label fw-bold" for="agreementCheck">
+                Confirmed Owner Agreement: The owner has explicitly agreed to this appointment slot.
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Agreement Medium</label>
+          <div class="col-sm-6">
+            <select th:field="*{agreementMedium}" class="form-select" required>
+              <option value="PHONE">Phone Call</option>
+              <option value="IN_PERSON">In-Person at Front Desk</option>
+              <option value="PORTAL_CONSENT">Owner Portal</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Internal Reason / Notes</label>
+          <div class="col-sm-6">
+            <textarea th:field="*{internalReason}" rows="3" class="form-control" placeholder="Reason for visit or booking circumstances (encrypted)" required></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-6">
+        <button type="submit" class="btn btn-primary">Review Booking</button>
+        <a th:href="@{/staff/calendar/week}" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

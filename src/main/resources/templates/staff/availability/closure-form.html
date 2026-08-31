@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Clinic Closures</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header">Schedule Clinic Closure</div>
+    <div class="card-body">
+      <form th:action="@{/staff/availability/closures}" th:object="${closureForm}" method="post">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Start Date</label>
+            <input type="date" th:field="*{startDate}" class="form-control" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">End Date</label>
+            <input type="date" th:field="*{endDate}" class="form-control" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Public Owner Reason</label>
+            <input type="text" th:field="*{ownerReason}" class="form-control" placeholder="e.g. National Holiday, Renovation" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Internal Note (Confidential)</label>
+            <input type="text" th:field="*{internalNote}" class="form-control" placeholder="Optional staff notes" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">Schedule Closure</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h3>Active & Upcoming Clinic Closures</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Owner-Facing Reason</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="closure : ${closures}">
+        <td th:text="${closure.startDate}">2026-12-25</td>
+        <td th:text="${closure.endDate}">2026-12-26</td>
+        <td th:text="${closure.ownerReason}">Christmas Holiday</td>
+        <td>
+          <form th:action="@{/staff/availability/closures/{id}/delete(id=${closure.id})}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel this clinic closure?')">Cancel Closure</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

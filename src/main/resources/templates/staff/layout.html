@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" type="image/x-icon" th:href="@{/resources/images/favicon.png}">
+  <title>PetClinic :: Staff Portal</title>
+  <link th:href="@{/webjars/font-awesome/css/font-awesome.min.css}" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/resources/css/petclinic.css}" />
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation">
+    <div class="container-fluid">
+      <a class="navbar-brand" th:href="@{/staff/calendar/week}"><span></span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#staff-navbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="staff-navbar">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a th:class="${menu == 'calendar' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/calendar/week}">
+              <span class="fa fa-calendar"></span> Calendar
+            </a>
+          </li>
+          <li class="nav-item">
+            <a th:class="${menu == 'queue' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/queue}">
+              <span class="fa fa-tasks"></span> Fallback Queue
+            </a>
+          </li>
+          <li class="nav-item">
+            <a th:class="${menu == 'legacy-visits' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/legacy-visits}">
+              <span class="fa fa-history"></span> Legacy Visits
+            </a>
+          </li>
+          <li class="nav-item">
+            <a th:class="${menu == 'owners' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/owners/find}">
+              <span class="fa fa-search"></span> Find Owners
+            </a>
+          </li>
+          <li class="nav-item">
+            <a th:class="${menu == 'vets' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/veterinarians}">
+              <span class="fa fa-user-md"></span> Veterinarians
+            </a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <form th:action="@{/auth/logout}" method="post" class="d-inline">
+              <button type="submit" class="btn btn-outline-light btn-sm mt-1">
+                <span class="fa fa-sign-out"></span> Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="container xd-container mt-4">
+      <div th:replace="~{fragments/branding :: session-banner}"></div>
+      <th:block th:insert="${template}" />
+      <div th:replace="~{fragments/branding :: footer}"></div>
+    </div>
+  </div>
+
+  <script th:src="@{/webjars/bootstrap/dist/js/bootstrap.bundle.min.js}"></script>
+  <script>
+    function extendSession() {
+      fetch('[[@{/auth/session-extend}]]', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '[[${_csrf != null ? _csrf.token : ""}]]'
+        }
+      }).then(r => r.json()).then(data => {
+        const banner = document.getElementById('session-banner');
+        if (banner) banner.classList.add('d-none');
+      });
+    }
+
+    function checkSession() {
+      fetch('[[@{/auth/session-status}]]')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.warningRequired) {
+            const banner = document.getElementById('session-banner');
+            if (banner) banner.classList.remove('d-none');
+          }
+        }).catch(err => {});
+    }
+    setInterval(checkSession, 30000);
+  </script>
+</body>
+</html>

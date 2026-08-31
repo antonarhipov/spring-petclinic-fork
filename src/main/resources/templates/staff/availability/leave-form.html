@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Veterinarian Leave Management</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header">Schedule Veterinarian Leave</div>
+    <div class="card-body">
+      <form th:action="@{/staff/availability/leave}" th:object="${leaveForm}" method="post">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Veterinarian</label>
+            <select th:field="*{vetId}" class="form-select" required>
+              <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}"></option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Start Date</label>
+            <input type="date" th:field="*{startDate}" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">End Date</label>
+            <input type="date" th:field="*{endDate}" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Reason Category</label>
+            <select th:field="*{reasonCategory}" class="form-select">
+              <option value="VACATION">Vacation</option>
+              <option value="SICK">Sick Leave</option>
+              <option value="TRAINING">Training/Conference</option>
+              <option value="PERSONAL">Personal</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Internal Note (Confidential)</label>
+            <input type="text" th:field="*{internalNote}" class="form-control" placeholder="Optional notes" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">Schedule Leave</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h3>Active & Upcoming Leaves</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Veterinarian</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Category</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="leave : ${leaves}">
+        <td>
+          <span th:each="vet : ${vets}" th:if="${vet.id == leave.vetId}" th:text="${vet.firstName + ' ' + vet.lastName}">Dr. Name</span>
+        </td>
+        <td th:text="${leave.startDate}">2026-09-01</td>
+        <td th:text="${leave.endDate}">2026-09-07</td>
+        <td><span class="badge bg-warning text-dark" th:text="${leave.reasonCategory}">VACATION</span></td>
+        <td>
+          <form th:action="@{/staff/availability/leave/{id}/delete(id=${leave.id})}" method="post" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel this leave?')">Cancel Leave</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

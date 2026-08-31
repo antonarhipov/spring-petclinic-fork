@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{auth/layout :: layout (~{::body}, 'login')}">
+<body>
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm mt-4">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Sign In</h4>
+        </div>
+        <div class="card-body">
+          <div th:if="${param.error}" class="alert alert-danger" role="alert">
+            Invalid username or password.
+          </div>
+          <div th:if="${param.expired}" class="alert alert-warning" role="alert">
+            Your session has expired. Please sign in again.
+          </div>
+          <div th:if="${param.logout}" class="alert alert-info" role="alert">
+            You have been logged out successfully.
+          </div>
+
+          <form th:action="@{/auth/login}" method="post">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="username" name="username" required autofocus autocomplete="username" />
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" />
+            </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">Sign In</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

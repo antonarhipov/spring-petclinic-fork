@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'queue')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Staff Fallback Queue</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Queue Filters</strong></div>
+    <div class="card-body">
+      <form th:action="@{/staff/queue}" method="get" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">State</label>
+          <select name="state" class="form-select">
+            <option value="">All States</option>
+            <option value="NEW" th:selected="${selectedState?.name() == 'NEW'}">NEW</option>
+            <option value="IN_REVIEW" th:selected="${selectedState?.name() == 'IN_REVIEW'}">IN_REVIEW</option>
+            <option value="AWAITING_OWNER" th:selected="${selectedState?.name() == 'AWAITING_OWNER'}">AWAITING_OWNER</option>
+            <option value="RESOLVED" th:selected="${selectedState?.name() == 'RESOLVED'}">RESOLVED</option>
+            <option value="CLOSED" th:selected="${selectedState?.name() == 'CLOSED'}">CLOSED</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Urgency</label>
+          <select name="urgency" class="form-select">
+            <option value="">All Urgencies</option>
+            <option value="EMERGENCY_SUSPECTED" th:selected="${selectedUrgency?.name() == 'EMERGENCY_SUSPECTED'}">EMERGENCY_SUSPECTED</option>
+            <option value="PRIORITY" th:selected="${selectedUrgency?.name() == 'PRIORITY'}">PRIORITY</option>
+            <option value="ROUTINE" th:selected="${selectedUrgency?.name() == 'ROUTINE'}">ROUTINE</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Assignee</label>
+          <select name="assigneeId" class="form-select">
+            <option value="">All Staff</option>
+            <option th:each="staff : ${staffAccounts}" th:value="${staff.id}" th:text="${staff.username}" th:selected="${selectedAssigneeId == staff.id}"></option>
+          </select>
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
+          <a th:href="@{/staff/queue}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Urgency</th>
+          <th>State</th>
+          <th>Reason</th>
+          <th>Owner / Pet</th>
+          <th>Contact</th>
+          <th>Assignee</th>
+          <th>Submitted</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:if="${#lists.isEmpty(queueItems)}">
+          <td colspan="9" class="text-center py-4 text-muted">No items found in fallback queue.</td>
+        </tr>
+        <tr th:each="item : ${queueItems}" th:classappend="${item.urgency.name() == 'EMERGENCY_SUSPECTED' ? 'table-danger' : (item.urgency.name() == 'PRIORITY' ? 'table-warning' : '')}">
+          <td><strong th:text="${'#' + item.id}">#1</strong></td>
+          <td>
+            <span th:if="${item.urgency.name() == 'EMERGENCY_SUSPECTED'}" class="badge bg-danger">EMERGENCY</span>
+            <span th:if="${item.urgency.name() == 'PRIORITY'}" class="badge bg-warning text-dark">PRIORITY</span>
+            <span th:if="${item.urgency.name() == 'ROUTINE'}" class="badge bg-secondary">ROUTINE</span>
+          </td>
+          <td>
+            <span class="badge bg-info text-dark" th:text="${item.state}">NEW</span>
+            <div th:if="${item.awaitingReason}" class="small text-muted" th:text="${item.awaitingReason}"></div>
+          </td>
+          <td><code th:text="${item.fallbackReason}">DECLINED_AI_CONSENT</code></td>
+          <td>
+            <div class="fw-bold" th:text="${item.ownerName}">George Franklin</div>
+            <div class="small text-muted" th:text="${'Pet: ' + item.petName}">Pet: Leo</div>
+          </td>
+          <td><span th:text="${item.ownerTelephone}">555-1234</span></td>
+          <td>
+            <span th:if="${item.assigneeUsername}" class="badge bg-primary" th:text="${item.assigneeUsername}">staff</span>
+            <span th:unless="${item.assigneeUsername}" class="badge bg-light text-dark">Unassigned</span>
+          </td>
+          <td th:text="${item.createdAt}">2026-08-31</td>
+          <td>
+            <a th:href="@{'/staff/queue/' + ${item.id}}" class="btn btn-sm btn-outline-primary">Review</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

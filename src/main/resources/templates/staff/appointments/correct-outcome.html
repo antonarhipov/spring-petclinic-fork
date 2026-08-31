@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'calendar')}">
+<body>
+<main>
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><span class="fa fa-wrench"></span> Correct Appointment Outcome</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Perform an audited correction to a previously recorded appointment outcome. A mandatory justification reason is required.</p>
+
+      <form th:action="@{/staff/appointments/{id}/correct-outcome(id=${appointment.id})}" th:object="${form}" method="post">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">New Outcome</label>
+          <select class="form-select" th:field="*{newOutcome}" required>
+            <option value="COMPLETED">COMPLETED (Care provided & visit generated)</option>
+            <option value="NO_SHOW">NO_SHOW (Client was absent)</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Correction Reason (Mandatory)</label>
+          <input type="text" class="form-control" th:field="*{reason}" placeholder="e.g. Correcting clerical error: owner arrived late and was seen." required />
+          <div class="form-text">This justification is encrypted and stored in the append-only audit trail.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Owner-Visible Summary (if Completed)</label>
+          <input type="text" class="form-control" th:field="*{ownerVisibleSummary}" placeholder="e.g. Routine checkup completed." />
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label font-weight-bold">Staff Clinical Notes (if Completed)</label>
+          <textarea class="form-control" th:field="*{clinicalNotes}" rows="4" placeholder="Confidential clinical notes..."></textarea>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary"><span class="fa fa-save"></span> Apply Correction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

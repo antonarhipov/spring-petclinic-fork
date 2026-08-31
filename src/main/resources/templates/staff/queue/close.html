@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'queue')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Close Queue Item <span th:text="${'#' + queueItem.id}">#1</span></h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Queue Item Summary</strong></div>
+    <div class="card-body">
+      <p class="mb-2"><strong>Owner:</strong> <span th:text="${queueItem.ownerName}">George Franklin</span></p>
+      <p class="mb-2"><strong>Pet:</strong> <span th:text="${queueItem.petName}">Leo</span></p>
+      <div class="p-3 bg-light rounded border" th:text="${queueItem.originalProse}">Prose text</div>
+    </div>
+  </div>
+
+  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/close'}" th:object="${closeQueueForm}" method="post">
+    <div class="card mb-4">
+      <div class="card-header bg-light"><strong>Closure Reason</strong></div>
+      <div class="card-body">
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Reason for Closure</label>
+          <div class="col-sm-6">
+            <textarea th:field="*{reason}" rows="4" class="form-control" placeholder="Provide reason for closing this request (e.g. Owner unreachable after multiple attempts, resolved outside system, duplicate request)" required></textarea>
+            <small class="text-muted">This reason is encrypted and saved in the audit and history logs.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-6">
+        <button type="submit" class="btn btn-danger">Confirm Closure</button>
+        <a th:href="@{'/staff/queue/' + ${queueItem.id}}" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

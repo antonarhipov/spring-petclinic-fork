@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'calendar')}">
+<body>
+<main>
+  <div class="card shadow-sm">
+    <div class="card-header bg-success text-white">
+      <h4 class="mb-0"><span class="fa fa-check-circle"></span> Complete Appointment</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Record clinical notes (staff only, encrypted) and owner-visible summary for this completed visit.</p>
+
+      <form th:action="@{/staff/appointments/{id}/complete(id=${appointment.id})}" th:object="${form}" method="post">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Owner-Visible Summary</label>
+          <input type="text" class="form-control" th:field="*{ownerVisibleSummary}" placeholder="e.g. Annual exam, rabies vaccination administered, healthy." required />
+          <div class="form-text">This description will appear on the pet's visit record visible to the owner.</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label font-weight-bold">Staff Clinical Notes (Encrypted)</label>
+          <textarea class="form-control" th:field="*{clinicalNotes}" rows="5" placeholder="Enter confidential examination notes, vitals, prescriptions, or clinical follow-up..."></textarea>
+          <div class="form-text">Encrypted with AES-256-GCM. Restricted to veterinary staff.</div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-success"><span class="fa fa-check"></span> Save Completed Visit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

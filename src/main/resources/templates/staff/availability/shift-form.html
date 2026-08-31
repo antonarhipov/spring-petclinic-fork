@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'availability')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2 th:text="${shiftForm.id == null ? 'New Recurring Shift' : 'Edit Recurring Shift'}">Recurring Shift</h2>
+
+  <form th:action="${shiftForm.id == null ? '/staff/availability/shifts' : '/staff/availability/shifts/' + shiftForm.id}" th:object="${shiftForm}" method="post" class="form-horizontal">
+    <div class="mb-3 row">
+      <label class="col-sm-2 col-form-label">Veterinarian</label>
+      <div class="col-sm-6">
+        <select th:field="*{vetId}" class="form-select" required th:disabled="${shiftForm.id != null}">
+          <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}"></option>
+        </select>
+        <input type="hidden" th:if="${shiftForm.id != null}" th:field="*{vetId}" />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-2 col-form-label">Weekday</label>
+      <div class="col-sm-6">
+        <select th:field="*{weekday}" class="form-select" required>
+          <option value="MONDAY">Monday</option>
+          <option value="TUESDAY">Tuesday</option>
+          <option value="WEDNESDAY">Wednesday</option>
+          <option value="THURSDAY">Thursday</option>
+          <option value="FRIDAY">Friday</option>
+          <option value="SATURDAY">Saturday</option>
+          <option value="SUNDAY">Sunday</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-2 col-form-label">Start Time</label>
+      <div class="col-sm-6">
+        <input type="time" th:field="*{localStart}" step="900" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <label class="col-sm-2 col-form-label">End Time</label>
+      <div class="col-sm-6">
+        <input type="time" th:field="*{localEnd}" step="900" class="form-control" required />
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-offset-2 col-sm-6">
+        <button type="submit" class="btn btn-primary">Save Shift</button>
+        <a th:href="@{/staff/availability/shifts}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

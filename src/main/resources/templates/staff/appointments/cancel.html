@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'calendar')}">
+<body>
+<main>
+  <div class="card shadow-sm border-danger">
+    <div class="card-header bg-danger text-white">
+      <h4 class="mb-0"><span class="fa fa-times-circle"></span> Cancel Appointment (Staff)</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Cancel an upcoming confirmed appointment with mandatory reason category.</p>
+
+      <form th:action="@{/staff/appointments/{id}/cancel(id=${appointment.id})}" th:object="${form}" method="post">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Reason Category</label>
+          <select class="form-select" th:field="*{reasonCategory}" required>
+            <option value="CLINIC_CLOSURE">Clinic Closure / Emergency</option>
+            <option value="VET_UNAVAILABLE">Veterinarian Unavailable</option>
+            <option value="CLIENT_REQUEST">Client Requested Cancellation</option>
+            <option value="CLINICAL_ORDER">Clinical Order / Triage</option>
+            <option value="OTHER">Other Reason</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Internal Reason Details</label>
+          <input type="text" class="form-control" th:field="*{reasonDetails}" placeholder="e.g. Dr. Carter called in sick" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Owner-Facing Explanation</label>
+          <input type="text" class="form-control" th:field="*{ownerExplanation}" placeholder="e.g. Due to unforeseen clinic schedule changes..." />
+        </div>
+
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" th:field="*{ownerContacted}" id="ownerContactedCheck">
+          <label class="form-check-label" for="ownerContactedCheck">
+            Owner has been contacted via phone/in-person regarding this cancellation.
+          </label>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-danger"><span class="fa fa-times"></span> Confirm Cancellation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

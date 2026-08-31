@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'queue')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Clear Emergency Safety Flag</h2>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="alert alert-warning">
+    <h5 class="alert-heading">Clinical Safety Gate</h5>
+    <p class="mb-0">Clearing an emergency requires clinical justification and downgrades the urgency to ROUTINE or PRIORITY. The owner will be asked to reconfirm structured details in the portal before matching begins.</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Original Owner Request</strong></div>
+    <div class="card-body">
+      <p class="mb-2"><strong>Owner:</strong> <span th:text="${queueItem.ownerName}">George Franklin</span></p>
+      <p class="mb-2"><strong>Pet:</strong> <span th:text="${queueItem.petName}">Leo</span></p>
+      <div class="p-3 bg-light rounded border mb-2" th:text="${queueItem.originalProse}">Prose text</div>
+      <p class="mb-0 text-muted small"><strong>Safety Trigger:</strong> <code th:text="${queueItem.fallbackReason}">EMERGENCY_PROSE</code></p>
+    </div>
+  </div>
+
+  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/emergency-clearance'}" th:object="${emergencyClearanceForm}" method="post">
+    <div class="card mb-4">
+      <div class="card-header bg-light"><strong>Emergency Clearance Details</strong></div>
+      <div class="card-body">
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">New Urgency Level</label>
+          <div class="col-sm-6">
+            <select th:field="*{newUrgency}" class="form-select" required>
+              <option value="ROUTINE">ROUTINE - Patient is stable, proceed with routine scheduling</option>
+              <option value="PRIORITY">PRIORITY - Patient needs priority attention but not immediate ER</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Clinical Justification</label>
+          <div class="col-sm-6">
+            <textarea th:field="*{clinicalJustification}" rows="4" class="form-control" placeholder="Clinical reasoning explaining why this patient is safe for non-emergency scheduling (encrypted)" required></textarea>
+            <small class="text-muted">This justification is encrypted and preserved in the audit log.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3 row">
+      <div class="col-sm-6">
+        <button type="submit" class="btn btn-warning">Confirm Emergency Clearance</button>
+        <a th:href="@{'/staff/queue/' + ${queueItem.id}}" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

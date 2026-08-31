@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'calendar')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Appointment Details</h2>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+      <span th:text="${'Appointment #' + appointment.id}">Appointment #1</span>
+      <div>
+        <span class="badge bg-success" th:if="${appointment.bookingState.name() == 'CONFIRMED'}">CONFIRMED</span>
+        <span class="badge bg-secondary" th:if="${appointment.bookingState.name() == 'CANCELLED'}">CANCELLED</span>
+        <span class="badge bg-primary ms-1" th:text="${appointment.outcomeState}">PENDING</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Date & Time:</div>
+        <div class="col-sm-9" th:text="${#temporals.format(appointment.startAt, 'yyyy-MM-dd HH:mm') + ' - ' + #temporals.format(appointment.endAt, 'HH:mm')}">2026-09-01 10:00 - 10:30</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Veterinarian:</div>
+        <div class="col-sm-9" th:text="${vet != null ? vet.firstName + ' ' + vet.lastName : 'Vet #' + appointment.vetId}">Dr. Helen Leary</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Owner:</div>
+        <div class="col-sm-9" th:text="${owner != null ? owner.firstName + ' ' + owner.lastName + ' (Phone: ' + owner.telephone + ')' : 'Owner #' + appointment.ownerId}">George Franklin</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Pet:</div>
+        <div class="col-sm-9" th:text="${pet != null ? pet.name + ' (' + pet.type.name + ')' : 'Pet #' + appointment.petId}">Leo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-light"><strong>Appointment Audit History</strong></div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Occurred At</th>
+            <th>Role</th>
+            <th>Event Type</th>
+            <th>Agreement Recorded</th>
+            <th>Medium</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="event : ${changeEvents}">
+            <td th:text="${#temporals.format(event.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">2026-08-31 12:00:00</td>
+            <td th:text="${event.actorRole}">STAFF</td>
+            <td><span class="badge bg-secondary" th:text="${event.eventType}">DIRECT_BOOKED</span></td>
+            <td th:text="${event.ownerAgreementRecorded ? 'Yes' : 'No'}">Yes</td>
+            <td th:text="${event.agreementMedium}">PHONE</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <a th:href="@{/staff/calendar/week}" class="btn btn-outline-primary">Back to Calendar</a>
+    <a th:href="@{/staff/calendar/table}" class="btn btn-outline-secondary ms-2">Back to Appointments Table</a>
+  </div>
+</body>
+</html>

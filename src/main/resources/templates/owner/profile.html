@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'profile')}">
+<body>
+  <h2>My Profile</h2>
+  
+  <div th:if="${message}" class="alert alert-success" role="alert" th:text="${message}"></div>
+  <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+  <div class="card mt-3">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Contact Information</h5>
+    </div>
+    <div class="card-body">
+      <form th:action="@{/owner/profile}" th:object="${owner}" method="post">
+        <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label font-weight-bold">Full Name</label>
+          <div class="col-sm-9">
+            <input type="text" readonly class="form-control-plaintext" th:value="${owner.firstName + ' ' + owner.lastName}" />
+          </div>
+        </div>
+        <div class="mb-3 row">
+          <label for="address" class="col-sm-3 col-form-label">Address</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="address" th:field="*{address}" required />
+          </div>
+        </div>
+        <div class="mb-3 row">
+          <label for="city" class="col-sm-3 col-form-label">City</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="city" th:field="*{city}" required />
+          </div>
+        </div>
+        <div class="mb-3 row">
+          <label for="telephone" class="col-sm-3 col-form-label">Telephone</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="telephone" th:field="*{telephone}" required />
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-9 offset-sm-3">
+            <button type="submit" class="btn btn-primary">Save Contact Info</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

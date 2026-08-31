@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
+<body>
+  <div class="alert alert-danger mb-4" role="alert">
+    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency desk at (608) 555-0199 or proceed immediately to the nearest 24-hour veterinary hospital.
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><span class="fa fa-calendar-plus-o"></span> Request an Appointment</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">
+        Describe what your pet needs in plain English. Include your preferred days or times (e.g., "next Tuesday afternoon after 2pm"), any specific veterinarian, and the reason for the visit.
+      </p>
+
+      <form th:action="@{/owner/requests}" th:object="${form}" method="post" id="scheduling-request-form">
+        <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-danger">
+          <p th:each="err : ${#fields.globalErrors()}" th:text="${err}" class="mb-0">Error</p>
+        </div>
+
+        <div class="mb-3">
+          <label for="petId" class="form-label font-weight-bold">Select Pet *</label>
+          <select id="petId" th:field="*{petId}" class="form-select" th:classappend="${#fields.hasErrors('petId')} ? 'is-invalid' : ''" required>
+            <option value="">-- Choose your pet --</option>
+            <option th:each="pet : ${pets}" th:value="${pet.id}" th:text="${pet.name + ' (' + (pet.type != null ? pet.type.name : 'Pet') + ')'}">Pet Name</option>
+          </select>
+          <div class="invalid-feedback" th:if="${#fields.hasErrors('petId')}" th:errors="*{petId}">Pet selection is required</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="prose" class="form-label font-weight-bold">Describe Your Appointment Request *</label>
+          <textarea id="prose" th:field="*{prose}" rows="5" class="form-control" maxlength="2000"
+                    placeholder="E.g., Leo needs his annual rabies vaccination and health check. We prefer next Tuesday or Wednesday afternoon after 2 PM with Dr. Carter if possible."
+                    th:classappend="${#fields.hasErrors('prose')} ? 'is-invalid' : ''" required></textarea>
+          <div class="d-flex justify-content-between mt-1 text-muted small">
+            <span>Please do not include credit card numbers or sensitive passwords.</span>
+            <span id="char-count">0 / 2000</span>
+          </div>
+          <div class="invalid-feedback" th:if="${#fields.hasErrors('prose')}" th:errors="*{prose}">Prose error</div>
+        </div>
+
+        <div class="mb-4 form-check bg-light p-3 rounded border">
+          <input type="checkbox" id="aiConsent" th:field="*{aiConsent}" class="form-check-input ms-0 me-2" />
+          <label for="aiConsent" class="form-check-label">
+            <strong>Automated Scheduling Interpretation Consent</strong>
+            <div class="small text-muted mt-1">
+              I consent to having my appointment description securely interpreted by AI to instantly identify visit reasons and time preferences. If unchecked, your request will be reviewed manually by clinic staff.
+            </div>
+          </label>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/owner/dashboard}" class="btn btn-outline-secondary">
+            <span class="fa fa-arrow-left"></span> Cancel
+          </a>
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+            <span class="fa fa-paper-plane"></span> Submit Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const textarea = document.getElementById('prose');
+      const counter = document.getElementById('char-count');
+      if (textarea && counter) {
+        const updateCount = () => {
+          counter.textContent = textarea.value.length + ' / 2000';
+        };
+        textarea.addEventListener('input', updateCount);
+        updateCount();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout (~{::body}, 'owners')}">
+<body>
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <span class="fa fa-user-circle"></span> Owner Account Management (Owner ID: <span th:text="${ownerId}">1</span>)
+          </h4>
+        </div>
+        <div class="card-body">
+          <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}">
+            An error occurred.
+          </div>
+          <div th:if="${message}" class="alert alert-success" role="alert" th:text="${message}">
+            Operation completed successfully.
+          </div>
+
+          <!-- Case 1: Account Already Exists -->
+          <div th:if="${account != null}">
+            <h5>Existing Account Details</h5>
+            <table class="table table-bordered mt-3">
+              <tr>
+                <th style="width: 30%;">Username</th>
+                <td th:text="${account.username}">owner.username</td>
+              </tr>
+              <tr>
+                <th>Status</th>
+                <td>
+                  <span th:if="${account.enabled}" class="badge bg-success">Active</span>
+                  <span th:unless="${account.enabled}" class="badge bg-secondary">Disabled</span>
+                </td>
+              </tr>
+              <tr>
+                <th>Password Change Required</th>
+                <td>
+                  <span th:if="${account.passwordChangeRequired}" class="badge bg-warning text-dark">Yes (Pending First Login)</span>
+                  <span th:unless="${account.passwordChangeRequired}" class="badge bg-info">No (Set by Owner)</span>
+                </td>
+              </tr>
+              <tr th:if="${account.temporaryPasswordExpiresAt != null}">
+                <th>Temporary Password Expiry</th>
+                <td th:text="${#temporals.format(account.temporaryPasswordExpiresAt, 'yyyy-MM-dd HH:mm:ss z')}">2026-09-07 10:00:00 UTC</td>
+              </tr>
+              <tr>
+                <th>Session Version</th>
+                <td th:text="${account.sessionVersion}">0</td>
+              </tr>
+            </table>
+
+            <hr class="my-4" />
+
+            <div class="alert alert-warning">
+              <strong><span class="fa fa-exclamation-triangle"></span> Warning:</strong>
+              Resetting the password will generate a new random temporary password valid for 7 days, force the owner to change it on next login, and immediately invalidate all current sessions for this account.
+            </div>
+
+            <form th:action="@{/staff/owners/{ownerId}/account/reset(ownerId=${ownerId})}" method="post">
+              <input type="hidden" name="commandId" th:value="${commandId}" />
+              <div class="d-flex justify-content-between">
+                <a th:href="@{/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
+                  <span class="fa fa-arrow-left"></span> Back to Owner Profile
+                </a>
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to reset this owner\'s password? All active sessions will be terminated.');">
+                  <span class="fa fa-refresh"></span> Reset Password & Invalidate Sessions
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Case 2: Account Does Not Exist - Provision Form -->
+          <div th:if="${account == null}">
+            <p class="text-muted">
+              This owner does not have a portal account yet. Provisioning an account will generate a random temporary password valid for 7 days and require the owner to set their own password upon first login.
+            </p>
+
+            <form th:action="@{/staff/owners/{ownerId}/account/provision(ownerId=${ownerId})}" method="post" class="mt-3">
+              <input type="hidden" name="commandId" th:value="${commandId}" />
+
+              <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" th:value="${suggestedUsername}" required pattern="^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$" minlength="3" maxlength="50" />
+                <div class="form-text">
+                  3-50 characters. Lowercase letters, numbers, dots, underscores, or hyphens. Must start and end with an alphanumeric character.
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between mt-4">
+                <a th:href="@{/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
+                  <span class="fa fa-arrow-left"></span> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                  <span class="fa fa-plus-circle"></span> Provision Owner Account
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

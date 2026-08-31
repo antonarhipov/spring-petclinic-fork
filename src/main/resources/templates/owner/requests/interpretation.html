@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
+<body>
+  <div class="alert alert-danger mb-4" role="alert">
+    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency desk at (608) 555-0199 or proceed immediately to the nearest 24-hour veterinary hospital.
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><span class="fa fa-check-square-o"></span> Review Request Interpretation</h4>
+    </div>
+    <div class="card-body">
+      <p class="lead">
+        Please review the structured details interpreted from your request. Once confirmed, we will search for the best appointment slot.
+      </p>
+
+      <div class="mb-4 p-3 bg-light rounded border">
+        <h6 class="text-secondary font-weight-bold">Original Request Description:</h6>
+        <p class="mb-0 text-dark font-italic" th:text="${review.originalProse}">Original prose entered by owner</p>
+      </div>
+
+      <h5 class="border-bottom pb-2 mb-3">Interpreted Details</h5>
+
+      <dl class="row mb-4">
+        <dt class="col-sm-4 text-muted">Visit Reason / Clinical Concern:</dt>
+        <dd class="col-sm-8 font-weight-bold" th:text="${review.visitReason}">Annual checkup</dd>
+
+        <dt class="col-sm-4 text-muted">Estimated Duration:</dt>
+        <dd class="col-sm-8" th:text="${review.durationMinutes != null ? review.durationMinutes + ' minutes' : '30 minutes'}">30 minutes</dd>
+
+        <dt class="col-sm-4 text-muted">Urgency Level:</dt>
+        <dd class="col-sm-8">
+          <span class="badge" th:classappend="${review.urgency.name() == 'EMERGENCY' ? 'bg-danger' : (review.urgency.name() == 'PRIORITY' ? 'bg-warning text-dark' : 'bg-info text-dark')}"
+                th:text="${review.urgency}">ROUTINE</span>
+        </dd>
+
+        <dt class="col-sm-4 text-muted" th:if="${review.preferredVetId != null}">Preferred Veterinarian:</dt>
+        <dd class="col-sm-8" th:if="${review.preferredVetId != null}" th:text="'Veterinarian #' + ${review.preferredVetId}">Dr. Carter</dd>
+      </dl>
+
+      <h5 class="border-bottom pb-2 mb-3">Preferred Time Windows</h5>
+      <div th:if="${review.windows == null || review.windows.empty}" class="text-muted mb-4">
+        Any standard clinic operating time.
+      </div>
+      <div class="table-responsive mb-4" th:if="${review.windows != null && !review.windows.empty}">
+        <table class="table table-sm table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Preference</th>
+              <th>Date Range / Days</th>
+              <th>Time Range</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="win : ${review.windows}">
+              <td>
+                <span class="badge bg-secondary" th:text="${win.classification}">PREFERRED</span>
+              </td>
+              <td>
+                <span th:if="${win.shape.name() == 'ONE_OFF'}" th:text="${win.localDate}">2026-09-01</span>
+                <span th:if="${win.shape.name() == 'RECURRING_WEEKLY'}" th:text="${'Weekly: ' + win.weekdays}">Weekly: TUESDAY</span>
+              </td>
+              <td th:text="${win.startTime + ' - ' + win.endTime}">09:00 - 17:00</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <a th:href="@{'/owner/requests/' + ${review.requestId}}" class="btn btn-outline-secondary">
+          <span class="fa fa-arrow-left"></span> Back
+        </a>
+
+        <form th:action="@{'/owner/requests/' + ${review.requestId} + '/interpretation/confirm'}" method="post">
+          <button type="submit" class="btn btn-success btn-lg" id="confirm-interpretation-btn">
+            <span class="fa fa-check"></span> Confirm Details & Find Slot
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout(~{::main}, 'calendar')}">
+<body>
+<main>
+  <div class="card shadow-sm border-warning">
+    <div class="card-header bg-warning text-dark">
+      <h4 class="mb-0"><span class="fa fa-user-times"></span> Record Appointment No-Show</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Record that the client did not attend the scheduled appointment.</p>
+
+      <form th:action="@{/staff/appointments/{id}/no-show(id=${appointment.id})}" th:object="${form}" method="post">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Internal Note / Reason</label>
+          <input type="text" class="form-control" th:field="*{reason}" placeholder="e.g. Client called later to apologize, or no contact received." />
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-warning"><span class="fa fa-save"></span> Record No-Show</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

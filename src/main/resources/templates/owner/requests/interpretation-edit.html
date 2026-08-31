@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout(~{::main}, 'dashboard')}">
+<body>
+<main>
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0"><span class="fa fa-edit"></span> Edit Request Preferences</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Adjust your preferences directly without re-running AI interpretation.</p>
+      
+      <form th:action="@{/owner/requests/{id}/interpretation/edit(id=${requestId})}" th:object="${form}" method="post">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Visit Reason</label>
+          <input type="text" class="form-control" th:field="*{visitReason}" placeholder="e.g. Annual checkup, vaccinations" required />
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Duration (Minutes)</label>
+            <select class="form-select" th:field="*{durationMinutes}">
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+              <option value="60">60 minutes</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Preferred Veterinarian</label>
+            <select class="form-select" th:field="*{preferredVetId}">
+              <option value="">Any Available Veterinarian</option>
+              <option th:each="vet : ${vets}" th:value="${vet.id}" th:text="'Dr. ' + ${vet.firstName} + ' ' + ${vet.lastName}">Dr. Vet</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card bg-light mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Availability Preferences</h5>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Specific Date (optional)</label>
+                <input type="date" class="form-control" th:field="*{date}" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">From Time</label>
+                <input type="time" class="form-control" th:field="*{startTime}" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">To Time</label>
+                <input type="time" class="form-control" th:field="*{endTime}" />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6">
+                <label class="form-label">Or Date Range Start</label>
+                <input type="date" class="form-control" th:field="*{rangeStart}" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Date Range End</label>
+                <input type="date" class="form-control" th:field="*{rangeEnd}" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a th:href="@{/owner/requests/{id}(id=${requestId})}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary"><span class="fa fa-save"></span> Save & Find Times</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>
