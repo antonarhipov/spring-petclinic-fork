@@ -85,8 +85,9 @@ public class MatchingSnapshotFactory {
 
 		Instant now = this.clock.instant();
 		ZonedDateTime zdtNow = now.atZone(zoneId);
-		LocalDate startDate = zdtNow.toLocalDate().plusDays(1);
+		LocalDate startDate = zdtNow.toLocalDate();
 		LocalDate endDate = startDate.plusDays(policy.getBookingHorizonDays());
+		Instant earliestStart = now.plus(policy.getOwnerNoticeMinutes(), ChronoUnit.MINUTES);
 
 		List<Vet> eligibleVets = findEligibleVets(targetWf.getRequiredSpecialtyId());
 		int durationMinutes = targetWf.getDurationMinutes();
@@ -100,6 +101,9 @@ public class MatchingSnapshotFactory {
 			.toList();
 		List<AvailabilityWindow> fallbackWindows = windows.stream()
 			.filter(w -> w.getClassification() == WindowClassification.FALLBACK)
+			.toList();
+		List<AvailabilityWindow> excludedWindows = windows.stream()
+			.filter(w -> w.getClassification() == WindowClassification.EXCLUDED)
 			.toList();
 
 		List<OfferExclusion> exclusions = (targetWf.getId() != null)
@@ -123,8 +127,11 @@ public class MatchingSnapshotFactory {
 						Instant slotStartInstant = slotStart.toInstant();
 						Instant slotEndInstant = slotEnd.toInstant();
 
-						if (isAllowedByWindows(allowedWindows, currentDate, slotStart.toLocalTime(),
-								slotEnd.toLocalTime())
+						if (!slotStartInstant.isBefore(earliestStart)
+								&& isAllowedByWindows(allowedWindows, currentDate, slotStart.toLocalTime(),
+										slotEnd.toLocalTime())
+								&& !isMatchedByWindows(excludedWindows, currentDate, slotStart.toLocalTime(),
+										slotEnd.toLocalTime())
 								&& !isExcluded(exclusions, vet.getId(), slotStartInstant, slotEndInstant)) {
 
 							boolean conflict = this.capacityConflictService.hasOverlappingBlocker(vet.getId(),
@@ -215,8 +222,17 @@ public class MatchingSnapshotFactory {
 	}
 
 	private int calculateGapMinutes(Integer vetId, Instant startAt, Instant endAt) {
-		// Default 0 for optimal gap when no adjacent blockers found
-		return 0;
+		List<TimeInterval> nearby = this.capacityConflictService.findVetBlockers(vetId,
+				startAt.minus(1, ChronoUnit.DAYS), endAt.plus(1, ChronoUnit.DAYS));
+		return nearby.stream().mapToInt(blocker -> {
+			if (!blocker.getEndAt().isAfter(startAt)) {
+				return Math.toIntExact(Math.max(0, Duration.between(blocker.getEndAt(), startAt).toMinutes()));
+			}
+			if (!blocker.getStartAt().isBefore(endAt)) {
+				return Math.toIntExact(Math.max(0, Duration.between(endAt, blocker.getStartAt()).toMinutes()));
+			}
+			return 0;
+		}).min().orElse(24 * 60);
 	}
 
 	public record SnapshotResult(long calendarRevision, List<CandidateSlot> candidateSlots) {

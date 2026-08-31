@@ -53,6 +53,9 @@ class AvailabilityControllerTests {
 	@MockitoBean
 	private VetRepository vetRepository;
 
+	@MockitoBean
+	private HoldReleaseService holdReleaseService;
+
 	@Test
 	void showClinicPolicyReturnsViewWithModel() throws Exception {
 		ClinicPolicy policy = new ClinicPolicy();

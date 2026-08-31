@@ -11,34 +11,45 @@
       <h5 class="mb-0">Contact Information</h5>
     </div>
     <div class="card-body">
-      <form th:action="@{/owner/profile}" th:object="${owner}" method="post">
+      <form th:action="@{/owner/profile}" th:object="${form}" method="post">
         <div class="mb-3 row">
-          <label class="col-sm-3 col-form-label font-weight-bold">Full Name</label>
+          <label for="firstName" class="col-sm-3 col-form-label">First name</label>
           <div class="col-sm-9">
-            <input type="text" readonly class="form-control-plaintext" th:value="${owner.firstName + ' ' + owner.lastName}" />
+            <input type="text" class="form-control" id="firstName" th:field="*{firstName}" maxlength="30" required />
+            <div class="text-danger" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></div>
+          </div>
+        </div>
+        <div class="mb-3 row">
+          <label for="lastName" class="col-sm-3 col-form-label">Last name</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="lastName" th:field="*{lastName}" maxlength="30" required />
+            <div class="text-danger" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></div>
           </div>
         </div>
         <div class="mb-3 row">
           <label for="address" class="col-sm-3 col-form-label">Address</label>
           <div class="col-sm-9">
             <input type="text" class="form-control" id="address" th:field="*{address}" required />
+			<div class="text-danger" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
           </div>
         </div>
         <div class="mb-3 row">
           <label for="city" class="col-sm-3 col-form-label">City</label>
           <div class="col-sm-9">
             <input type="text" class="form-control" id="city" th:field="*{city}" required />
+			<div class="text-danger" th:if="${#fields.hasErrors('city')}" th:errors="*{city}"></div>
           </div>
         </div>
         <div class="mb-3 row">
           <label for="telephone" class="col-sm-3 col-form-label">Telephone</label>
           <div class="col-sm-9">
-            <input type="text" class="form-control" id="telephone" th:field="*{telephone}" required />
+			<input type="text" class="form-control" id="telephone" th:field="*{telephone}" pattern="[0-9]{10}" required />
+			<div class="text-danger" th:if="${#fields.hasErrors('telephone')}" th:errors="*{telephone}"></div>
           </div>
         </div>
         <div class="row">
           <div class="col-sm-9 offset-sm-3">
-            <button type="submit" class="btn btn-primary">Save Contact Info</button>
+			<button type="submit" class="btn btn-primary">Save Profile</button>
           </div>
         </div>
       </form>

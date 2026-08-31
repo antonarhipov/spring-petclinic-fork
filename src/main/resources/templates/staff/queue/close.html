@@ -14,7 +14,8 @@
     </div>
   </div>
 
-  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/close'}" th:object="${closeQueueForm}" method="post">
+	<form th:action="@{'/staff/queue/' + ${queueItem.id} + '/close'}" th:object="${closeQueueForm}" method="post">
+	<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Closure Reason</strong></div>
       <div class="card-body">

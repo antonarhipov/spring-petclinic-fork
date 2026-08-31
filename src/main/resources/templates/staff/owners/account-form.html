@@ -59,7 +59,7 @@
             <form th:action="@{/staff/owners/{ownerId}/account/reset(ownerId=${ownerId})}" method="post">
               <input type="hidden" name="commandId" th:value="${commandId}" />
               <div class="d-flex justify-content-between">
-                <a th:href="@{/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
+                <a th:href="@{/staff/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
                   <span class="fa fa-arrow-left"></span> Back to Owner Profile
                 </a>
                 <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to reset this owner\'s password? All active sessions will be terminated.');">
@@ -87,7 +87,7 @@
               </div>
 
               <div class="d-flex justify-content-between mt-4">
-                <a th:href="@{/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
+                <a th:href="@{/staff/owners/{ownerId}(ownerId=${ownerId})}" class="btn btn-outline-secondary">
                   <span class="fa fa-arrow-left"></span> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary">

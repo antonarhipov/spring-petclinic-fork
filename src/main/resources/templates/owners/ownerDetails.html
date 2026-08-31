@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{staff/layout :: layout (~{::body},'owners')}">
 
 <body>
 
@@ -33,9 +33,9 @@
     </tr>
   </table>
 
-  <a th:href="@{__${owner.id}__/edit}" class="btn btn-primary" th:text="#{editOwner}">Edit
+  <a th:href="@{/staff/owners/{ownerId}/edit(ownerId=${owner.id})}" class="btn btn-primary" th:text="#{editOwner}">Edit
     Owner</a>
-  <a th:href="@{__${owner.id}__/pets/new}" class="btn btn-primary" th:text="#{addNewPet}">Add
+  <a th:href="@{/staff/owners/{ownerId}/pets/new(ownerId=${owner.id})}" class="btn btn-primary" th:text="#{addNewPet}">Add
     New Pet</a>
   <a th:href="@{/staff/owners/__${owner.id}__/account}" class="btn btn-secondary">
     <span class="fa fa-user-circle"></span> Manage Portal Account</a>
@@ -71,8 +71,8 @@
             <td th:text="${visit?.description}"></td>
           </tr>
           <tr>
-            <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/edit}" th:text="#{editPet}">Edit Pet</a></td>
-            <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" th:text="#{addVisit}">Add Visit</a></td>
+            <td><a th:href="@{/staff/owners/{ownerId}/pets/{petId}/edit(ownerId=${owner.id},petId=${pet.id})}" th:text="#{editPet}">Edit Pet</a></td>
+            <td><a th:href="@{/staff/owners/{ownerId}/pets/{petId}/visits/new(ownerId=${owner.id},petId=${pet.id})}" th:text="#{addVisit}">Add Visit</a></td>
           </tr>
         </table>
       </td>

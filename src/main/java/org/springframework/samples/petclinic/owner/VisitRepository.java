@@ -16,6 +16,8 @@ public interface VisitRepository extends JpaRepository<Visit, Integer> {
 
 	List<Visit> findAllByAppointmentId(Long appointmentId);
 
+	boolean existsByPetId(Integer petId);
+
 	@Query("SELECT v FROM Visit v WHERE v.date >= :fromDate AND v.provenance = 'LEGACY' AND v.appointmentId IS NULL ORDER BY v.date ASC")
 	List<Visit> findFutureLegacyVisits(@Param("fromDate") LocalDate fromDate);
 

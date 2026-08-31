@@ -9,6 +9,7 @@ import java.time.ZonedDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.samples.petclinic.availability.EffectiveAvailabilityService;
+import org.springframework.samples.petclinic.availability.CapacityConflictService.BookingConflictCheck;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
@@ -32,6 +33,8 @@ public class StaffAppointmentLifecycleController {
 
 	private final AppointmentRepository appointmentRepository;
 
+	private final AppointmentChangeEventRepository appointmentChangeEventRepository;
+
 	private final AppointmentOutcomeService outcomeService;
 
 	private final AppointmentCorrectionService correctionService;
@@ -51,12 +54,13 @@ public class StaffAppointmentLifecycleController {
 	private final Clock clock;
 
 	public StaffAppointmentLifecycleController(AppointmentRepository appointmentRepository,
-			AppointmentOutcomeService outcomeService, AppointmentCorrectionService correctionService,
-			StaffAppointmentReschedulingService reschedulingService,
+			AppointmentChangeEventRepository appointmentChangeEventRepository, AppointmentOutcomeService outcomeService,
+			AppointmentCorrectionService correctionService, StaffAppointmentReschedulingService reschedulingService,
 			StaffAppointmentCancellationService cancellationService, OwnerRepository ownerRepository,
 			VetRepository vetRepository, EffectiveAvailabilityService effectiveAvailabilityService,
 			AppointmentLifecyclePolicy lifecyclePolicy, Clock clock) {
 		this.appointmentRepository = appointmentRepository;
+		this.appointmentChangeEventRepository = appointmentChangeEventRepository;
 		this.outcomeService = outcomeService;
 		this.correctionService = correctionService;
 		this.reschedulingService = reschedulingService;
@@ -168,6 +172,8 @@ public class StaffAppointmentLifecycleController {
 
 		private String internalReason;
 
+		private String reasonCategory = "OWNER_REQUEST";
+
 		private String ownerExplanation;
 
 		public Integer getVetId() {
@@ -220,6 +226,14 @@ public class StaffAppointmentLifecycleController {
 
 		public String getInternalReason() {
 			return this.internalReason;
+		}
+
+		public String getReasonCategory() {
+			return this.reasonCategory;
+		}
+
+		public void setReasonCategory(String reasonCategory) {
+			this.reasonCategory = reasonCategory;
 		}
 
 		public void setInternalReason(String internalReason) {
@@ -345,16 +359,29 @@ public class StaffAppointmentLifecycleController {
 	public String rescheduleForm(@PathVariable("appointmentId") Long appointmentId, Model model) {
 		Appointment appointment = this.appointmentRepository.findById(appointmentId)
 			.orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
-
-		model.addAttribute("appointment", appointment);
-		model.addAttribute("vets", this.vetRepository.findAll());
-		model.addAttribute("form", new RescheduleAppointmentForm());
+		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
+		ZonedDateTime start = ZonedDateTime.ofInstant(appointment.getStartAt(), zoneId);
+		RescheduleAppointmentForm form = new RescheduleAppointmentForm();
+		form.setVetId(appointment.getVetId());
+		form.setDate(start.toLocalDate());
+		form.setStartTime(start.toLocalTime());
+		form.setDurationMinutes(
+				(int) java.time.Duration.between(appointment.getStartAt(), appointment.getEndAt()).toMinutes());
+		populateRescheduleModel(model, appointment, form);
 		return "staff/appointments/reschedule";
 	}
 
 	@PostMapping("/reschedule")
 	public String processReschedule(@PathVariable("appointmentId") Long appointmentId,
-			@ModelAttribute("form") RescheduleAppointmentForm form, Authentication authentication) {
+			@ModelAttribute("form") RescheduleAppointmentForm form, Authentication authentication, Model model) {
+		Appointment appointment = this.appointmentRepository.findById(appointmentId)
+			.orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+		if (form.getDate() == null || form.getStartTime() == null || form.getDurationMinutes() == null
+				|| form.getVetId() == null) {
+			populateRescheduleModel(model, appointment, form);
+			model.addAttribute("errorMessage", "Veterinarian, date, time, and duration are required.");
+			return "staff/appointments/reschedule";
+		}
 		Long actorAccountId = extractAccountId(authentication);
 		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
 		ZonedDateTime startZdt = ZonedDateTime.of(form.getDate(), form.getStartTime(), zoneId);
@@ -363,7 +390,40 @@ public class StaffAppointmentLifecycleController {
 
 		StaffAppointmentReschedulingService.RescheduleAppointmentCommand cmd = new StaffAppointmentReschedulingService.RescheduleAppointmentCommand(
 				appointmentId, actorAccountId, form.getVetId(), startAt, endAt, form.isOwnerAgreementRecorded(),
-				form.getAgreementMedium(), form.getInternalReason(), form.getOwnerExplanation());
+				form.getAgreementMedium(), form.getReasonCategory(), form.getInternalReason(),
+				form.getOwnerExplanation());
+		try {
+			BookingConflictCheck check = this.reschedulingService.validateReschedule(cmd);
+			if (!check.valid()) {
+				populateRescheduleModel(model, appointment, form);
+				model.addAttribute("errorMessage", String.join(", ", check.errorMessages()));
+				return "staff/appointments/reschedule";
+			}
+		}
+		catch (IllegalArgumentException ex) {
+			populateRescheduleModel(model, appointment, form);
+			model.addAttribute("errorMessage", ex.getMessage());
+			return "staff/appointments/reschedule";
+		}
+		model.addAttribute("appointment", appointment);
+		model.addAttribute("vet", this.vetRepository.findById(form.getVetId()).orElse(null));
+		model.addAttribute("form", form);
+		model.addAttribute("startAt", startAt);
+		model.addAttribute("endAt", endAt);
+		return "staff/appointments/reschedule-review";
+	}
+
+	@PostMapping("/reschedule-review")
+	public String confirmReschedule(@PathVariable("appointmentId") Long appointmentId,
+			@ModelAttribute("form") RescheduleAppointmentForm form, Authentication authentication) {
+		Long actorAccountId = extractAccountId(authentication);
+		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
+		Instant startAt = ZonedDateTime.of(form.getDate(), form.getStartTime(), zoneId).toInstant();
+		Instant endAt = startAt.plusSeconds(form.getDurationMinutes() * 60L);
+		StaffAppointmentReschedulingService.RescheduleAppointmentCommand cmd = new StaffAppointmentReschedulingService.RescheduleAppointmentCommand(
+				appointmentId, actorAccountId, form.getVetId(), startAt, endAt, form.isOwnerAgreementRecorded(),
+				form.getAgreementMedium(), form.getReasonCategory(), form.getInternalReason(),
+				form.getOwnerExplanation());
 		this.reschedulingService.rescheduleAppointment(cmd);
 		return "redirect:/staff/calendar";
 	}
@@ -373,20 +433,28 @@ public class StaffAppointmentLifecycleController {
 		Appointment appointment = this.appointmentRepository.findById(appointmentId)
 			.orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
-		model.addAttribute("appointment", appointment);
-		model.addAttribute("form", new StaffCancellationForm());
+		populateCancellationModel(model, appointment, new StaffCancellationForm());
 		return "staff/appointments/cancel";
 	}
 
 	@PostMapping("/cancel")
 	public String processCancel(@PathVariable("appointmentId") Long appointmentId,
-			@ModelAttribute("form") StaffCancellationForm form, Authentication authentication) {
+			@ModelAttribute("form") StaffCancellationForm form, Authentication authentication, Model model) {
 		Long actorAccountId = extractAccountId(authentication);
 		StaffAppointmentCancellationService.StaffCancellationCommand cmd = new StaffAppointmentCancellationService.StaffCancellationCommand(
 				appointmentId, actorAccountId, form.getReasonCategory(), form.getReasonDetails(),
 				form.getOwnerExplanation(), form.isOwnerContacted());
-		this.cancellationService.cancelAppointmentByStaff(cmd);
-		return "redirect:/staff/calendar";
+		try {
+			this.cancellationService.cancelAppointmentByStaff(cmd);
+			return "redirect:/staff/calendar";
+		}
+		catch (IllegalArgumentException | IllegalStateException ex) {
+			Appointment appointment = this.appointmentRepository.findById(appointmentId)
+				.orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+			populateCancellationModel(model, appointment, form);
+			model.addAttribute("errorMessage", ex.getMessage());
+			return "staff/appointments/cancel";
+		}
 	}
 
 	private Long extractAccountId(Authentication authentication) {
@@ -396,6 +464,24 @@ public class StaffAppointmentLifecycleController {
 			}
 		}
 		throw new AccessDeniedException("Authenticated staff principal required");
+	}
+
+	private void populateRescheduleModel(Model model, Appointment appointment, RescheduleAppointmentForm form) {
+		model.addAttribute("appointment", appointment);
+		model.addAttribute("vets", this.vetRepository.findAll());
+		model.addAttribute("allowedDurations",
+				this.effectiveAvailabilityService.getClinicPolicy().getAllowedDurations());
+		model.addAttribute("form", form);
+	}
+
+	private void populateCancellationModel(Model model, Appointment appointment, StaffCancellationForm form) {
+		boolean priorOwnerAgreement = this.appointmentChangeEventRepository
+			.findByAppointmentIdOrderByOccurredAtAsc(appointment.getId())
+			.stream()
+			.anyMatch(AppointmentChangeEvent::isOwnerAgreementRecorded);
+		model.addAttribute("appointment", appointment);
+		model.addAttribute("priorOwnerAgreement", priorOwnerAgreement);
+		model.addAttribute("form", form);
 	}
 
 }

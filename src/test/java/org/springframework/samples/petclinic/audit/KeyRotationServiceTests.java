@@ -34,6 +34,12 @@ class KeyRotationServiceTests {
 	@Autowired
 	private KeyRingProperties keyRingProperties;
 
+	@Autowired
+	private ProtectedPayloadService protectedPayloadService;
+
+	@Autowired
+	private KeyRotationRunRepository keyRotationRunRepository;
+
 	@BeforeEach
 	void setUp() {
 		// Ensure keys are present in keyring without wiping existing keys
@@ -93,6 +99,67 @@ class KeyRotationServiceTests {
 		assertThatThrownBy(() -> this.keyRotationService.startOrResumeRotation("non-existent-key", 1L))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("Target key ID not found in keyring");
+	}
+
+	@Test
+	void sourceKeyCannotBeRetiredWhileActivePayloadsReferenceIt() {
+		ProtectedPayload payload = this.protectedPayloadCipher.encrypt(UUID.randomUUID(), "OwnerProse", 1, "text/plain",
+				"protected".getBytes(StandardCharsets.UTF_8));
+		ProtectedPayload saved = this.protectedPayloadRepository.save(payload);
+		this.payloadKeyEnvelopeRepository.save(saved.getActiveEnvelope());
+
+		assertThatThrownBy(() -> this.keyRotationService.assertKeyMayBeRetired("k1"))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("cannot be retired");
+
+		this.keyRotationService.executeFullRotation("k2", 1L);
+		this.keyRotationService.assertKeyMayBeRetired("k1");
+	}
+
+	@Test
+	void failedRewrapDoesNotActivateTargetAndResumesFromLastSuccessfulPayload() {
+		ProtectedPayload first = this.protectedPayloadService.encrypt("first payload");
+		ProtectedPayload second = this.protectedPayloadService.encrypt("second payload");
+		PayloadKeyEnvelope secondEnvelope = second.getActiveEnvelope();
+		byte[] originalWrappedKey = Arrays.copyOf(secondEnvelope.getWrappedKey(),
+				secondEnvelope.getWrappedKey().length);
+		secondEnvelope.setWrappedKey(new byte[] { 1, 2, 3, 4 });
+		this.payloadKeyEnvelopeRepository.saveAndFlush(secondEnvelope);
+
+		KeyRotationRun failed = this.keyRotationService.executeFullRotation("k2", 1L);
+
+		assertThat(failed.getState()).isEqualTo("FAILED");
+		assertThat(failed.getLastPayloadId()).isEqualTo(first.getId());
+		assertThat(this.keyRingProperties.getActiveKeyId()).isEqualTo("k1");
+
+		secondEnvelope.setWrappedKey(originalWrappedKey);
+		this.payloadKeyEnvelopeRepository.saveAndFlush(secondEnvelope);
+		KeyRotationRun resumed = this.keyRotationService.executeFullRotation("k2", 1L);
+
+		assertThat(resumed.getState()).isEqualTo("COMPLETED");
+		assertThat(resumed.getFailureCount()).isZero();
+		assertThat(this.keyRingProperties.getActiveKeyId()).isEqualTo("k2");
+		byte[] decrypted = this.protectedPayloadCipher
+			.decrypt(this.protectedPayloadRepository.findById(second.getId()).orElseThrow());
+		assertThat(new String(decrypted, StandardCharsets.UTF_8)).isEqualTo("second payload");
+	}
+
+	@Test
+	void activationIsRejectedWhenAnyPayloadStillUsesSourceEnvelope() {
+		this.protectedPayloadService.encrypt("unrotated payload");
+		KeyRotationRun run = new KeyRotationRun();
+		run.setSourceKeyId("k1");
+		run.setTargetKeyId("k2");
+		run.setState("RUNNING");
+		run.setLastPayloadId(Long.MAX_VALUE);
+		run.setStartedAt(java.time.Instant.now());
+		run = this.keyRotationRunRepository.saveAndFlush(run);
+
+		KeyRotationRun incompleteRun = run;
+		assertThatThrownBy(() -> this.keyRotationService.processBatch(incompleteRun, 100))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("incomplete");
+		assertThat(this.keyRingProperties.getActiveKeyId()).isEqualTo("k1");
 	}
 
 	private ProtectedPayload reloaded2(Long id) {

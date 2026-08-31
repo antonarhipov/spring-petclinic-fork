@@ -1,6 +1,7 @@
 package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.audit.ProtectedPayload;
 import org.springframework.samples.petclinic.audit.ProtectedPayloadService;
 import org.springframework.samples.petclinic.availability.ClinicPolicy;
@@ -39,6 +41,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * Unit tests for {@link InterpretationJobCoordinator} covering emergency detection, the
@@ -50,6 +53,8 @@ class InterpretationJobCoordinatorTests {
 	private InterpretationClient interpretationClient;
 
 	private ProtectedPayloadService payloadService;
+
+	private AuditService auditService;
 
 	private StaffFallbackPort staffFallbackPort;
 
@@ -77,6 +82,7 @@ class InterpretationJobCoordinatorTests {
 	void setUp() {
 		this.interpretationClient = mock(InterpretationClient.class);
 		this.payloadService = mock(ProtectedPayloadService.class);
+		this.auditService = mock(AuditService.class);
 		this.staffFallbackPort = mock(StaffFallbackPort.class);
 		this.jobRepository = mock(BackgroundJobRepository.class);
 		this.requestRepository = mock(SchedulingRequestRepository.class);
@@ -95,9 +101,9 @@ class InterpretationJobCoordinatorTests {
 
 		this.coordinator = new InterpretationJobCoordinator(this.interpretationClient,
 				new InterpretationOutputValidator(), new EmergencyKeywordScreen(), this.payloadService,
-				this.staffFallbackPort, this.jobRepository, this.requestRepository, this.interpretationRepository,
-				this.workflowRevisionRepository, this.clinicPolicyRepository, this.ownerRepository, this.vetRepository,
-				new ObjectMapper(), this.clock);
+				this.auditService, this.staffFallbackPort, this.jobRepository, this.requestRepository,
+				this.interpretationRepository, this.workflowRevisionRepository, this.clinicPolicyRepository,
+				this.ownerRepository, this.vetRepository, new ObjectMapper(), this.clock);
 	}
 
 	private Owner sampleOwner() {
@@ -220,6 +226,35 @@ class InterpretationJobCoordinatorTests {
 	}
 
 	@Test
+	void configuredDeadlineStopsAStillRunningInterpretation() {
+		SchedulingRequest request = new SchedulingRequest(1, 1, RequestState.AWAITING_INTERPRETATION, Instant.now());
+		request.setId(1L);
+		TextRevision textRevision = textRevisionFor(request, 14L);
+		request.setCurrentTextRevision(textRevision);
+		BackgroundJob job = jobFor(textRevision);
+
+		given(this.payloadService.decrypt(eq(textRevision.getProsePayload()), eq(String.class)))
+			.willReturn("Checkup for Leo");
+		given(this.interpretationClient.interpret(any())).willAnswer(invocation -> {
+			Thread.sleep(5_000);
+			return null;
+		});
+		InterpretationJobCoordinator shortDeadlineCoordinator = new InterpretationJobCoordinator(
+				this.interpretationClient, new InterpretationOutputValidator(), new EmergencyKeywordScreen(),
+				this.payloadService, this.auditService, this.staffFallbackPort, this.jobRepository,
+				this.requestRepository, this.interpretationRepository, this.workflowRevisionRepository,
+				this.clinicPolicyRepository, this.ownerRepository, this.vetRepository, new ObjectMapper(), this.clock,
+				Duration.ofMillis(50));
+
+		shortDeadlineCoordinator.executeInterpretationJob(job);
+
+		assertThat(job.getAttemptCount()).isEqualTo(1);
+		assertThat(job.getOutcomeCategory()).isEqualTo(OutcomeCategory.UNUSABLE_OUTPUT);
+		assertThat(request.getState()).isEqualTo(RequestState.STAFF_HANDLING);
+		verify(this.interpretationClient, times(1)).interpret(any());
+	}
+
+	@Test
 	void staleJobIsDiscardedWithoutCallingAi() {
 		SchedulingRequest request = new SchedulingRequest(1, 1, RequestState.AWAITING_INTERPRETATION, Instant.now());
 		request.setId(1L);
@@ -233,6 +268,31 @@ class InterpretationJobCoordinatorTests {
 		assertThat(staleJob.getState()).isEqualTo(JobState.STALE);
 		verify(this.interpretationClient, times(0)).interpret(any());
 		verify(this.staffFallbackPort, times(0)).sendToFallbackQueue(any(), any(), any(), any());
+	}
+
+	@Test
+	void resultCommitIsIgnoredWhenLeaseChangesAfterAiReturns() {
+		SchedulingRequest request = new SchedulingRequest(1, 1, RequestState.AWAITING_INTERPRETATION, Instant.now());
+		request.setId(1L);
+		TextRevision textRevision = textRevisionFor(request, 30L);
+		request.setCurrentTextRevision(textRevision);
+		BackgroundJob job = jobFor(textRevision);
+		job.setLeaseToken("original-lease");
+		given(this.jobRepository.findById(job.getId())).willReturn(Optional.of(job));
+		given(this.payloadService.decrypt(eq(textRevision.getProsePayload()), eq(String.class)))
+			.willReturn("Routine vaccination for Leo");
+		InterpretationCandidate candidate = new InterpretationCandidate("1", "Vaccination", Urgency.ROUTINE, List.of(),
+				30, null, null, List.of(), List.of(), List.of());
+		given(this.interpretationClient.interpret(any())).willAnswer(invocation -> {
+			job.setLeaseToken("replacement-lease");
+			return candidate;
+		});
+
+		this.coordinator.executeInterpretationJob(job.getId(), "original-lease");
+
+		assertThat(request.getState()).isEqualTo(RequestState.AWAITING_INTERPRETATION);
+		verify(this.workflowRevisionRepository, never()).save(any());
+		verify(this.staffFallbackPort, never()).sendToFallbackQueue(any(), any(), any(), any());
 	}
 
 }

@@ -45,7 +45,7 @@ public class AuthenticationSuccessHandler extends SavedRequestAwareAuthenticatio
 				return;
 			}
 			else if (principal.getRole() == Role.STAFF) {
-				getRedirectStrategy().sendRedirect(request, response, "/staff/calendar/week");
+				getRedirectStrategy().sendRedirect(request, response, "/staff/queue");
 				return;
 			}
 		}

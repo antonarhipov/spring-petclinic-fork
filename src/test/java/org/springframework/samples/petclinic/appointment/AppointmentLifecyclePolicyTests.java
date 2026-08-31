@@ -29,10 +29,13 @@ class AppointmentLifecyclePolicyTests {
 	}
 
 	@Test
-	void canCompleteOnlyConfirmedPendingInPastOrPresent() {
-		Appointment pastPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
+	void canCompleteOnlyConfirmedPendingAtOrAfterScheduledEnd() {
+		Appointment endedPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
 				this.now.minus(1, ChronoUnit.HOURS));
-		Appointment presentPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING, this.now);
+		Appointment endingNow = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
+				this.now.minus(30, ChronoUnit.MINUTES));
+		Appointment inProgressPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
+				this.now.minus(10, ChronoUnit.MINUTES));
 		Appointment futurePending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
 				this.now.plus(1, ChronoUnit.HOURS));
 		Appointment pastCompleted = createAppointment(BookingState.CONFIRMED, OutcomeState.COMPLETED,
@@ -40,8 +43,9 @@ class AppointmentLifecyclePolicyTests {
 		Appointment cancelled = createAppointment(BookingState.CANCELLED, OutcomeState.PENDING,
 				this.now.minus(1, ChronoUnit.HOURS));
 
-		assertThat(this.policy.canComplete(pastPending, this.now)).isTrue();
-		assertThat(this.policy.canComplete(presentPending, this.now)).isTrue();
+		assertThat(this.policy.canComplete(endedPending, this.now)).isTrue();
+		assertThat(this.policy.canComplete(endingNow, this.now)).isTrue();
+		assertThat(this.policy.canComplete(inProgressPending, this.now)).isFalse();
 		assertThat(this.policy.canComplete(futurePending, this.now)).isFalse();
 		assertThat(this.policy.canComplete(pastCompleted, this.now)).isFalse();
 		assertThat(this.policy.canComplete(cancelled, this.now)).isFalse();
@@ -49,15 +53,18 @@ class AppointmentLifecyclePolicyTests {
 	}
 
 	@Test
-	void canRecordNoShowOnlyConfirmedPendingInPastOrPresent() {
-		Appointment pastPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
+	void canRecordNoShowOnlyConfirmedPendingAtOrAfterScheduledEnd() {
+		Appointment endedPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
 				this.now.minus(1, ChronoUnit.HOURS));
+		Appointment inProgressPending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
+				this.now.minus(10, ChronoUnit.MINUTES));
 		Appointment futurePending = createAppointment(BookingState.CONFIRMED, OutcomeState.PENDING,
 				this.now.plus(1, ChronoUnit.HOURS));
 		Appointment completed = createAppointment(BookingState.CONFIRMED, OutcomeState.COMPLETED,
 				this.now.minus(1, ChronoUnit.HOURS));
 
-		assertThat(this.policy.canRecordNoShow(pastPending, this.now)).isTrue();
+		assertThat(this.policy.canRecordNoShow(endedPending, this.now)).isTrue();
+		assertThat(this.policy.canRecordNoShow(inProgressPending, this.now)).isFalse();
 		assertThat(this.policy.canRecordNoShow(futurePending, this.now)).isFalse();
 		assertThat(this.policy.canRecordNoShow(completed, this.now)).isFalse();
 		assertThat(this.policy.canRecordNoShow(null, this.now)).isFalse();

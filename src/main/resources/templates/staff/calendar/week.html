@@ -60,12 +60,19 @@
                   <span th:text="${#temporals.format(avail.start, 'HH:mm')} + '-' + ${#temporals.format(avail.end, 'HH:mm')}">09:00-17:00</span>
                 </span>
               </div>
-              <div th:each="app : ${dayCal.appointments}" class="card mb-1 border-primary bg-primary bg-opacity-10">
+			  <div th:each="app : ${dayCal.appointments}" class="card mb-1 border-primary bg-primary bg-opacity-10">
                 <div class="card-body p-1" style="font-size: 0.8rem;">
                   <a th:href="@{/staff/appointments/{id}(id=${app.id})}" class="fw-bold text-decoration-none" th:text="${#temporals.format(app.start, 'HH:mm') + ' - ' + #temporals.format(app.end, 'HH:mm')}">09:00 - 09:30</a>
                   <div th:text="${app.petName + ' (' + app.ownerName + ')'}">Pet (Owner)</div>
                   <span class="badge bg-primary" th:text="${app.outcomeState}">PENDING</span>
-                </div>
+			  </div>
+			  <div th:each="hold : ${dayCal.holds}" class="card mb-1 border-warning bg-warning bg-opacity-10">
+				<div class="card-body p-1" style="font-size: 0.8rem;">
+				  <strong th:text="${#temporals.format(hold.start, 'HH:mm') + ' - ' + #temporals.format(hold.end, 'HH:mm')}">10:00 - 10:30</strong>
+				  <div>Active hold</div><small th:text="${'Expires ' + #temporals.format(hold.expiresAt, 'HH:mm:ss')}">Expires</small>
+				</div>
+			  </div>
+			  <ul class="small text-muted ps-3 mb-0"><li th:each="source : ${dayCal.scheduleSources}" th:text="${source}">Recurring shift</li></ul>
               </div>
             </div>
           </td>

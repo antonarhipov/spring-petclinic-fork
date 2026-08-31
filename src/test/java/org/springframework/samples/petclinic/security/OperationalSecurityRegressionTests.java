@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -101,13 +102,10 @@ class OperationalSecurityRegressionTests {
 	}
 
 	@Test
-	void testSafeErrorEndpointDoesNotLeakInternalStackTraces() throws Exception {
-		this.mockMvc.perform(get("/oups")).andExpect(status().isInternalServerError()).andExpect(result -> {
-			String content = result.getResponse().getContentAsString();
-			assertThat(content).doesNotContain("java.lang.RuntimeException");
-			assertThat(content).doesNotContain("StackTrace");
-			assertThat(content).contains("Something happened");
-		});
+	void legacyCrashEndpointIsNotPubliclyAvailable() throws Exception {
+		this.mockMvc.perform(get("/oups"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/auth/login"));
 	}
 
 }

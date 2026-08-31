@@ -55,18 +55,20 @@ public class QueueContactService {
 	}
 
 	public ContactAttempt recordContactAttempt(Long queueItemId, Long actorAccountId, ContactOutcome outcome,
-			String note) {
+			String note, Long expectedRequestVersion, Integer expectedWorkflowRevision, Long expectedQueueVersion) {
 		Objects.requireNonNull(queueItemId, "queueItemId must not be null");
 		Objects.requireNonNull(actorAccountId, "actorAccountId must not be null");
 		Objects.requireNonNull(outcome, "outcome must not be null");
 
 		QueueItem queueItem = this.queueItemRepository.findById(queueItemId)
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + queueItemId));
+		queueItem.requireExpectedVersions(expectedRequestVersion, expectedWorkflowRevision, expectedQueueVersion);
 
 		if (queueItem.getState() == QueueState.RESOLVED || queueItem.getState() == QueueState.CLOSED) {
 			throw new IllegalStateException(
 					"Cannot log contact attempt on inactive queue item: " + queueItem.getState());
 		}
+		queueItem.requireAssignedTo(actorAccountId);
 
 		Instant now = this.clock.instant();
 		ProtectedPayload notePayload = null;
@@ -97,7 +99,8 @@ public class QueueContactService {
 		return savedAttempt;
 	}
 
-	public QueueItem closeQueueItem(Long queueItemId, Long actorAccountId, String reason) {
+	public QueueItem closeQueueItem(Long queueItemId, Long actorAccountId, String reason, Long expectedRequestVersion,
+			Integer expectedWorkflowRevision, Long expectedQueueVersion) {
 		Objects.requireNonNull(queueItemId, "queueItemId must not be null");
 		if (reason == null || reason.isBlank()) {
 			throw new IllegalArgumentException("Closure reason is required");
@@ -105,6 +108,8 @@ public class QueueContactService {
 
 		QueueItem queueItem = this.queueItemRepository.findById(queueItemId)
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + queueItemId));
+		queueItem.requireExpectedVersions(expectedRequestVersion, expectedWorkflowRevision, expectedQueueVersion);
+		queueItem.requireAssignedTo(actorAccountId);
 
 		Instant now = this.clock.instant();
 		ProtectedPayload reasonPayload = this.payloadService.store(UUID.randomUUID(), "QUEUE_CLOSURE_REASON", 1,

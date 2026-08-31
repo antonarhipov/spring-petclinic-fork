@@ -18,6 +18,7 @@ import org.springframework.samples.petclinic.availability.CalendarMutationCoordi
 import org.springframework.samples.petclinic.availability.CalendarState;
 import org.springframework.samples.petclinic.availability.CalendarStateRepository;
 import org.springframework.samples.petclinic.availability.CapacityConflictService;
+import org.springframework.samples.petclinic.availability.CapacityConflictService.BookingConflictCheck;
 import org.springframework.samples.petclinic.availability.ClinicPolicy;
 import org.springframework.samples.petclinic.availability.EffectiveAvailabilityService;
 import org.springframework.samples.petclinic.scheduling.interpretation.Urgency;
@@ -41,6 +42,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +60,9 @@ class AssistedOfferServiceTests {
 
 	@Mock
 	private OfferExclusionRepository offerExclusionRepository;
+
+	@Mock
+	private ContactAttemptRepository contactAttemptRepository;
 
 	@Mock
 	private CalendarStateRepository calendarStateRepository;
@@ -93,17 +99,17 @@ class AssistedOfferServiceTests {
 		CalendarMutationCoordinator calendarCoordinator = new CalendarMutationCoordinator(this.calendarStateRepository);
 
 		this.assistedOfferService = new AssistedOfferService(this.queueItemRepository, this.requestRepository,
-				this.offerRepository, this.offerExclusionRepository, calendarCoordinator, this.calendarStateRepository,
-				this.capacityConflictService, this.effectiveAvailabilityService, this.vetRepository, this.auditService,
-				this.ownerHistoryService, this.clock);
+				this.offerRepository, this.offerExclusionRepository, this.contactAttemptRepository, calendarCoordinator,
+				this.calendarStateRepository, this.capacityConflictService, this.effectiveAvailabilityService,
+				this.vetRepository, this.auditService, this.ownerHistoryService, this.clock);
 
 		this.request = new SchedulingRequest(1, 1, RequestState.STAFF_HANDLING, this.clock.instant());
 		this.request.setId(100L);
 		ProtectedPayload reasonPayload = new ProtectedPayload();
 		reasonPayload.setId(1L);
 
-		this.workflowRevision = new WorkflowRevision(this.request, 1, null, null,
-				WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED, reasonPayload, 30, 1, null, Urgency.ROUTINE, 0);
+		this.workflowRevision = new WorkflowRevision(this.request, 1, null, null, WorkflowRevisionState.CONFIRMED,
+				reasonPayload, 30, 1, null, Urgency.ROUTINE, 0);
 		this.workflowRevision.setId(200L);
 		this.request.setCurrentWorkflowRevision(this.workflowRevision);
 
@@ -111,6 +117,7 @@ class AssistedOfferServiceTests {
 				Urgency.ROUTINE, this.clock.instant());
 		this.queueItem.setId(1L);
 		this.queueItem.setAssigneeAccountId(10L);
+		this.queueItem.setVersion(0L);
 
 		this.vet = new Vet();
 		this.vet.setId(1);
@@ -119,10 +126,34 @@ class AssistedOfferServiceTests {
 	}
 
 	@Test
+	void createAssistedOfferRequiresOwnerConfirmedInterpretation() {
+		this.workflowRevision.setState(WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED);
+		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
+		ContactAttempt contactAttempt = new ContactAttempt();
+		contactAttempt.setOutcome(ContactOutcome.REACHED_AGREED);
+		when(this.contactAttemptRepository.findByQueueItemIdOrderByAttemptedAtAsc(1L))
+			.thenReturn(java.util.List.of(contactAttempt));
+		when(this.vetRepository.findById(1)).thenReturn(Optional.of(this.vet));
+
+		AssistedOfferCommand cmd = new AssistedOfferCommand(1L, 10L, 1, Instant.parse("2026-08-31T14:00:00Z"),
+				Instant.parse("2026-08-31T14:30:00Z"), "Assisted slot offer", null, 1, 0L);
+
+		assertThatThrownBy(() -> this.assistedOfferService.createAssistedOffer(cmd))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("owner must confirm");
+		verify(this.offerRepository, never()).save(any());
+	}
+
+	@Test
 	void createAssistedOfferHoldsSlotWithoutConsumingAutomaticAttempt() {
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
+		ContactAttempt contactAttempt = new ContactAttempt();
+		contactAttempt.setOutcome(ContactOutcome.REACHED_AGREED);
+		when(this.contactAttemptRepository.findByQueueItemIdOrderByAttemptedAtAsc(1L))
+			.thenReturn(java.util.List.of(contactAttempt));
 		when(this.vetRepository.findById(1)).thenReturn(Optional.of(this.vet));
-		when(this.capacityConflictService.hasOverlappingBlocker(eq(1), eq(1), eq(1), any(), any())).thenReturn(false);
+		when(this.capacityConflictService.checkStaffBookingConflicts(eq(1), eq(1), eq(1), any(), any()))
+			.thenReturn(BookingConflictCheck.ok());
 
 		CalendarState calendarState = new CalendarState();
 		calendarState.setId(1);
@@ -132,6 +163,7 @@ class AssistedOfferServiceTests {
 
 		ClinicPolicy policy = new ClinicPolicy();
 		policy.setZoneId("America/New_York");
+		policy.setHoldDurationMinutes(17);
 		when(this.effectiveAvailabilityService.getClinicPolicy()).thenReturn(policy);
 
 		when(this.offerRepository.save(any(Offer.class))).thenAnswer(inv -> {
@@ -143,12 +175,14 @@ class AssistedOfferServiceTests {
 		Instant startAt = Instant.parse("2026-08-31T14:00:00Z");
 		Instant endAt = Instant.parse("2026-08-31T14:30:00Z");
 
-		AssistedOfferCommand cmd = new AssistedOfferCommand(1L, 10L, 1, startAt, endAt, "Assisted slot offer");
+		AssistedOfferCommand cmd = new AssistedOfferCommand(1L, 10L, 1, startAt, endAt, "Assisted slot offer", null, 1,
+				0L);
 		Offer offer = this.assistedOfferService.createAssistedOffer(cmd);
 
 		assertThat(offer.getOrigin()).isEqualTo(OfferOrigin.STAFF_ASSISTED);
 		assertThat(offer.getAutomaticAttemptNumber()).isNull();
 		assertThat(offer.getState()).isEqualTo(OfferState.HELD);
+		assertThat(offer.getExpiresAt()).isEqualTo(this.clock.instant().plusSeconds(17 * 60L));
 		assertThat(this.request.getState()).isEqualTo(RequestState.OFFERED);
 		assertThat(this.queueItem.getState()).isEqualTo(QueueState.AWAITING_OWNER);
 		assertThat(this.queueItem.getAwaitingReason()).isEqualTo(AwaitingReason.PORTAL_OFFER);
@@ -177,6 +211,28 @@ class AssistedOfferServiceTests {
 		assertThat(this.queueItem.getState()).isEqualTo(QueueState.IN_REVIEW);
 		assertThat(this.queueItem.getAwaitingReason()).isNull();
 		assertThat(this.request.getState()).isEqualTo(RequestState.STAFF_HANDLING);
+	}
+
+	@Test
+	void assistedOfferRecoveryIsIdempotent() {
+		Offer offer = new Offer(this.request, this.workflowRevision, 1, 1, 1, OfferOrigin.STAFF_ASSISTED,
+				Instant.parse("2026-08-31T14:00:00Z"), Instant.parse("2026-08-31T14:30:00Z"), "America/New_York",
+				this.clock.instant(), OfferState.EXPIRED, null, 1L, "Explanation");
+		offer.setId(503L);
+		this.queueItem.setState(QueueState.AWAITING_OWNER);
+		this.queueItem.setAwaitingReason(AwaitingReason.PORTAL_OFFER);
+		this.request.setState(RequestState.OFFERED);
+
+		when(this.offerRepository.findById(503L)).thenReturn(Optional.of(offer));
+		when(this.queueItemRepository.findByRequestId(100L)).thenReturn(Optional.of(this.queueItem));
+		when(this.offerExclusionRepository.existsByOfferId(503L)).thenReturn(false, true);
+
+		this.assistedOfferService.handleAssistedOfferRejectionOrExpiry(503L);
+		this.assistedOfferService.handleAssistedOfferRejectionOrExpiry(503L);
+
+		verify(this.offerExclusionRepository, times(1)).save(any(OfferExclusion.class));
+		assertThat(this.queueItem.getState()).isEqualTo(QueueState.IN_REVIEW);
+		assertThat(this.queueItem.getAssigneeAccountId()).isEqualTo(10L);
 	}
 
 }

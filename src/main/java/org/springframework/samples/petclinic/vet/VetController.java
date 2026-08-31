@@ -41,7 +41,7 @@ class VetController {
 		this.vetRepository = vetRepository;
 	}
 
-	@GetMapping("/vets.html")
+	@GetMapping("/staff/veterinarians")
 	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
 		Page<Vet> paginated = findPaginated(page);
 		return addPaginationModel(page, paginated, model);
@@ -62,7 +62,7 @@ class VetController {
 		return vetRepository.findAll(pageable);
 	}
 
-	@GetMapping({ "/vets" })
+	@GetMapping("/staff/veterinarians.json")
 	public @ResponseBody Vets showResourcesVetList() {
 		// Here we are returning an object of type 'Vets' rather than a collection of Vet
 		// objects so it is simpler for JSon/Object mapping

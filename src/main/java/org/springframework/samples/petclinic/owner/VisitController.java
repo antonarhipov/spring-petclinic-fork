@@ -87,14 +87,14 @@ class VisitController {
 
 	// Spring MVC calls method loadPetWithVisit(...) before initNewVisitForm is
 	// called
-	@GetMapping("/owners/{ownerId}/pets/{petId}/visits/new")
+	@GetMapping("/staff/owners/{ownerId}/pets/{petId}/visits/new")
 	public String initNewVisitForm() {
 		return "pets/createOrUpdateVisitForm";
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before processNewVisitForm is
 	// called
-	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
+	@PostMapping("/staff/owners/{ownerId}/pets/{petId}/visits/new")
 	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
 			BindingResult result, RedirectAttributes redirectAttributes) {
 		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now())) {
@@ -108,7 +108,7 @@ class VisitController {
 		owner.addVisit(petId, visit);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
-		return "redirect:/owners/{ownerId}";
+		return "redirect:/staff/owners/{ownerId}";
 	}
 
 }

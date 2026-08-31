@@ -57,7 +57,7 @@ public class PasswordChangeController {
 				return "redirect:/owner/dashboard";
 			}
 			else if (principal.getRole() == Role.STAFF) {
-				return "redirect:/staff/calendar/week";
+				return "redirect:/staff/queue";
 			}
 			return "redirect:/";
 		}

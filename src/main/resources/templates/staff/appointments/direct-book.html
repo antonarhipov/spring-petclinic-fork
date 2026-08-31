@@ -91,6 +91,19 @@
         </div>
 
         <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Reason Category</label>
+          <div class="col-sm-6">
+            <select th:field="*{reasonCategory}" class="form-select" required>
+              <option value="OWNER_REQUEST">Owner Request</option>
+              <option value="CLINICAL_NEED">Clinical Need</option>
+              <option value="FOLLOW_UP">Follow-up</option>
+              <option value="LEGACY_RECONCILIATION">Legacy Reconciliation</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
           <label class="col-sm-3 col-form-label">Internal Reason / Notes</label>
           <div class="col-sm-6">
             <textarea th:field="*{internalReason}" rows="3" class="form-control" placeholder="Reason for visit or booking circumstances (encrypted)" required></textarea>

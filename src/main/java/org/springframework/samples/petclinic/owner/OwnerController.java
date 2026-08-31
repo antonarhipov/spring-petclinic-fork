@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
 
 import jakarta.validation.Valid;
@@ -46,6 +47,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * @author Wick Dynex
  */
 @Controller
+@RequestMapping("/staff")
 class OwnerController {
 
 	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
@@ -83,7 +85,7 @@ class OwnerController {
 
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "New Owner Created");
-		return "redirect:/owners/" + owner.getId();
+		return "redirect:/staff/owners/" + owner.getId();
 	}
 
 	@GetMapping("/owners/find")
@@ -114,7 +116,7 @@ class OwnerController {
 		if (ownersResults.getTotalElements() == 1) {
 			// 1 owner found
 			owner = ownersResults.iterator().next();
-			return "redirect:/owners/" + owner.getId();
+			return "redirect:/staff/owners/" + owner.getId();
 		}
 
 		// multiple owners found
@@ -152,13 +154,13 @@ class OwnerController {
 		if (!Objects.equals(owner.getId(), ownerId)) {
 			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
 			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
-			return "redirect:/owners/{ownerId}/edit";
+			return "redirect:/staff/owners/{ownerId}/edit";
 		}
 
 		owner.setId(ownerId);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
-		return "redirect:/owners/{ownerId}";
+		return "redirect:/staff/owners/{ownerId}";
 	}
 
 	/**

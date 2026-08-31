@@ -12,7 +12,8 @@
       <form th:action="@{/staff/appointments/{id}/no-show(id=${appointment.id})}" th:object="${form}" method="post">
         <div class="mb-3">
           <label class="form-label font-weight-bold">Internal Note / Reason</label>
-          <input type="text" class="form-control" th:field="*{reason}" placeholder="e.g. Client called later to apologize, or no contact received." />
+		  <input type="text" class="form-control" th:field="*{reason}" required
+				 placeholder="e.g. Client called later to apologize, or no contact received." />
         </div>
 
         <div class="d-flex justify-content-between">

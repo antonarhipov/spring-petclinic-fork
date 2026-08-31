@@ -65,7 +65,8 @@ public class StaffInterpretationService {
 
 	public record ManualInterpretationCommand(Long queueItemId, Long actorAccountId, String visitReason,
 			Integer durationMinutes, Integer preferredVetId, Integer requiredSpecialtyId, Urgency urgency,
-			List<AvailabilityWindow> windows, boolean requestOwnerConfirmation) {
+			List<AvailabilityWindow> windows, boolean requestOwnerConfirmation, Long expectedRequestVersion,
+			Integer expectedWorkflowRevision, Long expectedQueueVersion) {
 	}
 
 	public WorkflowRevision recordManualInterpretation(ManualInterpretationCommand cmd) {
@@ -76,10 +77,13 @@ public class StaffInterpretationService {
 
 		QueueItem queueItem = this.queueItemRepository.findById(cmd.queueItemId())
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + cmd.queueItemId()));
+		queueItem.requireExpectedVersions(cmd.expectedRequestVersion(), cmd.expectedWorkflowRevision(),
+				cmd.expectedQueueVersion());
 
 		if (queueItem.getState() == QueueState.RESOLVED || queueItem.getState() == QueueState.CLOSED) {
 			throw new IllegalStateException("Cannot interpret inactive queue item in state: " + queueItem.getState());
 		}
+		queueItem.requireAssignedTo(cmd.actorAccountId());
 
 		SchedulingRequest request = queueItem.getRequest();
 		Instant now = this.clock.instant();
@@ -97,16 +101,11 @@ public class StaffInterpretationService {
 		}
 
 		int nextRevisionNumber = priorRevision != null ? priorRevision.getRevisionNumber() + 1 : 1;
-		WorkflowRevisionState state = cmd.requestOwnerConfirmation() ? WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED
-				: WorkflowRevisionState.CONFIRMED;
+		WorkflowRevisionState state = WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED;
 
 		WorkflowRevision newRevision = new WorkflowRevision(request, nextRevisionNumber, state, reasonPayload,
 				cmd.durationMinutes() != null ? cmd.durationMinutes() : 30, cmd.preferredVetId(),
 				cmd.requiredSpecialtyId(), cmd.urgency(), now);
-
-		if (state == WorkflowRevisionState.CONFIRMED) {
-			newRevision.setConfirmedAt(now);
-		}
 
 		if (cmd.windows() != null) {
 			for (AvailabilityWindow window : cmd.windows()) {
@@ -120,25 +119,9 @@ public class StaffInterpretationService {
 		queueItem.setWorkflowRevision(savedRevision);
 		queueItem.setUrgency(cmd.urgency());
 
-		if (cmd.requestOwnerConfirmation()) {
-			request.setState(RequestState.AWAITING_REVIEW);
-			queueItem.setState(QueueState.AWAITING_OWNER);
-			queueItem.setAwaitingReason(AwaitingReason.INTERPRETATION_CONFIRMATION);
-		}
-		else {
-			if (cmd.urgency() == Urgency.ROUTINE) {
-				request.setState(RequestState.READY_TO_MATCH);
-				queueItem.setState(QueueState.IN_REVIEW);
-				queueItem.setAwaitingReason(null);
-				BackgroundJob job = new BackgroundJob(JobType.MATCHING, null, savedRevision, JobState.PENDING, now);
-				this.jobRepository.save(job);
-			}
-			else {
-				request.setState(RequestState.STAFF_HANDLING);
-				queueItem.setState(QueueState.IN_REVIEW);
-				queueItem.setAwaitingReason(null);
-			}
-		}
+		request.setState(RequestState.AWAITING_REVIEW);
+		queueItem.setState(QueueState.AWAITING_OWNER);
+		queueItem.setAwaitingReason(AwaitingReason.INTERPRETATION_CONFIRMATION);
 
 		request.setUpdatedAt(now);
 		queueItem.setUpdatedAt(now);

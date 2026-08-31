@@ -35,12 +35,14 @@ public class KeyRotationService {
 
 	private final AuditService auditService;
 
+	private final ProtectedPayloadCipher protectedPayloadCipher;
+
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	public KeyRotationService(KeyRotationRunRepository keyRotationRunRepository,
 			ProtectedPayloadRepository protectedPayloadRepository,
 			PayloadKeyEnvelopeRepository payloadKeyEnvelopeRepository, KeyRingProperties keyRingProperties,
-			AuditService auditService) {
+			AuditService auditService, ProtectedPayloadCipher protectedPayloadCipher) {
 		this.keyRotationRunRepository = Objects.requireNonNull(keyRotationRunRepository,
 				"keyRotationRunRepository must not be null");
 		this.protectedPayloadRepository = Objects.requireNonNull(protectedPayloadRepository,
@@ -49,6 +51,8 @@ public class KeyRotationService {
 				"payloadKeyEnvelopeRepository must not be null");
 		this.keyRingProperties = Objects.requireNonNull(keyRingProperties, "keyRingProperties must not be null");
 		this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
+		this.protectedPayloadCipher = Objects.requireNonNull(protectedPayloadCipher,
+				"protectedPayloadCipher must not be null");
 	}
 
 	public KeyRotationRun startOrResumeRotation(String targetKeyId, Long actorAccountId) {
@@ -58,11 +62,13 @@ public class KeyRotationService {
 		}
 
 		Optional<KeyRotationRun> existingRun = this.keyRotationRunRepository
-			.findFirstByTargetKeyIdAndStateInOrderByCreatedAtDesc(targetKeyId, List.of("PENDING", "RUNNING"));
+			.findFirstByTargetKeyIdAndStateInOrderByCreatedAtDesc(targetKeyId, List.of("PENDING", "RUNNING", "FAILED"));
 
 		if (existingRun.isPresent()) {
 			KeyRotationRun run = existingRun.get();
 			run.setState("RUNNING");
+			run.setFailureCount(0);
+			run.setFailureCategory(null);
 			return this.keyRotationRunRepository.save(run);
 		}
 
@@ -86,7 +92,7 @@ public class KeyRotationService {
 				PageRequest.of(0, batchSize));
 
 		if (payloads.isEmpty()) {
-			// All items processed - mark run completed and activate target key
+			verifyRotationBeforeActivation(run);
 			this.keyRingProperties.setActiveKeyId(run.getTargetKeyId());
 			run.setState("COMPLETED");
 			run.setCompletedAt(Instant.now());
@@ -103,12 +109,14 @@ public class KeyRotationService {
 			try {
 				rewrapPayloadToTargetKey(payload, run, targetKek);
 				run.setProcessedCount(run.getProcessedCount() + 1);
+				run.setLastPayloadId(payload.getId());
 			}
 			catch (Exception e) {
 				run.setFailureCount(run.getFailureCount() + 1);
-				run.setFailureCategory("REWRAP_ERROR: " + e.getMessage());
+				run.setFailureCategory("REWRAP_ERROR");
+				run.setState("FAILED");
+				break;
 			}
-			run.setLastPayloadId(payload.getId());
 		}
 
 		this.keyRotationRunRepository.save(run);
@@ -125,6 +133,34 @@ public class KeyRotationService {
 			}
 		}
 		return run;
+	}
+
+	public void assertKeyMayBeRetired(String keyId) {
+		Objects.requireNonNull(keyId, "keyId must not be null");
+		long activeReferences = this.payloadKeyEnvelopeRepository.countActiveReferencesByKeyId(keyId);
+		if (activeReferences > 0) {
+			throw new IllegalStateException(
+					"Key cannot be retired while " + activeReferences + " protected payloads still reference it");
+		}
+	}
+
+	private void verifyRotationBeforeActivation(KeyRotationRun run) {
+		if (run.getFailureCount() > 0) {
+			run.setState("FAILED");
+			this.keyRotationRunRepository.save(run);
+			throw new IllegalStateException("Key rotation has failed payloads and cannot be activated");
+		}
+		long incomplete = this.protectedPayloadRepository.findAllByOrderByIdAsc()
+			.stream()
+			.filter(payload -> payload.getActiveEnvelope() == null
+					|| !run.getTargetKeyId().equals(payload.getActiveEnvelope().getKeyId()))
+			.count();
+		if (incomplete > 0) {
+			throw new IllegalStateException("Key rotation is incomplete and cannot be activated");
+		}
+		for (ProtectedPayload payload : this.protectedPayloadRepository.findAllByOrderByIdAsc()) {
+			this.protectedPayloadCipher.decrypt(payload);
+		}
 	}
 
 	private void rewrapPayloadToTargetKey(ProtectedPayload payload, KeyRotationRun run, byte[] targetKek) {

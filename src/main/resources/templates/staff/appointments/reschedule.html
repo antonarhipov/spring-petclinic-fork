@@ -19,7 +19,9 @@
           </div>
           <div class="col-md-6">
             <label class="form-label font-weight-bold">Duration (Minutes)</label>
-            <input type="number" class="form-control" th:field="*{durationMinutes}" min="15" step="15" required />
+            <select class="form-select" th:field="*{durationMinutes}" required>
+              <option th:each="duration : ${allowedDurations}" th:value="${duration}" th:text="${duration + ' minutes'}">30 minutes</option>
+            </select>
           </div>
         </div>
 
@@ -54,9 +56,20 @@
                 </select>
               </div>
               <div class="col-md-6">
+                <label class="form-label">Reason Category</label>
+                <select class="form-select" th:field="*{reasonCategory}" required>
+                  <option value="OWNER_REQUEST">Owner Request</option>
+                  <option value="VET_UNAVAILABLE">Veterinarian Unavailable</option>
+                  <option value="CLINIC_SCHEDULE_CHANGE">Clinic Schedule Change</option>
+                  <option value="CLINICAL_NEED">Clinical Need</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
                 <label class="form-label">Internal Reason (Staff)</label>
                 <input type="text" class="form-control" th:field="*{internalReason}" placeholder="e.g. Owner requested earlier day" required />
-              </div>
             </div>
 
             <div class="mb-2">
@@ -68,7 +81,7 @@
 
         <div class="d-flex justify-content-between">
           <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
-          <button type="submit" class="btn btn-primary"><span class="fa fa-save"></span> Reschedule Appointment</button>
+          <button type="submit" class="btn btn-primary"><span class="fa fa-search"></span> Review Reschedule</button>
         </div>
       </form>
     </div>

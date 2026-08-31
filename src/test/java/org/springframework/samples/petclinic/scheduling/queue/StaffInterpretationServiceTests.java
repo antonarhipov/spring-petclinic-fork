@@ -90,6 +90,7 @@ class StaffInterpretationServiceTests {
 				this.clock.instant());
 		this.queueItem.setId(1L);
 		this.queueItem.setAssigneeAccountId(10L);
+		this.queueItem.setVersion(0L);
 	}
 
 	@Test
@@ -107,7 +108,7 @@ class StaffInterpretationServiceTests {
 		});
 
 		ManualInterpretationCommand cmd = new ManualInterpretationCommand(1L, 10L, "Vaccine check", 30, 2, null,
-				Urgency.ROUTINE, List.of(), true);
+				Urgency.ROUTINE, List.of(), true, null, null, 0L);
 
 		WorkflowRevision result = this.interpretationService.recordManualInterpretation(cmd);
 
@@ -120,7 +121,7 @@ class StaffInterpretationServiceTests {
 	}
 
 	@Test
-	void manualInterpretationWithoutConfirmationDirectlyEnqueuesMatchingJob() {
+	void manualInterpretationCannotBypassOwnerConfirmation() {
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 		ProtectedPayload dummyReason = new ProtectedPayload();
 		dummyReason.setId(50L);
@@ -134,14 +135,13 @@ class StaffInterpretationServiceTests {
 		});
 
 		ManualInterpretationCommand cmd = new ManualInterpretationCommand(1L, 10L, "Dental cleaning", 30, 1, null,
-				Urgency.ROUTINE, List.of(), false);
+				Urgency.ROUTINE, List.of(), false, null, null, 0L);
 
 		WorkflowRevision result = this.interpretationService.recordManualInterpretation(cmd);
 
-		assertThat(result.getState()).isEqualTo(WorkflowRevisionState.CONFIRMED);
-		assertThat(this.request.getState()).isEqualTo(RequestState.READY_TO_MATCH);
-		assertThat(this.queueItem.getState()).isEqualTo(QueueState.IN_REVIEW);
-		verify(this.jobRepository).save(any(BackgroundJob.class));
+		assertThat(result.getState()).isEqualTo(WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED);
+		assertThat(this.request.getState()).isEqualTo(RequestState.AWAITING_REVIEW);
+		assertThat(this.queueItem.getState()).isEqualTo(QueueState.AWAITING_OWNER);
 	}
 
 	@Test
@@ -162,7 +162,7 @@ class StaffInterpretationServiceTests {
 		});
 
 		WorkflowRevision result = this.emergencyClearanceService.clearEmergency(1L, 10L, Urgency.ROUTINE,
-				"Owner called, bleeding stopped completely");
+				"Owner called, bleeding stopped completely", null, null, 0L);
 
 		assertThat(result.getUrgency()).isEqualTo(Urgency.ROUTINE);
 		assertThat(result.getState()).isEqualTo(WorkflowRevisionState.OWNER_CONFIRMATION_REQUIRED);

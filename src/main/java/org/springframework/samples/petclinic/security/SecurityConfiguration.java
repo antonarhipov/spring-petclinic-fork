@@ -26,15 +26,17 @@ public class SecurityConfiguration {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(authorize -> authorize
-			.requestMatchers("/", "/login", "/logout", "/public/**", "/auth/**", "/account/**", "/session/**",
-					"/resources/**", "/webjars/**", "/favicon.ico", "/error", "/oups")
+			.requestMatchers("/", "/login", "/auth/login", "/resources/**", "/webjars/**", "/favicon.ico", "/error")
 			.permitAll()
+			.requestMatchers("/auth/logout", "/logout", "/auth/password-change", "/auth/session-status",
+					"/auth/session-extend", "/account/**", "/session/**")
+			.authenticated()
 			.requestMatchers("/owner/**")
 			.hasRole("OWNER")
 			.requestMatchers("/staff/**")
 			.hasRole("STAFF")
 			.anyRequest()
-			.authenticated())
+			.denyAll())
 			.formLogin(form -> form.loginPage("/auth/login")
 				.loginProcessingUrl("/auth/login")
 				.successHandler(this.authenticationSuccessHandler)

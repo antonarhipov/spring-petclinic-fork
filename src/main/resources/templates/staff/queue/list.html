@@ -40,7 +40,12 @@
           </select>
         </div>
 
-        <div class="col-md-3 d-flex align-items-end">
+		<div class="col-md-3">
+		  <label class="form-label">Fallback reason</label>
+		  <input name="fallbackReason" class="form-control" th:value="${selectedFallbackReason}" placeholder="e.g. NO_MATCH" />
+		</div>
+
+		<div class="col-md-3 d-flex align-items-end">
           <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
           <a th:href="@{/staff/queue}" class="btn btn-outline-secondary">Reset</a>
         </div>
@@ -59,13 +64,15 @@
           <th>Owner / Pet</th>
           <th>Contact</th>
           <th>Assignee</th>
-          <th>Submitted</th>
+		  <th>Submitted</th>
+		  <th>Age</th>
+		  <th>Last updated</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         <tr th:if="${#lists.isEmpty(queueItems)}">
-          <td colspan="9" class="text-center py-4 text-muted">No items found in fallback queue.</td>
+		  <td colspan="11" class="text-center py-4 text-muted">No items found in fallback queue.</td>
         </tr>
         <tr th:each="item : ${queueItems}" th:classappend="${item.urgency.name() == 'EMERGENCY_SUSPECTED' ? 'table-danger' : (item.urgency.name() == 'PRIORITY' ? 'table-warning' : '')}">
           <td><strong th:text="${'#' + item.id}">#1</strong></td>
@@ -88,7 +95,9 @@
             <span th:if="${item.assigneeUsername}" class="badge bg-primary" th:text="${item.assigneeUsername}">staff</span>
             <span th:unless="${item.assigneeUsername}" class="badge bg-light text-dark">Unassigned</span>
           </td>
-          <td th:text="${item.createdAt}">2026-08-31</td>
+		  <td th:text="${item.createdAt}">2026-08-31</td>
+		  <td th:text="${item.ageMinutes + ' min'}">20 min</td>
+		  <td th:text="${item.updatedAt}">2026-08-31</td>
           <td>
             <a th:href="@{'/staff/queue/' + ${item.id}}" class="btn btn-sm btn-outline-primary">Review</a>
           </td>

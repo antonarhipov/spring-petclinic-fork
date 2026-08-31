@@ -6,6 +6,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Set;
 import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.audit.OwnerHistoryService;
 import org.springframework.samples.petclinic.audit.ProtectedPayload;
@@ -26,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class DirectBookingService {
+
+	private static final Set<String> REASON_CATEGORIES = Set.of("OWNER_REQUEST", "CLINICAL_NEED", "FOLLOW_UP",
+			"URGENT_STAFF_BOOKING", "LEGACY_RECONCILIATION", "CLINIC_RECOVERY", "OTHER");
 
 	private final AppointmentRepository appointmentRepository;
 
@@ -66,8 +70,14 @@ public class DirectBookingService {
 	}
 
 	public record DirectBookingRequest(Integer ownerId, Integer petId, Integer vetId, Instant startAt, Instant endAt,
-			boolean ownerAgreementRecorded, String agreementMedium, String internalReason, Long actorAccountId,
-			UUID commandId) {
+			boolean ownerAgreementRecorded, String agreementMedium, String reasonCategory, String internalReason,
+			Long actorAccountId, UUID commandId) {
+		public DirectBookingRequest(Integer ownerId, Integer petId, Integer vetId, Instant startAt, Instant endAt,
+				boolean ownerAgreementRecorded, String agreementMedium, String internalReason, Long actorAccountId,
+				UUID commandId) {
+			this(ownerId, petId, vetId, startAt, endAt, ownerAgreementRecorded, agreementMedium, "OTHER",
+					internalReason, actorAccountId, commandId);
+		}
 	}
 
 	@Transactional(readOnly = true)
@@ -78,6 +88,9 @@ public class DirectBookingService {
 		}
 		if (request.internalReason() == null || request.internalReason().isBlank()) {
 			return BookingConflictCheck.failed("Internal reason is required to book directly");
+		}
+		if (!REASON_CATEGORIES.contains(request.reasonCategory())) {
+			return BookingConflictCheck.failed("Select a valid booking reason category");
 		}
 		Owner owner = this.ownerRepository.findById(request.ownerId()).orElse(null);
 		if (owner == null) {
@@ -92,7 +105,7 @@ public class DirectBookingService {
 			return BookingConflictCheck.failed("Veterinarian not found: " + request.vetId());
 		}
 
-		return this.capacityConflictService.checkDirectBookingConflicts(request.vetId(), request.ownerId(),
+		return this.capacityConflictService.checkStaffBookingConflicts(request.vetId(), request.ownerId(),
 				request.petId(), request.startAt(), request.endAt());
 	}
 
@@ -103,6 +116,9 @@ public class DirectBookingService {
 		}
 		if (request.internalReason() == null || request.internalReason().isBlank()) {
 			throw new IllegalArgumentException("Internal reason is required to book directly");
+		}
+		if (!REASON_CATEGORIES.contains(request.reasonCategory())) {
+			throw new IllegalArgumentException("Select a valid booking reason category");
 		}
 
 		Owner owner = this.ownerRepository.findById(request.ownerId())
@@ -115,7 +131,7 @@ public class DirectBookingService {
 			.orElseThrow(() -> new IllegalArgumentException("Veterinarian not found: " + request.vetId()));
 
 		return this.calendarMutationCoordinator.executeWithLock(() -> {
-			BookingConflictCheck check = this.capacityConflictService.checkDirectBookingConflicts(request.vetId(),
+			BookingConflictCheck check = this.capacityConflictService.checkStaffBookingConflicts(request.vetId(),
 					request.ownerId(), request.petId(), request.startAt(), request.endAt());
 			if (!check.valid()) {
 				throw new AvailabilityConflictException(
@@ -131,17 +147,25 @@ public class DirectBookingService {
 			if (request.internalReason() != null && !request.internalReason().isBlank()) {
 				UUID artifactUuid = UUID.randomUUID();
 				ProtectedPayload payload = this.protectedPayloadService.store(artifactUuid, "DIRECT_BOOKING_REASON", 1,
-						"text/plain", request.internalReason());
+						"text/plain", request.reasonCategory() + ": " + request.internalReason().trim());
 				reasonPayloadId = payload.getId();
 			}
+			String snapshot = "{\"before\":null,\"after\":{\"ownerId\":" + request.ownerId() + ",\"petId\":"
+					+ request.petId() + ",\"vetId\":" + request.vetId() + ",\"startAt\":\"" + request.startAt()
+					+ "\",\"endAt\":\"" + request.endAt() + "\",\"zoneId\":\"" + zoneIdStr
+					+ "\",\"bookingState\":\"CONFIRMED\"}}";
+			ProtectedPayload snapshotPayload = this.protectedPayloadService.store(UUID.randomUUID(),
+					"DIRECT_BOOKING_SNAPSHOT", 1, "application/json", snapshot);
 
 			AppointmentChangeEvent event = new AppointmentChangeEvent(saved.getId(), request.actorAccountId(), "STAFF",
 					"DIRECT_BOOKED", true, request.agreementMedium());
 			event.setProtectedReasonPayloadId(reasonPayloadId);
+			event.setProtectedSnapshotPayloadId(snapshotPayload.getId());
 			this.appointmentChangeEventRepository.save(event);
 
 			this.auditService.recordEvent(request.actorAccountId(), "DIRECT_BOOK_APPOINTMENT", "Appointment",
-					saved.getId().toString(), "SUCCESS", UUID.randomUUID(), request.commandId(), reasonPayloadId);
+					saved.getId().toString(), "SUCCESS", UUID.randomUUID(), request.commandId(),
+					snapshotPayload.getId());
 
 			ZoneId zoneId = ZoneId.of(zoneIdStr);
 			String formattedTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")

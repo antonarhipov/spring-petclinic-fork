@@ -8,6 +8,13 @@
     </div>
     <div class="card-body">
       <p class="text-muted">Cancel an upcoming confirmed appointment with mandatory reason category.</p>
+	  <div class="alert alert-info" th:if="${priorOwnerAgreement}">
+		Prior owner agreement is recorded for this appointment. A new contact attempt is optional.
+	  </div>
+	  <div class="alert alert-warning" th:unless="${priorOwnerAgreement}">
+		No prior owner agreement is recorded. Contact the owner and record the attempt before confirming cancellation.
+	  </div>
+	  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
       <form th:action="@{/staff/appointments/{id}/cancel(id=${appointment.id})}" th:object="${form}" method="post">
         <div class="mb-3">
@@ -28,18 +35,18 @@
 
         <div class="mb-3">
           <label class="form-label font-weight-bold">Owner-Facing Explanation</label>
-          <input type="text" class="form-control" th:field="*{ownerExplanation}" placeholder="e.g. Due to unforeseen clinic schedule changes..." />
+		  <input type="text" class="form-control" th:field="*{ownerExplanation}" placeholder="e.g. Due to unforeseen clinic schedule changes..." required />
         </div>
 
         <div class="form-check mb-4">
-          <input class="form-check-input" type="checkbox" th:field="*{ownerContacted}" id="ownerContactedCheck">
+		  <input class="form-check-input" type="checkbox" th:field="*{ownerContacted}" id="ownerContactedCheck" th:required="${!priorOwnerAgreement}">
           <label class="form-check-label" for="ownerContactedCheck">
             Owner has been contacted via phone/in-person regarding this cancellation.
           </label>
         </div>
 
         <div class="d-flex justify-content-between">
-          <a th:href="@{/staff/calendar/week}" class="btn btn-outline-secondary">Cancel</a>
+		  <a th:href="@{/staff/appointments/{id}(id=${appointment.id})}" class="btn btn-outline-secondary">Go Back</a>
           <button type="submit" class="btn btn-danger"><span class="fa fa-times"></span> Confirm Cancellation</button>
         </div>
       </form>

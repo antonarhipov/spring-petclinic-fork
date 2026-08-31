@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html th:replace="~{staff/layout :: layout (~{::body},'queue')}" xmlns:th="https://www.thymeleaf.org">
+<body>
+  <h2>Review Direct Booking</h2>
+  <p class="lead">Nothing is booked until you confirm this summary.</p>
+
+  <dl class="row">
+    <dt class="col-sm-3">Owner</dt><dd class="col-sm-9" th:text="${review.ownerName}">Owner</dd>
+    <dt class="col-sm-3">Pet</dt><dd class="col-sm-9" th:text="${review.petName}">Pet</dd>
+    <dt class="col-sm-3">Veterinarian</dt><dd class="col-sm-9" th:text="${review.veterinarianName}">Veterinarian</dd>
+    <dt class="col-sm-3">Start</dt><dd class="col-sm-9" th:text="${review.startAt + ' (' + review.zoneId + ')'}">Start</dd>
+    <dt class="col-sm-3">End</dt><dd class="col-sm-9" th:text="${review.endAt + ' (' + review.zoneId + ')'}">End</dd>
+    <dt class="col-sm-3">Agreement medium</dt><dd class="col-sm-9" th:text="${review.agreementMedium}">Phone</dd>
+    <dt class="col-sm-3">Reason category</dt><dd class="col-sm-9" th:text="${review.reasonCategory}">Owner request</dd>
+    <dt class="col-sm-3">Internal reason</dt><dd class="col-sm-9" th:text="${review.internalReason}">Reason</dd>
+  </dl>
+
+  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" th:object="${directBookForm}" method="post">
+    <input type="hidden" th:field="*{vetId}" />
+    <input type="hidden" th:field="*{date}" />
+    <input type="hidden" th:field="*{startTime}" />
+    <input type="hidden" th:field="*{durationMinutes}" />
+    <input type="hidden" th:field="*{ownerAgreementRecorded}" />
+    <input type="hidden" th:field="*{agreementMedium}" />
+    <input type="hidden" th:field="*{reasonCategory}" />
+    <input type="hidden" th:field="*{internalReason}" />
+    <input type="hidden" th:field="*{expectedRequestVersion}" />
+    <input type="hidden" th:field="*{expectedWorkflowRevision}" />
+    <input type="hidden" th:field="*{expectedQueueVersion}" />
+    <input type="hidden" name="confirmed" value="true" />
+    <button type="submit" class="btn btn-primary">Confirm Direct Booking</button>
+    <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" class="btn btn-secondary ms-2">Change details</a>
+  </form>
+</body>
+</html>

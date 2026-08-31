@@ -1,5 +1,7 @@
 package org.springframework.samples.petclinic.scheduling.queue;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.samples.petclinic.account.Account;
 import org.springframework.samples.petclinic.account.AccountRepository;
 import org.springframework.samples.petclinic.audit.ProtectedPayloadService;
+import org.springframework.samples.petclinic.audit.AuditEvent;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
@@ -33,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class StaffQueueQueryService {
 
+	private static final String PROTECTED_CONTENT_UNAVAILABLE = "Protected content unavailable because its historical key is not configured.";
+
 	private final QueueItemRepository queueItemRepository;
 
 	private final ContactAttemptRepository contactAttemptRepository;
@@ -49,10 +55,15 @@ public class StaffQueueQueryService {
 
 	private final ProtectedPayloadService payloadService;
 
+	private final AuditService auditService;
+
+	private final Clock clock;
+
 	public StaffQueueQueryService(QueueItemRepository queueItemRepository,
 			ContactAttemptRepository contactAttemptRepository, OfferRepository offerRepository,
 			OfferExclusionRepository offerExclusionRepository, OwnerRepository ownerRepository,
-			VetRepository vetRepository, AccountRepository accountRepository, ProtectedPayloadService payloadService) {
+			VetRepository vetRepository, AccountRepository accountRepository, ProtectedPayloadService payloadService,
+			AuditService auditService, Clock clock) {
 		this.queueItemRepository = queueItemRepository;
 		this.contactAttemptRepository = contactAttemptRepository;
 		this.offerRepository = offerRepository;
@@ -61,6 +72,8 @@ public class StaffQueueQueryService {
 		this.vetRepository = vetRepository;
 		this.accountRepository = accountRepository;
 		this.payloadService = payloadService;
+		this.auditService = auditService;
+		this.clock = clock;
 	}
 
 	public List<QueueItemSummaryDto> getFilteredQueue(QueueState state, Long assigneeId, Urgency urgency,
@@ -91,12 +104,15 @@ public class StaffQueueQueryService {
 			TextRevision textRev = req.getCurrentTextRevision();
 			if (textRev != null) {
 				if (textRev.getConsentPayload() != null) {
-					String consentJson = this.payloadService.decrypt(textRev.getConsentPayload(), String.class);
-					consentGranted = consentJson.contains("\"consented\":true")
-							|| consentJson.contains("\"consented\": true");
+					Optional<String> consentJson = this.payloadService
+						.decryptToStringIfKeyAvailable(textRev.getConsentPayload());
+					if (consentJson.isPresent()) {
+						consentGranted = consentJson.get().contains("\"consented\":true")
+								|| consentJson.get().contains("\"consented\": true");
+					}
 				}
 				if (textRev.getProsePayload() != null) {
-					decryptedProse = this.payloadService.decrypt(textRev.getProsePayload(), String.class);
+					decryptedProse = decryptForStaffDisplay(textRev.getProsePayload());
 				}
 			}
 
@@ -112,7 +128,7 @@ public class StaffQueueQueryService {
 
 			if (workflowRev != null) {
 				if (workflowRev.getReasonPayload() != null) {
-					decryptedReason = this.payloadService.decrypt(workflowRev.getReasonPayload(), String.class);
+					decryptedReason = decryptForStaffDisplay(workflowRev.getReasonPayload());
 				}
 				duration = workflowRev.getDurationMinutes();
 				preferredVetId = workflowRev.getPreferredVetId();
@@ -148,7 +164,7 @@ public class StaffQueueQueryService {
 					.orElse("Staff");
 				String note = "";
 				if (a.getNotePayload() != null) {
-					note = this.payloadService.decrypt(a.getNotePayload(), String.class);
+					note = decryptForStaffDisplay(a.getNotePayload());
 				}
 				return new ContactAttemptDto(a.getId(), a.getActorAccountId(), actorUser, a.getAttemptedAt(),
 						a.getOutcome(), note);
@@ -161,6 +177,7 @@ public class StaffQueueQueryService {
 
 			List<OfferExclusion> exclusions = workflowRev != null
 					? this.offerExclusionRepository.findByWorkflowRevisionId(workflowRev.getId()) : List.of();
+			List<AuditEvent> auditEvents = this.auditService.findEventsForTarget("QueueItem", item.getId().toString());
 
 			return new QueueItemDetailDto(item.getId(), req.getId(), req.getPetId(), pet != null ? pet.getName() : "",
 					pet != null && pet.getType() != null ? pet.getType().getName() : "", req.getOwnerId(),
@@ -168,11 +185,17 @@ public class StaffQueueQueryService {
 					owner != null ? owner.getTelephone() : "", owner != null ? owner.getAddress() : "",
 					owner != null ? owner.getCity() : "", item.getUrgency(), item.getFallbackReason(), item.getState(),
 					item.getAwaitingReason(), item.getAssigneeAccountId(), assigneeUsername, item.getCreatedAt(),
-					item.getUpdatedAt(), decryptedProse, consentGranted,
-					workflowRev != null ? workflowRev.getId() : null, decryptedReason, duration, preferredVetId,
-					preferredVetName, requiredSpecialtyId, requiredSpecialtyName, windows, attemptDtos, activeOffers,
-					exclusions);
+					item.getUpdatedAt(), decryptedProse, consentGranted, req.getVersion(), item.getVersion(),
+					textRev != null ? textRev.getRevisionNumber() : null,
+					workflowRev != null ? workflowRev.getId() : null,
+					workflowRev != null ? workflowRev.getRevisionNumber() : null, decryptedReason, duration,
+					preferredVetId, preferredVetName, requiredSpecialtyId, requiredSpecialtyName, windows, attemptDtos,
+					activeOffers, exclusions, auditEvents);
 		});
+	}
+
+	private String decryptForStaffDisplay(org.springframework.samples.petclinic.audit.ProtectedPayload payload) {
+		return this.payloadService.decryptToStringIfKeyAvailable(payload).orElse(PROTECTED_CONTENT_UNAVAILABLE);
 	}
 
 	private QueueItemSummaryDto toSummaryDto(QueueItem item, Map<Long, String> accountsMap) {
@@ -186,13 +209,15 @@ public class StaffQueueQueryService {
 				req.getOwnerId(), owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
 				owner != null ? owner.getTelephone() : "", item.getUrgency(), item.getFallbackReason(), item.getState(),
 				item.getAwaitingReason(), item.getAssigneeAccountId(), assigneeUsername, item.getCreatedAt(),
+				item.getUpdatedAt(),
+				Math.max(0, Duration.between(item.getCreatedAt(), this.clock.instant()).toMinutes()),
 				item.getLastContactAt());
 	}
 
 	public record QueueItemSummaryDto(Long id, Long requestId, Integer petId, String petName, Integer ownerId,
 			String ownerName, String ownerTelephone, Urgency urgency, String fallbackReason, QueueState state,
 			AwaitingReason awaitingReason, Long assigneeAccountId, String assigneeUsername, Instant createdAt,
-			Instant lastContactAt) {
+			Instant updatedAt, long ageMinutes, Instant lastContactAt) {
 	}
 
 	public record ContactAttemptDto(Long id, Long actorAccountId, String actorUsername, Instant attemptedAt,
@@ -203,10 +228,11 @@ public class StaffQueueQueryService {
 			Integer ownerId, String ownerName, String ownerTelephone, String ownerAddress, String ownerCity,
 			Urgency urgency, String fallbackReason, QueueState state, AwaitingReason awaitingReason,
 			Long assigneeAccountId, String assigneeUsername, Instant createdAt, Instant updatedAt, String originalProse,
-			Boolean consentGranted, Long workflowRevisionId, String visitReason, Integer durationMinutes,
+			Boolean consentGranted, Long requestVersion, Long queueVersion, Integer textRevisionNumber,
+			Long workflowRevisionId, Integer workflowRevisionNumber, String visitReason, Integer durationMinutes,
 			Integer preferredVetId, String preferredVetName, Integer requiredSpecialtyId, String requiredSpecialtyName,
 			List<AvailabilityWindow> windows, List<ContactAttemptDto> contactAttempts, List<Offer> activeOffers,
-			List<OfferExclusion> exclusions) {
+			List<OfferExclusion> exclusions, List<AuditEvent> auditEvents) {
 	}
 
 }

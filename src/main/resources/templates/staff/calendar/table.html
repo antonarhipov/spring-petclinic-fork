@@ -69,5 +69,18 @@
       </tr>
     </tbody>
   </table>
+
+	<h3 class="mt-4">Availability and active holds</h3>
+	<table class="table table-sm table-bordered">
+	  <thead><tr><th>Veterinarian</th><th>Date</th><th>Effective intervals</th><th>Active holds</th><th>Schedule sources</th></tr></thead>
+	  <tbody th:each="vetEntry : ${weekView.vetSchedules}">
+		<tr th:each="dayCal : ${vetEntry.value}">
+		  <td th:text="${dayCal.vet.firstName + ' ' + dayCal.vet.lastName}">Vet</td><td th:text="${dayCal.date}">Date</td>
+		  <td><span th:each="interval : ${dayCal.effectiveAvailability}" th:text="${interval + ' '}">Interval</span></td>
+		  <td><div th:each="hold : ${dayCal.holds}" th:text="${hold.start + '–' + hold.end + ', expires ' + hold.expiresAt}">Hold</div></td>
+		  <td><div th:each="source : ${dayCal.scheduleSources}" th:text="${source}">Source</div></td>
+		</tr>
+	  </tbody>
+	</table>
 </body>
 </html>

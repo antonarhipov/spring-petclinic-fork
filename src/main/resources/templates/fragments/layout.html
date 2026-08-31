@@ -25,41 +25,12 @@
       </button>
       <div class="collapse navbar-collapse" id="main-navbar" style>
 
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0" th:remove="all">
-
-          <li th:fragment="menuItem (link,active,title,glyph,text)" th:class="nav-item">
-            <a th:class="${active==menu ? 'nav-link active' : 'nav-link'}" th:href="@{__${link}__}" th:title="${title}">
-              <span th:class="'fa fa-'+${glyph}" class="fa fa-home"></span>
-              <span th:text="${text}">Template</span>
-            </a>
-          </li>
-
-        </ul>
-
-        <ul class="nav navbar-nav me-auto">
-
-          <li th:replace="~{::menuItem ('/','home','home page','home',#{home})}">
-            <span class="fa fa-home" aria-hidden="true"></span>
-            <span th:text="#{home}">Home</span>
-          </li>
-
-          <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
-            <span class="fa fa-search" aria-hidden="true"></span>
-            <span th:text="#{findOwners}">Find owners</span>
-          </li>
-
-          <li th:replace="~{::menuItem ('/vets.html','vets','veterinarians','th-list',#{vets})}">
-            <span class="fa fa-th-list" aria-hidden="true"></span>
-            <span th:text="#{vets}">Veterinarians</span>
-          </li>
-
-          <li
-            th:replace="~{::menuItem ('/oups','error','trigger a RuntimeException to see how it is handled','exclamation-triangle',#{error})}">
-            <span class="fa exclamation-triangle" aria-hidden="true"></span>
-            <span th:text="#{error}">Error</span>
-          </li>
-
-        </ul>
+		<ul class="navbar-nav me-auto">
+		  <li class="nav-item"><a class="nav-link active" th:href="@{/}"><span class="fa fa-home"></span> Home</a></li>
+		</ul>
+		<ul class="navbar-nav ms-auto">
+		  <li class="nav-item"><a class="btn btn-outline-light" th:href="@{/auth/login}"><span class="fa fa-sign-in"></span> Log in</a></li>
+		</ul>
       </div>
     </div>
   </nav>

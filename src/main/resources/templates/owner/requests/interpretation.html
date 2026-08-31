@@ -2,8 +2,11 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
 <body>
   <div class="alert alert-danger mb-4" role="alert">
-    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
-    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency desk at (608) 555-0199 or proceed immediately to the nearest 24-hour veterinary hospital.
+	<strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+	<span th:text="${clinicPolicy.urgentCareGuidance}">Call the clinic for urgent care.</span>
+	Call <strong th:text="${clinicPolicy.clinicPhone}">555-0100</strong>
+	<span th:text="${'during ' + clinicPolicy.contactHours}">during clinic hours</span>.
+	The portal and staff queue are not emergency-response channels.
   </div>
 
   <div class="card shadow-sm mb-4">

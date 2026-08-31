@@ -30,6 +30,10 @@
         <div class="col-sm-3 fw-bold">Agreement Medium:</div>
         <div class="col-sm-9" th:text="${form.agreementMedium}">PHONE</div>
       </div>
+      <div class="row mb-2">
+        <div class="col-sm-3 fw-bold">Reason Category:</div>
+        <div class="col-sm-9" th:text="${form.reasonCategory}">OWNER_REQUEST</div>
+      </div>
       <div class="row mb-2" th:if="${form.internalReason != null and !form.internalReason.isEmpty()}">
         <div class="col-sm-3 fw-bold">Internal Note:</div>
         <div class="col-sm-9" th:text="${form.internalReason}">Notes</div>
@@ -46,6 +50,7 @@
     <input type="hidden" th:field="*{durationMinutes}" />
     <input type="hidden" th:field="*{ownerAgreementRecorded}" />
     <input type="hidden" th:field="*{agreementMedium}" />
+    <input type="hidden" th:field="*{reasonCategory}" />
     <input type="hidden" th:field="*{internalReason}" />
 
     <button type="submit" class="btn btn-success btn-lg">Confirm & Book Appointment</button>

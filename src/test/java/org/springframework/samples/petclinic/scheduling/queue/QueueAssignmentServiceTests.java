@@ -14,6 +14,8 @@ import org.springframework.samples.petclinic.account.Account;
 import org.springframework.samples.petclinic.account.AccountRepository;
 import org.springframework.samples.petclinic.account.Role;
 import org.springframework.samples.petclinic.audit.AuditService;
+import org.springframework.samples.petclinic.audit.ProtectedPayload;
+import org.springframework.samples.petclinic.audit.ProtectedPayloadService;
 import org.springframework.samples.petclinic.scheduling.interpretation.Urgency;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
@@ -37,6 +39,9 @@ class QueueAssignmentServiceTests {
 	@Mock
 	private AuditService auditService;
 
+	@Mock
+	private ProtectedPayloadService payloadService;
+
 	private final Clock clock = Clock.fixed(Instant.parse("2026-08-31T09:00:00Z"), ZoneId.of("UTC"));
 
 	private QueueAssignmentService assignmentService;
@@ -54,7 +59,7 @@ class QueueAssignmentServiceTests {
 	@BeforeEach
 	void setUp() {
 		this.assignmentService = new QueueAssignmentService(this.queueItemRepository, this.accountRepository,
-				this.auditService, this.clock);
+				this.auditService, this.payloadService, this.clock);
 
 		this.staff1 = new Account();
 		this.staff1.setId(10L);
@@ -85,7 +90,7 @@ class QueueAssignmentServiceTests {
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 		when(this.queueItemRepository.save(any(QueueItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-		QueueItem result = this.assignmentService.claim(1L, 10L);
+		QueueItem result = this.assignmentService.claim(1L, 10L, null, null, 0L);
 
 		assertThat(result.getState()).isEqualTo(QueueState.IN_REVIEW);
 		assertThat(result.getAssigneeAccountId()).isEqualTo(10L);
@@ -102,7 +107,7 @@ class QueueAssignmentServiceTests {
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 		when(this.queueItemRepository.save(any(QueueItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
-		QueueItem result = this.assignmentService.claim(1L, 10L);
+		QueueItem result = this.assignmentService.claim(1L, 10L, null, null, 0L);
 
 		assertThat(result.getState()).isEqualTo(QueueState.AWAITING_OWNER);
 		assertThat(result.getAwaitingReason()).isEqualTo(AwaitingReason.CONTACT_REQUIRED);
@@ -116,8 +121,13 @@ class QueueAssignmentServiceTests {
 
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 		when(this.queueItemRepository.save(any(QueueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+		ProtectedPayload reason = new ProtectedPayload();
+		reason.setId(99L);
+		when(this.payloadService.store(any(), eq("QUEUE_ASSIGNMENT_REASON"), eq(1), eq("text/plain"),
+				eq("Workload handoff")))
+			.thenReturn(reason);
 
-		QueueItem result = this.assignmentService.unclaim(1L, 10L);
+		QueueItem result = this.assignmentService.unclaim(1L, 10L, "Workload handoff", null, null, 0L);
 
 		assertThat(result.getState()).isEqualTo(QueueState.NEW);
 		assertThat(result.getAssigneeAccountId()).isNull();
@@ -133,8 +143,13 @@ class QueueAssignmentServiceTests {
 		when(this.accountRepository.findById(11L)).thenReturn(Optional.of(this.staff2));
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 		when(this.queueItemRepository.save(any(QueueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+		ProtectedPayload reason = new ProtectedPayload();
+		reason.setId(100L);
+		when(this.payloadService.store(any(), eq("QUEUE_ASSIGNMENT_REASON"), eq(1), eq("text/plain"),
+				eq("Shift change")))
+			.thenReturn(reason);
 
-		QueueItem result = this.assignmentService.reassign(1L, 11L, 10L);
+		QueueItem result = this.assignmentService.reassign(1L, 11L, 10L, "Shift change", null, null, 0L);
 
 		assertThat(result.getState()).isEqualTo(QueueState.IN_REVIEW);
 		assertThat(result.getAssigneeAccountId()).isEqualTo(11L);
@@ -146,7 +161,8 @@ class QueueAssignmentServiceTests {
 	void claimByNonStaffThrowsException() {
 		when(this.accountRepository.findById(20L)).thenReturn(Optional.of(this.ownerAccount));
 
-		assertThatThrownBy(() -> this.assignmentService.claim(1L, 20L)).isInstanceOf(IllegalArgumentException.class)
+		assertThatThrownBy(() -> this.assignmentService.claim(1L, 20L, null, null, 0L))
+			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("not a staff member");
 	}
 
@@ -157,7 +173,8 @@ class QueueAssignmentServiceTests {
 		when(this.accountRepository.findById(10L)).thenReturn(Optional.of(this.staff1));
 		when(this.queueItemRepository.findById(1L)).thenReturn(Optional.of(this.queueItem));
 
-		assertThatThrownBy(() -> this.assignmentService.claim(1L, 10L)).isInstanceOf(IllegalStateException.class)
+		assertThatThrownBy(() -> this.assignmentService.claim(1L, 10L, null, null, 0L))
+			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("Cannot claim inactive queue item");
 	}
 

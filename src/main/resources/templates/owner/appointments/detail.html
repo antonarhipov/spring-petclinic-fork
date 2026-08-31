@@ -46,6 +46,10 @@
         <a th:if="${canCancel}" th:href="@{/owner/appointments/{id}/cancel(id=${appointment.id})}" class="btn btn-outline-danger">
           <span class="fa fa-times"></span> Cancel Appointment
         </a>
+		<a th:if="${appointment.bookingState.name() == 'CANCELLED' || appointment.outcomeState.name() == 'NO_SHOW'}"
+		   th:href="@{/owner/requests/new(petId=${appointment.petId})}" class="btn btn-primary">
+		  <span class="fa fa-calendar-plus-o"></span> Schedule another appointment
+		</a>
       </div>
     </div>
   </div>

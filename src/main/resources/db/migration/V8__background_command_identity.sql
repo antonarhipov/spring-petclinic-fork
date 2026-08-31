@@ -1,0 +1,2 @@
+ALTER TABLE background_jobs
+    ADD COLUMN command_id UUID DEFAULT RANDOM_UUID() NOT NULL UNIQUE;

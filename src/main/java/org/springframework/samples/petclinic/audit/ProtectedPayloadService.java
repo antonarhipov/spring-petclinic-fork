@@ -67,6 +67,23 @@ public class ProtectedPayloadService {
 		return new String(decrypt(payload), StandardCharsets.UTF_8);
 	}
 
+	/**
+	 * Decrypts protected text when its referenced key is available. A missing historical
+	 * key is represented as an empty result so read-side projections can remain usable
+	 * without exposing ciphertext. Authentication and tampering failures continue to
+	 * propagate.
+	 */
+	@Transactional(readOnly = true)
+	public Optional<String> decryptToStringIfKeyAvailable(ProtectedPayload payload) {
+		Objects.requireNonNull(payload, "payload must not be null");
+		try {
+			return Optional.of(decryptToString(payload));
+		}
+		catch (MissingProtectedPayloadKeyException ex) {
+			return Optional.empty();
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	@Transactional(readOnly = true)
 	public <T> T decrypt(ProtectedPayload payload, Class<T> clazz) {

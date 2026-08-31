@@ -1,8 +1,8 @@
 package org.springframework.samples.petclinic.scheduling.offer;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -12,9 +12,11 @@ import org.springframework.samples.petclinic.appointment.AppointmentChangeEvent;
 import org.springframework.samples.petclinic.appointment.AppointmentChangeEventRepository;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.audit.OwnerHistoryService;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.availability.AvailabilityConflictException;
 import org.springframework.samples.petclinic.availability.CalendarMutationCoordinator;
 import org.springframework.samples.petclinic.availability.CapacityConflictService;
+import org.springframework.samples.petclinic.availability.ClinicPolicyRepository;
 import org.springframework.samples.petclinic.scheduling.matching.CandidateSlot;
 import org.springframework.samples.petclinic.scheduling.queue.QueueItemRepository;
 import org.springframework.samples.petclinic.scheduling.queue.QueueState;
@@ -31,8 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class OfferService {
 
 	private static final Logger log = LoggerFactory.getLogger(OfferService.class);
-
-	private static final Duration HOLD_DURATION = Duration.ofMinutes(10);
 
 	private final OfferRepository offerRepository;
 
@@ -52,7 +52,11 @@ public class OfferService {
 
 	private final CapacityConflictService capacityConflictService;
 
+	private final ClinicPolicyRepository clinicPolicyRepository;
+
 	private final OwnerHistoryService ownerHistoryService;
+
+	private final AuditService auditService;
 
 	private final Clock clock;
 
@@ -61,7 +65,8 @@ public class OfferService {
 			ActiveSchedulingRequestRepository activeRequestRepository, AppointmentRepository appointmentRepository,
 			AppointmentChangeEventRepository changeEventRepository, QueueItemRepository queueItemRepository,
 			CalendarMutationCoordinator calendarCoordinator, CapacityConflictService capacityConflictService,
-			OwnerHistoryService ownerHistoryService, Clock clock) {
+			ClinicPolicyRepository clinicPolicyRepository, OwnerHistoryService ownerHistoryService,
+			AuditService auditService, Clock clock) {
 		this.offerRepository = offerRepository;
 		this.requestRepository = requestRepository;
 		this.workflowRevisionRepository = workflowRevisionRepository;
@@ -71,39 +76,67 @@ public class OfferService {
 		this.queueItemRepository = queueItemRepository;
 		this.calendarCoordinator = calendarCoordinator;
 		this.capacityConflictService = capacityConflictService;
+		this.clinicPolicyRepository = clinicPolicyRepository;
 		this.ownerHistoryService = ownerHistoryService;
+		this.auditService = auditService;
 		this.clock = clock;
 	}
 
 	@Transactional
 	public Offer createHeldOffer(SchedulingRequest request, WorkflowRevision workflowRevision, CandidateSlot slot,
 			OfferOrigin origin, long calendarRevision, String matchExplanation) {
+		Long requestId = request.getId();
+		Long workflowRevisionId = workflowRevision.getId();
+		request = this.requestRepository.findById(requestId)
+			.orElseThrow(() -> new IllegalArgumentException("Scheduling request not found: " + requestId));
+		workflowRevision = this.workflowRevisionRepository.findById(workflowRevisionId)
+			.orElseThrow(() -> new IllegalArgumentException("Workflow revision not found: " + workflowRevisionId));
+		if (request.getCurrentWorkflowRevision() == null
+				|| !request.getCurrentWorkflowRevision().getId().equals(workflowRevision.getId())
+				|| request.getState() != RequestState.READY_TO_MATCH) {
+			throw new IllegalStateException("Matching result is stale for the current request state");
+		}
+		SchedulingRequest currentRequest = request;
+		WorkflowRevision currentWorkflowRevision = workflowRevision;
 		return this.calendarCoordinator.executeWithLock(() -> {
 			Instant now = this.clock.instant();
-			if (this.capacityConflictService.hasOverlappingBlocker(slot.getVetId(), request.getPetId(),
-					request.getOwnerId(), slot.getStartAt(), slot.getEndAt())) {
+			RequestState priorRequestState = currentRequest.getState();
+			if (this.calendarCoordinator.getCurrentRevision() != calendarRevision) {
+				throw new AvailabilityConflictException("Calendar changed after the matching snapshot was created");
+			}
+			if (this.capacityConflictService.hasOverlappingBlocker(slot.getVetId(), currentRequest.getPetId(),
+					currentRequest.getOwnerId(), slot.getStartAt(), slot.getEndAt())) {
 				throw new AvailabilityConflictException("Selected candidate slot is no longer available");
 			}
 
-			Instant expiresAt = now.plus(HOLD_DURATION);
-			int nextAttempt = (workflowRevision.getAutomaticOfferCount() != null
-					? workflowRevision.getAutomaticOfferCount() : 0) + 1;
-			workflowRevision.setAutomaticOfferCount(nextAttempt);
-			this.workflowRevisionRepository.save(workflowRevision);
+			int holdDurationMinutes = this.clinicPolicyRepository.findSingleton()
+				.orElseThrow(() -> new IllegalStateException("Clinic policy not initialized"))
+				.getHoldDurationMinutes();
+			Instant expiresAt = now.plusSeconds(holdDurationMinutes * 60L);
+			int nextAttempt = (currentWorkflowRevision.getAutomaticOfferCount() != null
+					? currentWorkflowRevision.getAutomaticOfferCount() : 0) + 1;
+			currentWorkflowRevision.setAutomaticOfferCount(nextAttempt);
+			this.workflowRevisionRepository.save(currentWorkflowRevision);
 
-			Offer offer = new Offer(request, workflowRevision, request.getOwnerId(), request.getPetId(),
-					slot.getVetId(), origin, slot.getStartAt(), slot.getEndAt(), slot.getZoneId(), expiresAt,
-					OfferState.HELD, nextAttempt, calendarRevision, matchExplanation);
+			Offer offer = new Offer(currentRequest, currentWorkflowRevision, currentRequest.getOwnerId(),
+					currentRequest.getPetId(), slot.getVetId(), origin, slot.getStartAt(), slot.getEndAt(),
+					slot.getZoneId(), expiresAt, OfferState.HELD, nextAttempt, calendarRevision, matchExplanation);
 			Offer savedOffer = this.offerRepository.save(offer);
 
-			request.setState(RequestState.OFFERED);
-			request.setUpdatedAt(now);
-			this.requestRepository.save(request);
+			currentRequest.setState(RequestState.OFFERED);
+			currentRequest.setUpdatedAt(now);
+			this.requestRepository.save(currentRequest);
 
-			this.ownerHistoryService.recordOwnerHistory(request.getOwnerId(), request.getPetId(), request.getId(),
-					"OFFER_CREATED", "Appointment offer held until " + expiresAt, null);
+			this.ownerHistoryService.recordOwnerHistory(currentRequest.getOwnerId(), currentRequest.getPetId(),
+					currentRequest.getId(), "OFFER_CREATED", "Appointment offer held until " + expiresAt, null);
+			this.auditService.recordStructuredEvent(null, "MATCHING_OFFER_CREATED", "Offer",
+					savedOffer.getId().toString(), "SUCCESS", null, null,
+					Map.of("calendarRevision", calendarRevision, "requestState", priorRequestState.name()),
+					Map.of("offerState", savedOffer.getState().name(), "requestState", currentRequest.getState().name(),
+							"vetId", savedOffer.getVetId(), "startAt", savedOffer.getStartAt(), "endAt",
+							savedOffer.getEndAt(), "expiresAt", savedOffer.getExpiresAt()));
 
-			log.info("Created held offer {} for request {} (expires at {})", savedOffer.getId(), request.getId(),
+			log.info("Created held offer {} for request {} (expires at {})", savedOffer.getId(), currentRequest.getId(),
 					expiresAt);
 			return savedOffer;
 		});
@@ -115,6 +148,7 @@ public class OfferService {
 			Instant now = this.clock.instant();
 			Offer offer = this.offerRepository.findByIdAndOwnerId(offerId, ownerId)
 				.orElseThrow(() -> new IllegalArgumentException("Offer not found for owner"));
+			OfferState priorOfferState = offer.getState();
 
 			if (offer.getState() != OfferState.HELD) {
 				throw new IllegalStateException("Offer is not in HELD state: " + offer.getState());
@@ -126,6 +160,7 @@ public class OfferService {
 			}
 
 			SchedulingRequest request = offer.getRequest();
+			RequestState priorRequestState = request.getState();
 
 			// Remove this offer from the active-hold blocker query while validating the
 			// acceptance. The calendar lock and surrounding transaction make this
@@ -170,6 +205,12 @@ public class OfferService {
 
 			this.ownerHistoryService.recordOwnerHistory(ownerId, offer.getPetId(), request.getId(),
 					"APPOINTMENT_CONFIRMED", "Appointment accepted and confirmed for " + offer.getStartAt(), null);
+			this.auditService.recordStructuredEvent(null, "OFFER_ACCEPTED", "Offer", offer.getId().toString(),
+					"SUCCESS", null, null,
+					Map.of("offerState", priorOfferState.name(), "requestState", priorRequestState.name()),
+					Map.of("offerState", offer.getState().name(), "requestState", request.getState().name(),
+							"appointmentId", savedAppointment.getId(), "startAt", savedAppointment.getStartAt(),
+							"endAt", savedAppointment.getEndAt(), "vetId", savedAppointment.getVetId()));
 
 			log.info("Accepted offer {} and confirmed appointment {}", offer.getId(), savedAppointment.getId());
 			return savedAppointment;

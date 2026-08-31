@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.appointment;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -58,6 +59,7 @@ public class OwnerAppointmentService {
 		return this.calendarCoordinator.executeWithLock(() -> {
 			Appointment appointment = this.appointmentRepository.findByIdAndOwnerId(appointmentId, ownerId)
 				.orElseThrow(() -> new IllegalArgumentException("Appointment not found for owner"));
+			BookingState priorState = appointment.getBookingState();
 
 			Instant now = this.clock.instant();
 			if (!this.lifecyclePolicy.canOwnerCancel(appointment, now)) {
@@ -87,6 +89,10 @@ public class OwnerAppointmentService {
 					"APPOINTMENT_CANCELLED", "Appointment for " + saved.getStartAt() + " was cancelled"
 							+ (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""),
 					null);
+			this.auditService.recordStructuredEvent(null, "OWNER_CANCELLED_APPOINTMENT", "Appointment",
+					saved.getId().toString(), "SUCCESS", null, null,
+					Map.of("bookingState", priorState.name(), "startAt", saved.getStartAt()),
+					Map.of("bookingState", saved.getBookingState().name(), "cancelledAt", now));
 
 			log.info("Owner {} cancelled appointment {}", ownerId, appointmentId);
 			return saved;

@@ -51,9 +51,33 @@
           <p class="mb-2"><strong>Duration:</strong> <span th:text="${(queueItem.durationMinutes != null ? queueItem.durationMinutes : 30) + ' minutes'}">30 minutes</span></p>
           <p class="mb-2"><strong>Preferred Vet:</strong> <span th:text="${queueItem.preferredVetName != null ? queueItem.preferredVetName : 'Any Available'}">Any</span></p>
           <p class="mb-2"><strong>Required Specialty:</strong> <span th:text="${queueItem.requiredSpecialtyName != null ? queueItem.requiredSpecialtyName : 'None'}">None</span></p>
-          <p class="mb-2"><strong>Urgency Level:</strong> <span class="badge bg-secondary" th:text="${queueItem.urgency}">ROUTINE</span></p>
+		  <p class="mb-2"><strong>Urgency Level:</strong> <span class="badge bg-secondary" th:text="${queueItem.urgency}">ROUTINE</span></p>
+		  <p class="mb-2"><strong>Current text revision:</strong> <span th:text="${queueItem.textRevisionNumber}">1</span></p>
+		  <p class="mb-2"><strong>Current workflow revision:</strong> <span th:text="${queueItem.workflowRevisionNumber}">1</span></p>
+		  <h6 class="mt-3">Availability windows</h6>
+		  <p class="text-muted" th:if="${#lists.isEmpty(queueItem.windows)}">Any effective clinic availability.</p>
+		  <ul th:unless="${#lists.isEmpty(queueItem.windows)}">
+			<li th:each="window : ${queueItem.windows}" th:text="${window.classification + ' ' + window.shape + ' ' + window.startTime + '–' + window.endTime}">Window</li>
+		  </ul>
+		  <h6 class="mt-3">Excluded prior offers</h6>
+		  <p class="text-muted" th:if="${#lists.isEmpty(queueItem.exclusions)}">None.</p>
+		  <ul th:unless="${#lists.isEmpty(queueItem.exclusions)}"><li th:each="exclusion : ${queueItem.exclusions}" th:text="${exclusion.startAt + '–' + exclusion.endAt}">Excluded slot</li></ul>
         </div>
       </div>
+
+	  <div class="card mb-4">
+		<div class="card-header bg-light"><strong>Protected Audit History</strong></div>
+		<div class="card-body">
+		  <p class="text-muted" th:if="${#lists.isEmpty(queueItem.auditEvents)}">No queue audit events yet.</p>
+		  <ul class="list-group list-group-flush" th:unless="${#lists.isEmpty(queueItem.auditEvents)}">
+			<li class="list-group-item px-0" th:each="event : ${queueItem.auditEvents}">
+			  <strong th:text="${event.action}">ACTION</strong>
+			  <span class="badge bg-secondary" th:text="${event.outcome}">SUCCESS</span>
+			  <small class="text-muted d-block" th:text="${event.occurredAt}">time</small>
+			</li>
+		  </ul>
+		</div>
+	  </div>
 
       <div class="card mb-4">
         <div class="card-header bg-light"><strong>Contact Attempts Timeline</strong></div>
@@ -71,7 +95,8 @@
           </ul>
 
           <h6>Log New Contact Attempt</h6>
-          <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/contact-attempts'}" th:object="${contactAttemptForm}" method="post">
+		  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/contact-attempts'}" th:object="${contactAttemptForm}" method="post">
+			<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
             <div class="mb-2">
               <label class="form-label small">Outcome</label>
               <select th:field="*{outcome}" class="form-select form-select-sm" required>
@@ -107,22 +132,27 @@
           </p>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/claim'}" method="post">
-              <button type="submit" class="btn btn-sm btn-primary">Claim</button>
-            </form>
-            <form th:if="${queueItem.assigneeAccountId != null}" th:action="@{'/staff/queue/' + ${queueItem.id} + '/unclaim'}" method="post">
-              <button type="submit" class="btn btn-sm btn-outline-secondary">Unclaim</button>
+			<form th:action="@{'/staff/queue/' + ${queueItem.id} + '/claim'}" th:object="${claimForm}" method="post">
+			  <input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
+			  <button type="submit" class="btn btn-sm btn-primary">Claim</button>
+			</form>
+			<form th:if="${queueItem.assigneeAccountId == currentActorId}" th:action="@{'/staff/queue/' + ${queueItem.id} + '/unclaim'}" th:object="${unclaimForm}" method="post">
+			  <input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
+			  <input type="text" th:field="*{reason}" class="form-control form-control-sm mb-1" placeholder="Required unclaim reason" required />
+			  <button type="submit" class="btn btn-sm btn-outline-secondary">Unclaim</button>
             </form>
           </div>
 
-          <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/reassign'}" th:object="${reassignForm}" method="post" class="row g-2">
+		  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/reassign'}" th:object="${reassignForm}" method="post" class="row g-2">
+			<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
             <div class="col-8">
               <select th:field="*{assigneeAccountId}" class="form-select form-select-sm" required>
                 <option value="">-- Reassign to Staff --</option>
                 <option th:each="staff : ${staffAccounts}" th:value="${staff.id}" th:text="${staff.username}"></option>
               </select>
             </div>
-            <div class="col-4">
+			<div class="col-8"><input type="text" th:field="*{reason}" class="form-control form-control-sm" placeholder="Required reassignment reason" required /></div>
+			<div class="col-4">
               <button type="submit" class="btn btn-sm btn-outline-primary w-100">Reassign</button>
             </div>
           </form>
@@ -131,20 +161,23 @@
 
       <div class="card mb-4">
         <div class="card-header bg-light"><strong>Resolution Actions</strong></div>
-        <div class="card-body d-grid gap-2">
+		<div class="card-body d-grid gap-2" th:if="${queueItem.state.name() != 'RESOLVED' && queueItem.state.name() != 'CLOSED'}">
+          <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" class="btn btn-primary">
+            <span class="fa fa-calendar-plus"></span> Direct Book Appointment / Confirm Visit
+          </a>
           <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/offer'}" class="btn btn-success">
             <span class="fa fa-hand-holding"></span> Create Assisted Offer Hold
           </a>
-          <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" class="btn btn-primary">
-            <span class="fa fa-calendar-plus"></span> Direct Book Appointment
-          </a>
           <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/interpretation'}" class="btn btn-outline-secondary">
-            <span class="fa fa-edit"></span> Manual Interpretation
+            <span class="fa fa-edit"></span> Edit Interpretation Details
           </a>
           <a th:href="@{'/staff/queue/' + ${queueItem.id} + '/close'}" class="btn btn-outline-danger">
-            <span class="fa fa-times-circle"></span> Close Request with Reason
+            <span class="fa fa-times-circle"></span> Cancel / Close Request
           </a>
-        </div>
+		</div>
+		<div class="card-body text-muted" th:if="${queueItem.state.name() == 'RESOLVED' || queueItem.state.name() == 'CLOSED'}">
+		  This queue item has been resolved or closed.
+		</div>
       </div>
     </div>
   </div>

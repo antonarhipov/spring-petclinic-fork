@@ -1,11 +1,15 @@
 package org.springframework.samples.petclinic.scheduling.request;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.appointment.BookingState;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.security.PetClinicPrincipal;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -31,11 +36,14 @@ public class OwnerSchedulingRequestController {
 
 	private final AppointmentRepository appointmentRepository;
 
+	private final Clock clock;
+
 	public OwnerSchedulingRequestController(SchedulingRequestService requestService, OwnerRepository ownerRepository,
-			AppointmentRepository appointmentRepository) {
+			AppointmentRepository appointmentRepository, Clock clock) {
 		this.requestService = requestService;
 		this.ownerRepository = ownerRepository;
 		this.appointmentRepository = appointmentRepository;
+		this.clock = clock;
 	}
 
 	@GetMapping("/dashboard")
@@ -45,23 +53,60 @@ public class OwnerSchedulingRequestController {
 			.orElseThrow(() -> new IllegalArgumentException("Owner not found"));
 
 		List<OwnerRequestProjection> requests = this.requestService.getOwnerRequests(ownerId);
-		List<Appointment> appointments = this.appointmentRepository.findByOwnerIdOrderByStartAtDesc(ownerId);
+		Instant now = this.clock.instant();
+		List<Appointment> appointments = this.appointmentRepository.findByOwnerIdOrderByStartAtDesc(ownerId)
+			.stream()
+			.filter(appointment -> appointment.getBookingState() == BookingState.CONFIRMED)
+			.filter(appointment -> appointment.getStartAt().isAfter(now))
+			.sorted(Comparator.comparing(Appointment::getStartAt))
+			.toList();
+		List<OwnerRequestProjection> itemsNeedingAction = requests.stream()
+			.filter(request -> request.rawState() == RequestState.AWAITING_REVIEW
+					|| request.rawState() == RequestState.OFFERED || request.awaitingOwnerContact())
+			.toList();
+		List<OwnerRequestProjection> otherActiveRequests = requests.stream()
+			.filter(request -> !request.rawState().isTerminal())
+			.filter(request -> !itemsNeedingAction.contains(request))
+			.toList();
+		List<OwnerRequestProjection> recentHistory = requests.stream()
+			.filter(request -> request.rawState().isTerminal())
+			.limit(5)
+			.toList();
 
 		model.addAttribute("owner", owner);
 		model.addAttribute("requests", requests);
 		model.addAttribute("appointments", appointments);
+		model.addAttribute("itemsNeedingAction", itemsNeedingAction);
+		model.addAttribute("otherActiveRequests", otherActiveRequests);
+		model.addAttribute("recentHistory", recentHistory);
 		return "owner/dashboard";
 	}
 
 	@GetMapping("/requests/new")
-	public String initNewRequestForm(Authentication authentication, Model model) {
+	public String initNewRequestForm(@RequestParam(name = "petId", required = false) Integer petId,
+			Authentication authentication, Model model) {
 		Integer ownerId = extractOwnerId(authentication);
 		Owner owner = this.ownerRepository.findById(ownerId)
 			.orElseThrow(() -> new IllegalArgumentException("Owner not found"));
 
 		model.addAttribute("owner", owner);
 		model.addAttribute("pets", owner.getPets());
-		model.addAttribute("form", new SchedulingRequestForm());
+		SchedulingRequestForm form = new SchedulingRequestForm();
+		if (petId != null) {
+			if (owner.getPet(petId) == null) {
+				throw new AccessDeniedException("Selected pet does not belong to the authenticated owner");
+			}
+			form.setPetId(petId);
+			List<Appointment> upcoming = this.appointmentRepository.findByPetId(petId)
+				.stream()
+				.filter(appointment -> appointment.getBookingState() == BookingState.CONFIRMED)
+				.filter(appointment -> appointment.getStartAt().isAfter(this.clock.instant()))
+				.sorted(Comparator.comparing(Appointment::getStartAt))
+				.toList();
+			model.addAttribute("selectedPet", owner.getPet(petId));
+			model.addAttribute("upcomingAppointments", upcoming);
+		}
+		model.addAttribute("form", form);
 		return "owner/requests/new";
 	}
 

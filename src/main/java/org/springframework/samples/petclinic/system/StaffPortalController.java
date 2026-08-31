@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * Staff landing route redirecting to staff calendar.
+ * Staff landing route redirecting to the fallback queue.
  */
 @Controller
 @RequestMapping("/staff")
@@ -13,7 +13,7 @@ public class StaffPortalController {
 
 	@GetMapping({ "", "/" })
 	public String staffHome() {
-		return "redirect:/staff/calendar/week";
+		return "redirect:/staff/queue";
 	}
 
 }

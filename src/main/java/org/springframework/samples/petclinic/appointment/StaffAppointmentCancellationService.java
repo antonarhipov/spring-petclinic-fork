@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.appointment;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -18,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class StaffAppointmentCancellationService {
+
+	private static final Set<String> REASON_CATEGORIES = Set.of("CLINIC_CLOSURE", "VET_UNAVAILABLE", "CLIENT_REQUEST",
+			"CLINICAL_ORDER", "OTHER");
 
 	private static final Logger log = LoggerFactory.getLogger(StaffAppointmentCancellationService.class);
 
@@ -59,8 +63,11 @@ public class StaffAppointmentCancellationService {
 		Objects.requireNonNull(cmd, "cmd must not be null");
 		Objects.requireNonNull(cmd.appointmentId(), "appointmentId must not be null");
 		Objects.requireNonNull(cmd.actorAccountId(), "actorAccountId must not be null");
-		if (cmd.reasonCategory() == null || cmd.reasonCategory().isBlank()) {
-			throw new IllegalArgumentException("Cancellation reason category is required");
+		if (!REASON_CATEGORIES.contains(cmd.reasonCategory())) {
+			throw new IllegalArgumentException("Select a valid cancellation reason category");
+		}
+		if (cmd.ownerExplanation() == null || cmd.ownerExplanation().isBlank()) {
+			throw new IllegalArgumentException("An owner-facing cancellation explanation is required");
 		}
 
 		return this.calendarCoordinator.executeWithLock(() -> {
@@ -71,6 +78,20 @@ public class StaffAppointmentCancellationService {
 			if (!this.lifecyclePolicy.canStaffCancel(appointment, now)) {
 				throw new IllegalStateException("Appointment cannot be cancelled in state: "
 						+ appointment.getBookingState() + " / " + appointment.getOutcomeState());
+			}
+			boolean priorAgreement = this.changeEventRepository
+				.findByAppointmentIdOrderByOccurredAtAsc(appointment.getId())
+				.stream()
+				.anyMatch(AppointmentChangeEvent::isOwnerAgreementRecorded);
+			if (!priorAgreement && !cmd.ownerContacted()) {
+				throw new IllegalArgumentException(
+						"Record an owner contact attempt before cancelling an appointment without prior agreement");
+			}
+			if (!priorAgreement) {
+				AppointmentChangeEvent contactAttempt = new AppointmentChangeEvent(appointment.getId(),
+						cmd.actorAccountId(), "ROLE_STAFF", "OWNER_CONTACT_ATTEMPT", false, "PHONE");
+				contactAttempt.setOccurredAt(now);
+				this.changeEventRepository.save(contactAttempt);
 			}
 
 			appointment.setBookingState(BookingState.CANCELLED);

@@ -13,6 +13,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.samples.petclinic.account.Account;
 import org.springframework.samples.petclinic.account.AccountRepository;
 import org.springframework.samples.petclinic.account.Role;
+import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
@@ -34,11 +35,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.hamcrest.Matchers.containsString;
 
 /**
  * MVC tests for {@link OwnerSchedulingRequestController} using the full Spring Security
@@ -118,14 +121,19 @@ class OwnerSchedulingRequestControllerTests {
 	@Test
 	void dashboardDisplaysOwnerData() throws Exception {
 		Owner owner = sampleOwner();
+		Instant startAt = Instant.now().plusSeconds(86_400);
+		Appointment appointment = new Appointment(1, 1, 1, startAt, startAt.plusSeconds(1800), "Europe/Amsterdam");
+		appointment.setId(42L);
 		given(this.ownerRepository.findById(1)).willReturn(Optional.of(owner));
 		given(this.requestService.getOwnerRequests(1)).willReturn(List.of());
-		given(this.appointmentRepository.findByOwnerIdOrderByStartAtDesc(1)).willReturn(List.of());
+		given(this.appointmentRepository.findByOwnerIdOrderByStartAtDesc(1)).willReturn(List.of(appointment));
 
 		this.mockMvc.perform(get("/owner/dashboard").with(user(this.george)))
 			.andExpect(status().isOk())
 			.andExpect(view().name("owner/dashboard"))
-			.andExpect(model().attributeExists("owner", "requests", "appointments"));
+			.andExpect(model().attributeExists("owner", "requests", "appointments"))
+			.andExpect(content().string(containsString("href=\"/owner/appointments/42\"")))
+			.andExpect(content().string(containsString("href=\"/owner/appointments/42/cancel\"")));
 	}
 
 	@Test
@@ -175,16 +183,18 @@ class OwnerSchedulingRequestControllerTests {
 	}
 
 	@Test
-	void requestDetailDisplaysProjection() throws Exception {
+	void requestDetailDisplaysProjectionAndPoller() throws Exception {
 		OwnerRequestProjection projection = new OwnerRequestProjection(100L, 1, "Leo",
 				RequestState.AWAITING_INTERPRETATION, "INTERPRETING_REQUEST", "We are interpreting your request...",
-				null, null, null, Instant.now(), Instant.now());
+				null, null, null, Instant.now(), Instant.now(), null, null, false, false);
 		given(this.requestService.getOwnerRequestProjection(100L, 1)).willReturn(Optional.of(projection));
 
 		this.mockMvc.perform(get("/owner/requests/100").with(user(this.george)))
 			.andExpect(status().isOk())
 			.andExpect(view().name("owner/requests/detail"))
-			.andExpect(model().attributeExists("request"));
+			.andExpect(model().attributeExists("request"))
+			.andExpect(content().string(containsString("request-status.js")))
+			.andExpect(content().string(containsString("startRequestStatusPoller")));
 	}
 
 	@Test
@@ -198,7 +208,64 @@ class OwnerSchedulingRequestControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.requestId").value(100))
 			.andExpect(jsonPath("$.displayState").value("INTERPRETING_REQUEST"))
-			.andExpect(jsonPath("$.pollAfterMillis").value(2000));
+			.andExpect(jsonPath("$.canonicalUrl").value("/owner/requests/100"))
+			.andExpect(jsonPath("$.pollAfterMillis").value(2000))
+			.andExpect(jsonPath("$.terminal").value(false));
+	}
+
+	@Test
+	void requestStatusTransitionsWhenInterpretationRequiresReview() throws Exception {
+		RequestStatusResponse statusResponse = new RequestStatusResponse(100L, 2, "REVIEW_INTERPRETATION",
+				"/owner/requests/100/interpretation",
+				new RequestStatusResponse.PrimaryAction("Review Details", "/owner/requests/100/interpretation"),
+				Instant.now().toString(), Instant.now().plusSeconds(1800).toString(),
+				Instant.now().plusSeconds(1500).toString(), null, false, false, 5000);
+		given(this.requestService.getOwnerRequestStatus(100L, 1)).willReturn(Optional.of(statusResponse));
+
+		this.mockMvc.perform(get("/owner/requests/100/status").with(user(this.george)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.requestId").value(100))
+			.andExpect(jsonPath("$.displayState").value("REVIEW_INTERPRETATION"))
+			.andExpect(jsonPath("$.canonicalUrl").value("/owner/requests/100/interpretation"))
+			.andExpect(jsonPath("$.primaryAction.label").value("Review Details"))
+			.andExpect(jsonPath("$.primaryAction.url").value("/owner/requests/100/interpretation"))
+			.andExpect(jsonPath("$.pollAfterMillis").value(5000))
+			.andExpect(jsonPath("$.terminal").value(false));
+	}
+
+	@Test
+	void requestStatusTransitionsWhenOfferIsAvailable() throws Exception {
+		RequestStatusResponse statusResponse = new RequestStatusResponse(100L, 2, "APPOINTMENT_OFFERED",
+				"/owner/requests/100/offers/50",
+				new RequestStatusResponse.PrimaryAction("Review Offer", "/owner/requests/100/offers/50"),
+				Instant.now().toString(), Instant.now().plusSeconds(1800).toString(),
+				Instant.now().plusSeconds(1500).toString(), Instant.now().plusSeconds(600).toString(), false, false,
+				5000);
+		given(this.requestService.getOwnerRequestStatus(100L, 1)).willReturn(Optional.of(statusResponse));
+
+		this.mockMvc.perform(get("/owner/requests/100/status").with(user(this.george)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.requestId").value(100))
+			.andExpect(jsonPath("$.displayState").value("APPOINTMENT_OFFERED"))
+			.andExpect(jsonPath("$.canonicalUrl").value("/owner/requests/100/offers/50"))
+			.andExpect(jsonPath("$.primaryAction.label").value("Review Offer"))
+			.andExpect(jsonPath("$.pollAfterMillis").value(5000));
+	}
+
+	@Test
+	void requestStatusTransitionsWhenTerminal() throws Exception {
+		RequestStatusResponse statusResponse = new RequestStatusResponse(100L, 3, "CONFIRMED", "/owner/appointments/42",
+				new RequestStatusResponse.PrimaryAction("View Appointment", "/owner/appointments/42"),
+				Instant.now().toString(), Instant.now().plusSeconds(1800).toString(),
+				Instant.now().plusSeconds(1500).toString(), null, false, true, 10000);
+		given(this.requestService.getOwnerRequestStatus(100L, 1)).willReturn(Optional.of(statusResponse));
+
+		this.mockMvc.perform(get("/owner/requests/100/status").with(user(this.george)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.requestId").value(100))
+			.andExpect(jsonPath("$.displayState").value("CONFIRMED"))
+			.andExpect(jsonPath("$.canonicalUrl").value("/owner/appointments/42"))
+			.andExpect(jsonPath("$.terminal").value(true));
 	}
 
 	@Test

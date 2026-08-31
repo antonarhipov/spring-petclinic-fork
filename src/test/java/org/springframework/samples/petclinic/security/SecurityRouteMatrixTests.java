@@ -90,10 +90,25 @@ class SecurityRouteMatrixTests {
 		this.mockMvc.perform(get("/owner/dashboard").with(user(this.george)))
 			.andExpect(status().isOk())
 			.andExpect(view().name("owner/dashboard"));
+		this.mockMvc.perform(get("/owner/history").with(user(this.george)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("owner/history"));
 		this.mockMvc.perform(get("/owner/profile").with(user(this.george)))
 			.andExpect(status().isOk())
 			.andExpect(view().name("owner/profile"));
+		this.mockMvc.perform(get("/owner/requests/new").with(user(this.george)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("owner/requests/new"));
+
+		// Deny staff operational routes to owner
 		this.mockMvc.perform(get("/staff/calendar/week").with(user(this.george))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/queue").with(user(this.george))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/legacy-visits").with(user(this.george))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/legacy-visits/reconciliation").with(user(this.george)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/owners/find").with(user(this.george))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/veterinarians").with(user(this.george))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/staff/clinic-policy").with(user(this.george))).andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -101,7 +116,30 @@ class SecurityRouteMatrixTests {
 		this.mockMvc.perform(get("/staff/calendar/week").with(user(this.admin)))
 			.andExpect(status().isOk())
 			.andExpect(view().name("staff/calendar/week"));
+		this.mockMvc.perform(get("/staff/queue").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("staff/queue/list"));
+		this.mockMvc.perform(get("/staff/legacy-visits").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("staff/legacy-visits/list"));
+		this.mockMvc.perform(get("/staff/legacy-visits/reconciliation").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("staff/legacy-visits/list"));
+		this.mockMvc.perform(get("/staff/owners/find").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("owners/findOwners"));
+		this.mockMvc.perform(get("/staff/veterinarians").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("vets/vetList"));
+		this.mockMvc.perform(get("/staff/clinic-policy").with(user(this.admin)))
+			.andExpect(status().isOk())
+			.andExpect(view().name("staff/clinic-policy"));
+
+		// Deny owner routes to staff
 		this.mockMvc.perform(get("/owner/dashboard").with(user(this.admin))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/owner/history").with(user(this.admin))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/owner/profile").with(user(this.admin))).andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/owner/requests/new").with(user(this.admin))).andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -127,6 +165,8 @@ class SecurityRouteMatrixTests {
 		this.mockMvc
 			.perform(post("/owner/profile").with(user(this.george))
 				.with(csrf())
+				.param("firstName", "George")
+				.param("lastName", "Franklin")
 				.param("address", "1 Main St")
 				.param("city", "Madison")
 				.param("telephone", "6085550000"))

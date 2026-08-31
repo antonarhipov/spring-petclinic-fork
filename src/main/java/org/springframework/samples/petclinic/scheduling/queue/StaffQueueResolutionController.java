@@ -12,7 +12,9 @@ import org.springframework.samples.petclinic.scheduling.queue.AssistedOfferServi
 import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.AssistedOfferForm;
 import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.CloseQueueForm;
 import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.QueueDirectBookForm;
+import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.VersionedQueueForm;
 import org.springframework.samples.petclinic.scheduling.queue.QueueDirectBookingService.QueueDirectBookCommand;
+import org.springframework.samples.petclinic.scheduling.queue.QueueDirectBookingService.QueueDirectBookReview;
 import org.springframework.samples.petclinic.security.PetClinicPrincipal;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.security.core.Authentication;
@@ -41,30 +43,35 @@ public class StaffQueueResolutionController {
 
 	private final VetRepository vetRepository;
 
+	private final StaffSuggestionService suggestionService;
+
 	public StaffQueueResolutionController(StaffQueueQueryService queryService,
 			AssistedOfferService assistedOfferService, QueueDirectBookingService queueDirectBookingService,
 			QueueContactService queueContactService, EffectiveAvailabilityService effectiveAvailabilityService,
-			VetRepository vetRepository) {
+			VetRepository vetRepository, StaffSuggestionService suggestionService) {
 		this.queryService = queryService;
 		this.assistedOfferService = assistedOfferService;
 		this.queueDirectBookingService = queueDirectBookingService;
 		this.queueContactService = queueContactService;
 		this.effectiveAvailabilityService = effectiveAvailabilityService;
 		this.vetRepository = vetRepository;
+		this.suggestionService = suggestionService;
 	}
 
 	@GetMapping("/{id}/offer")
-	public String offerForm(@PathVariable("id") Long id, Model model) {
+	public String offerForm(@PathVariable("id") Long id, Authentication authentication, Model model) {
 		StaffQueueQueryService.QueueItemDetailDto detail = this.queryService.getQueueItemDetail(id)
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + id));
 
 		AssistedOfferForm form = new AssistedOfferForm();
 		form.setVetId(detail.preferredVetId());
 		form.setDurationMinutes(detail.durationMinutes() != null ? detail.durationMinutes() : 30);
+		withVersions(form, detail);
 
 		populateReferenceData(model);
 		model.addAttribute("queueItem", detail);
 		model.addAttribute("offerForm", form);
+		model.addAttribute("suggestions", this.suggestionService.rankedSuggestions(id, extractActorId(authentication)));
 		return "staff/queue/offer";
 	}
 
@@ -87,7 +94,8 @@ public class StaffQueueResolutionController {
 			.plus(Duration.ofMinutes(form.getDurationMinutes() != null ? form.getDurationMinutes() : 30));
 
 		AssistedOfferCommand cmd = new AssistedOfferCommand(id, actorId, form.getVetId(), startAt, endAt,
-				form.getExplanation());
+				form.getExplanation(), form.getExpectedRequestVersion(), form.getExpectedWorkflowRevision(),
+				form.getExpectedQueueVersion());
 
 		try {
 			Offer offer = this.assistedOfferService.createAssistedOffer(cmd);
@@ -112,6 +120,7 @@ public class StaffQueueResolutionController {
 		QueueDirectBookForm form = new QueueDirectBookForm();
 		form.setVetId(detail.preferredVetId());
 		form.setDurationMinutes(detail.durationMinutes() != null ? detail.durationMinutes() : 30);
+		withVersions(form, detail);
 
 		populateReferenceData(model);
 		model.addAttribute("queueItem", detail);
@@ -140,9 +149,20 @@ public class StaffQueueResolutionController {
 			.plus(Duration.ofMinutes(form.getDurationMinutes() != null ? form.getDurationMinutes() : 30));
 
 		QueueDirectBookCommand cmd = new QueueDirectBookCommand(id, actorId, form.getVetId(), startAt, endAt,
-				form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getInternalReason());
+				form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getReasonCategory(),
+				form.getInternalReason(), form.getExpectedRequestVersion(), form.getExpectedWorkflowRevision(),
+				form.getExpectedQueueVersion());
 
 		try {
+			if (!form.isConfirmed()) {
+				QueueDirectBookReview review = this.queueDirectBookingService.reviewDirectBooking(cmd);
+				StaffQueueQueryService.QueueItemDetailDto detail = this.queryService.getQueueItemDetail(id)
+					.orElse(null);
+				model.addAttribute("queueItem", detail);
+				model.addAttribute("review", review);
+				model.addAttribute("directBookForm", form);
+				return "staff/queue/direct-book-review";
+			}
 			Appointment appointment = this.queueDirectBookingService.directBookFromQueue(cmd);
 			redirectAttributes.addFlashAttribute("successMessage", "Appointment booked directly. Queue item resolved.");
 			return "redirect:/staff/appointments/" + appointment.getId();
@@ -162,7 +182,7 @@ public class StaffQueueResolutionController {
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + id));
 
 		model.addAttribute("queueItem", detail);
-		model.addAttribute("closeQueueForm", new CloseQueueForm());
+		model.addAttribute("closeQueueForm", withVersions(new CloseQueueForm(), detail));
 		return "staff/queue/close";
 	}
 
@@ -179,7 +199,8 @@ public class StaffQueueResolutionController {
 		}
 
 		try {
-			this.queueContactService.closeQueueItem(id, actorId, form.getReason());
+			this.queueContactService.closeQueueItem(id, actorId, form.getReason(), form.getExpectedRequestVersion(),
+					form.getExpectedWorkflowRevision(), form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage", "Queue item closed.");
 			return "redirect:/staff/queue";
 		}
@@ -202,6 +223,13 @@ public class StaffQueueResolutionController {
 			return principal.getAccountId();
 		}
 		return 1L;
+	}
+
+	private <T extends VersionedQueueForm> T withVersions(T form, StaffQueueQueryService.QueueItemDetailDto detail) {
+		form.setExpectedRequestVersion(detail.requestVersion());
+		form.setExpectedWorkflowRevision(detail.workflowRevisionNumber());
+		form.setExpectedQueueVersion(detail.queueVersion());
+		return form;
 	}
 
 }

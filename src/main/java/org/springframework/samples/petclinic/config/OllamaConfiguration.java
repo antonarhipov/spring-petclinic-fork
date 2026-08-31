@@ -7,13 +7,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
+import org.springframework.boot.restclient.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-@Configuration
+/**
+ * Uses the JDK HTTP client for blocking local Ollama calls so the configured read timeout
+ * is honored without routing this path through Reactor Netty.
+ */
+@Configuration(proxyBeanMethods = false)
 public class OllamaConfiguration {
+
+	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
 
 	@Bean
 	@ConditionalOnMissingBean
@@ -32,12 +41,20 @@ public class OllamaConfiguration {
 	}
 
 	@Bean
-	public RestClient ollamaRestClient(OllamaProperties properties) {
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(Duration.ofSeconds(properties.getTimeoutSeconds()));
-		requestFactory.setReadTimeout(Duration.ofSeconds(properties.getTimeoutSeconds()));
+	public RestClientCustomizer ollamaRestClientTimeoutCustomizer(OllamaProperties properties) {
+		ClientHttpRequestFactory requestFactory = ollamaClientHttpRequestFactory(properties);
+		return builder -> builder.requestFactory(requestFactory);
+	}
 
-		return RestClient.builder().baseUrl(properties.getBaseUrl()).requestFactory(requestFactory).build();
+	ClientHttpRequestFactory ollamaClientHttpRequestFactory(OllamaProperties properties) {
+		Duration readTimeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+		HttpClientSettings settings = HttpClientSettings.defaults().withTimeouts(CONNECT_TIMEOUT, readTimeout);
+		return ClientHttpRequestFactoryBuilder.jdk().build(settings);
+	}
+
+	@Bean
+	public RestClient ollamaRestClient(RestClient.Builder builder, OllamaProperties properties) {
+		return builder.baseUrl(properties.getBaseUrl()).build();
 	}
 
 	public static class OllamaProperties {

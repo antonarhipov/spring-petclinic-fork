@@ -257,6 +257,15 @@ class SchedulingAcceptanceJourneyTests {
 		return date;
 	}
 
+	private Integer currentWorkflowRevision(QueueItem item) {
+		return item.getWorkflowRevision() != null ? item.getWorkflowRevision().getRevisionNumber() : null;
+	}
+
+	private void claim(QueueItem item, Account staff) {
+		this.queueAssignmentService.claim(item.getId(), staff.getId(), item.getRequest().getVersion(),
+				currentWorkflowRevision(item), item.getVersion());
+	}
+
 	@Test
 	@DisplayName("Journey 1: Successful interpretation, owner confirmation, suggestion, and booking")
 	void journey01_successfulInterpretationAndRoutineBooking() {
@@ -387,7 +396,7 @@ class SchedulingAcceptanceJourneyTests {
 		QueueItem item = this.queueItemRepository.findByRequestId(request.getId()).orElseThrow();
 		assertThat(item.getState()).isEqualTo(QueueState.NEW);
 
-		this.queueAssignmentService.claim(item.getId(), this.staffAccount1.getId());
+		claim(item, this.staffAccount1);
 
 		LocalDate targetDate = nextWeekday(6);
 		AvailabilityWindow window = new AvailabilityWindow(null, WindowClassification.PREFERRED, WindowShape.ONE_OFF,
@@ -395,7 +404,8 @@ class SchedulingAcceptanceJourneyTests {
 
 		WorkflowRevision revision = this.staffInterpretationService
 			.recordManualInterpretation(new ManualInterpretationCommand(item.getId(), this.staffAccount1.getId(),
-					"Vaccination booster", 30, this.vet.getId(), null, Urgency.ROUTINE, List.of(window), false));
+					"Vaccination booster", 30, this.vet.getId(), null, Urgency.ROUTINE, List.of(window), false,
+					item.getRequest().getVersion(), currentWorkflowRevision(item), item.getVersion()));
 
 		assertThat(revision).isNotNull();
 		assertThat(revision.getDurationMinutes()).isEqualTo(30);
@@ -424,9 +434,10 @@ class SchedulingAcceptanceJourneyTests {
 		assertThat(request.getState()).isEqualTo(RequestState.STAFF_HANDLING);
 		QueueItem item = this.queueItemRepository.findByRequestId(request.getId()).orElseThrow();
 
-		this.queueAssignmentService.claim(item.getId(), this.staffAccount1.getId());
+		claim(item, this.staffAccount1);
 		this.emergencyClearanceService.clearEmergency(item.getId(), this.staffAccount1.getId(), Urgency.PRIORITY,
-				"Examined by triage phone call");
+				"Examined by triage phone call", item.getRequest().getVersion(), currentWorkflowRevision(item),
+				item.getVersion());
 
 		QueueItem clearedItem = this.queueItemRepository.findById(item.getId()).orElseThrow();
 		assertThat(clearedItem.getUrgency()).isEqualTo(Urgency.PRIORITY);
@@ -439,22 +450,26 @@ class SchedulingAcceptanceJourneyTests {
 				"Need assistance booking", false);
 		QueueItem item = this.queueItemRepository.findByRequestId(request.getId()).orElseThrow();
 
-		this.queueAssignmentService.claim(item.getId(), this.staffAccount1.getId());
+		claim(item, this.staffAccount1);
 		this.queueContactService.recordContactAttempt(item.getId(), this.staffAccount1.getId(),
-				ContactOutcome.REACHED_AGREED, "Agreed on Friday morning slot");
+				ContactOutcome.REACHED_AGREED, "Agreed on Friday morning slot", item.getRequest().getVersion(),
+				currentWorkflowRevision(item), item.getVersion());
 
 		LocalDate targetDate = nextWeekday(7);
 		AvailabilityWindow window = new AvailabilityWindow(null, WindowClassification.PREFERRED, WindowShape.ONE_OFF,
 				targetDate, null, null, null, LocalTime.of(10, 0), LocalTime.of(12, 0), "Assisted window", null);
 		this.staffInterpretationService
 			.recordManualInterpretation(new ManualInterpretationCommand(item.getId(), this.staffAccount1.getId(),
-					"Assisted checkup", 30, this.vet.getId(), null, Urgency.ROUTINE, List.of(window), false));
+					"Assisted checkup", 30, this.vet.getId(), null, Urgency.ROUTINE, List.of(window), false,
+					item.getRequest().getVersion(), currentWorkflowRevision(item), item.getVersion()));
+		this.ownerInterpretationService.confirmInterpretation(request.getId(), this.owner.getId());
 
 		ZonedDateTime startZdt = targetDate.atTime(10, 0).atZone(CLINIC_ZONE);
 		ZonedDateTime endZdt = targetDate.atTime(10, 30).atZone(CLINIC_ZONE);
 
 		AssistedOfferCommand cmd = new AssistedOfferCommand(item.getId(), this.staffAccount1.getId(), this.vet.getId(),
-				startZdt.toInstant(), endZdt.toInstant(), "Discussed on phone");
+				startZdt.toInstant(), endZdt.toInstant(), "Discussed on phone", item.getRequest().getVersion(),
+				currentWorkflowRevision(item), item.getVersion());
 		Offer offer = this.assistedOfferService.createAssistedOffer(cmd);
 
 		assertThat(offer.getOrigin()).isEqualTo(OfferOrigin.STAFF_ASSISTED);
@@ -517,7 +532,7 @@ class SchedulingAcceptanceJourneyTests {
 		assertThat(rescheduled.getStartAt()).isEqualTo(newStartZdt.toInstant());
 
 		StaffCancellationCommand cancelCmd = new StaffCancellationCommand(appointment.getId(),
-				this.staffAccount1.getId(), "STAFF_EMERGENCY", "Doctor unavailable", "Clinic emergency", true);
+				this.staffAccount1.getId(), "VET_UNAVAILABLE", "Doctor unavailable", "Clinic emergency", true);
 		Appointment cancelled = this.cancellationService.cancelAppointmentByStaff(cancelCmd);
 		assertThat(cancelled.getBookingState()).isEqualTo(BookingState.CANCELLED);
 	}
@@ -578,12 +593,13 @@ class SchedulingAcceptanceJourneyTests {
 				"Staff queue test prose", false);
 		QueueItem item = this.queueItemRepository.findByRequestId(request.getId()).orElseThrow();
 
-		this.queueAssignmentService.claim(item.getId(), this.staffAccount1.getId());
+		claim(item, this.staffAccount1);
 		QueueItem claimed = this.queueItemRepository.findById(item.getId()).orElseThrow();
 		assertThat(claimed.getAssigneeAccountId()).isEqualTo(this.staffAccount1.getId());
 		assertThat(claimed.getState()).isEqualTo(QueueState.IN_REVIEW);
 
-		this.queueAssignmentService.reassign(item.getId(), this.staffAccount2.getId(), this.staffAccount1.getId());
+		this.queueAssignmentService.reassign(item.getId(), this.staffAccount2.getId(), this.staffAccount1.getId(),
+				"Shift handoff", item.getRequest().getVersion(), currentWorkflowRevision(item), item.getVersion());
 		QueueItem reassigned = this.queueItemRepository.findById(item.getId()).orElseThrow();
 		assertThat(reassigned.getAssigneeAccountId()).isEqualTo(this.staffAccount2.getId());
 	}

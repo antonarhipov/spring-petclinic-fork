@@ -14,7 +14,8 @@
     </div>
   </div>
 
-  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" th:object="${directBookForm}" method="post">
+	<form th:action="@{'/staff/queue/' + ${queueItem.id} + '/direct-book'}" th:object="${directBookForm}" method="post">
+	<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Appointment Slot</strong></div>
       <div class="card-body">
@@ -80,6 +81,18 @@
         </div>
 
         <div class="mb-3 row">
+          <label class="col-sm-3 col-form-label">Reason Category</label>
+          <div class="col-sm-6">
+            <select th:field="*{reasonCategory}" class="form-select" required>
+              <option value="OWNER_REQUEST">Owner Request</option>
+              <option value="CLINICAL_NEED">Clinical Need</option>
+              <option value="FOLLOW_UP">Follow-up</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3 row">
           <label class="col-sm-3 col-form-label">Internal Reason / Notes</label>
           <div class="col-sm-6">
             <textarea th:field="*{internalReason}" rows="3" class="form-control" placeholder="Reason for booking and clinical circumstances (encrypted)" required></textarea>
@@ -90,7 +103,7 @@
 
     <div class="mb-3 row">
       <div class="col-sm-6">
-        <button type="submit" class="btn btn-primary">Direct Book & Resolve Queue Item</button>
+        <button type="submit" class="btn btn-primary">Review Direct Booking</button>
         <a th:href="@{'/staff/queue/' + ${queueItem.id}}" class="btn btn-secondary ms-2">Cancel</a>
       </div>
     </div>

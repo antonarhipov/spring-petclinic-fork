@@ -1,5 +1,6 @@
 package org.springframework.samples.petclinic.appointment;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -28,10 +29,12 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcPetClinicSecurity
 @WebMvcTest(StaffDirectBookingController.class)
@@ -57,6 +60,12 @@ class StaffDirectBookingControllerTests {
 
 	@MockitoBean
 	private VetRepository vetRepository;
+
+	@MockitoBean
+	private AppointmentLifecyclePolicy lifecyclePolicy;
+
+	@MockitoBean
+	private Clock clock;
 
 	private Owner sampleOwner() {
 		Owner owner = new Owner();
@@ -198,7 +207,8 @@ class StaffDirectBookingControllerTests {
 
 	@Test
 	void viewAppointmentDetailsReturnsDetailView() throws Exception {
-		Appointment appointment = new Appointment(1, 1, 1, Instant.now(), Instant.now().plusSeconds(1800),
+		Instant now = Instant.parse("2026-08-31T10:00:00Z");
+		Appointment appointment = new Appointment(1, 1, 1, now.plusSeconds(3600), now.plusSeconds(5400),
 				"Europe/Amsterdam");
 		appointment.setId(10L);
 		given(this.appointmentRepository.findById(10L)).willReturn(Optional.of(appointment));
@@ -206,11 +216,16 @@ class StaffDirectBookingControllerTests {
 		given(this.vetRepository.findById(1)).willReturn(Optional.of(sampleVet()));
 		given(this.appointmentChangeEventRepository.findByAppointmentIdOrderByOccurredAtAsc(10L)).willReturn(List.of());
 		given(this.effectiveAvailabilityService.getClinicZoneId()).willReturn(ZoneId.of("Europe/Amsterdam"));
+		given(this.clock.instant()).willReturn(now);
+		given(this.lifecyclePolicy.canStaffCancel(appointment, now)).willReturn(true);
+		given(this.lifecyclePolicy.canReschedule(appointment, now)).willReturn(true);
 
 		this.mockMvc.perform(get("/staff/appointments/10"))
 			.andExpect(status().isOk())
 			.andExpect(view().name("staff/appointments/detail"))
-			.andExpect(model().attributeExists("appointment", "owner", "pet", "vet", "changeEvents"));
+			.andExpect(model().attributeExists("appointment", "owner", "pet", "vet", "changeEvents", "canCancel",
+					"canReschedule", "canComplete", "canRecordNoShow", "canCorrectOutcome"))
+			.andExpect(content().string(containsString("href=\"/staff/appointments/10/cancel\"")));
 	}
 
 }

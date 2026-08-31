@@ -44,4 +44,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
 	java.util.Optional<Appointment> findByIdAndOwnerId(Long id, Integer ownerId);
 
+	boolean existsByOwnerId(Integer ownerId);
+
+	boolean existsByPetId(Integer petId);
+
+	List<Appointment> findByBookingStateAndEndAtAfter(BookingState bookingState, Instant instant);
+
 }

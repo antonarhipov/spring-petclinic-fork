@@ -147,6 +147,9 @@ public class AppointmentOutcomeService {
 		Objects.requireNonNull(cmd, "cmd must not be null");
 		Objects.requireNonNull(cmd.appointmentId(), "appointmentId must not be null");
 		Objects.requireNonNull(cmd.actorAccountId(), "actorAccountId must not be null");
+		if (cmd.reason() == null || cmd.reason().isBlank()) {
+			throw new IllegalArgumentException("A no-show reason is required");
+		}
 
 		return this.calendarCoordinator.executeWithLock(() -> {
 			Appointment appointment = this.appointmentRepository.findById(cmd.appointmentId())
@@ -162,28 +165,22 @@ public class AppointmentOutcomeService {
 			appointment.setUpdatedAt(now);
 			Appointment savedAppt = this.appointmentRepository.save(appointment);
 
-			ProtectedPayload reasonPayload = null;
-			if (cmd.reason() != null && !cmd.reason().isBlank()) {
-				reasonPayload = this.payloadService.store(UUID.randomUUID(), "NO_SHOW_REASON", 1, "text/plain",
-						cmd.reason().trim());
-			}
+			ProtectedPayload reasonPayload = this.payloadService.store(UUID.randomUUID(), "NO_SHOW_REASON", 1,
+					"text/plain", cmd.reason().trim());
 
 			AppointmentOutcomeEvent outcomeEvent = new AppointmentOutcomeEvent(savedAppt.getId(),
 					AppointmentOutcomeEventType.NO_SHOW, cmd.actorAccountId(), now, OutcomeState.PENDING,
-					OutcomeState.NO_SHOW, null, reasonPayload != null ? reasonPayload.getId() : null, null);
+					OutcomeState.NO_SHOW, null, reasonPayload.getId(), null);
 			AppointmentOutcomeEvent savedOutcomeEvent = this.outcomeEventRepository.save(outcomeEvent);
 
 			AppointmentChangeEvent changeEvent = new AppointmentChangeEvent(savedAppt.getId(), cmd.actorAccountId(),
 					"ROLE_STAFF", "APPOINTMENT_NO_SHOW", false, null);
 			changeEvent.setOccurredAt(now);
-			if (reasonPayload != null) {
-				changeEvent.setProtectedReasonPayloadId(reasonPayload.getId());
-			}
+			changeEvent.setProtectedReasonPayloadId(reasonPayload.getId());
 			this.changeEventRepository.save(changeEvent);
 
 			this.auditService.recordEvent(cmd.actorAccountId(), "APPOINTMENT_NO_SHOW", "Appointment",
-					savedAppt.getId().toString(), "SUCCESS", UUID.randomUUID(), null,
-					reasonPayload != null ? reasonPayload.getId() : null);
+					savedAppt.getId().toString(), "SUCCESS", UUID.randomUUID(), null, reasonPayload.getId());
 
 			this.ownerHistoryService.recordOwnerHistory(savedAppt.getOwnerId(), savedAppt.getPetId(),
 					savedAppt.getOriginatingRequestId(), "APPOINTMENT_NO_SHOW", "Appointment marked as no-show", null);

@@ -1,19 +1,31 @@
 package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.audit.ProtectedPayload;
 import org.springframework.samples.petclinic.audit.ProtectedPayloadService;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.availability.ClinicPolicy;
 import org.springframework.samples.petclinic.availability.ClinicPolicyRepository;
+import org.springframework.samples.petclinic.config.OllamaConfiguration.OllamaProperties;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
@@ -38,7 +50,9 @@ import org.springframework.samples.petclinic.vet.Specialty;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Component
 public class InterpretationJobCoordinator {
@@ -52,6 +66,8 @@ public class InterpretationJobCoordinator {
 	private final EmergencyKeywordScreen emergencyScreen;
 
 	private final ProtectedPayloadService payloadService;
+
+	private final AuditService auditService;
 
 	private final StaffFallbackPort staffFallbackPort;
 
@@ -73,17 +89,64 @@ public class InterpretationJobCoordinator {
 
 	private final Clock clock;
 
+	private final TransactionTemplate transactionTemplate;
+
+	private final Duration interpretationTimeout;
+
 	public InterpretationJobCoordinator(InterpretationClient interpretationClient,
 			InterpretationOutputValidator validator, EmergencyKeywordScreen emergencyScreen,
-			ProtectedPayloadService payloadService, StaffFallbackPort staffFallbackPort,
+			ProtectedPayloadService payloadService, AuditService auditService, StaffFallbackPort staffFallbackPort,
 			BackgroundJobRepository jobRepository, SchedulingRequestRepository requestRepository,
 			InterpretationRepository interpretationRepository, WorkflowRevisionRepository workflowRevisionRepository,
 			ClinicPolicyRepository clinicPolicyRepository, OwnerRepository ownerRepository, VetRepository vetRepository,
 			ObjectMapper objectMapper, Clock clock) {
+		this(interpretationClient, validator, emergencyScreen, payloadService, auditService, staffFallbackPort,
+				jobRepository, requestRepository, interpretationRepository, workflowRevisionRepository,
+				clinicPolicyRepository, ownerRepository, vetRepository, objectMapper, clock, Duration.ofSeconds(10),
+				null);
+	}
+
+	InterpretationJobCoordinator(InterpretationClient interpretationClient, InterpretationOutputValidator validator,
+			EmergencyKeywordScreen emergencyScreen, ProtectedPayloadService payloadService, AuditService auditService,
+			StaffFallbackPort staffFallbackPort, BackgroundJobRepository jobRepository,
+			SchedulingRequestRepository requestRepository, InterpretationRepository interpretationRepository,
+			WorkflowRevisionRepository workflowRevisionRepository, ClinicPolicyRepository clinicPolicyRepository,
+			OwnerRepository ownerRepository, VetRepository vetRepository, ObjectMapper objectMapper, Clock clock,
+			Duration interpretationTimeout) {
+		this(interpretationClient, validator, emergencyScreen, payloadService, auditService, staffFallbackPort,
+				jobRepository, requestRepository, interpretationRepository, workflowRevisionRepository,
+				clinicPolicyRepository, ownerRepository, vetRepository, objectMapper, clock, interpretationTimeout,
+				null);
+	}
+
+	@Autowired
+	public InterpretationJobCoordinator(InterpretationClient interpretationClient,
+			InterpretationOutputValidator validator, EmergencyKeywordScreen emergencyScreen,
+			ProtectedPayloadService payloadService, AuditService auditService, StaffFallbackPort staffFallbackPort,
+			BackgroundJobRepository jobRepository, SchedulingRequestRepository requestRepository,
+			InterpretationRepository interpretationRepository, WorkflowRevisionRepository workflowRevisionRepository,
+			ClinicPolicyRepository clinicPolicyRepository, OwnerRepository ownerRepository, VetRepository vetRepository,
+			ObjectMapper objectMapper, Clock clock, OllamaProperties ollamaProperties,
+			PlatformTransactionManager transactionManager) {
+		this(interpretationClient, validator, emergencyScreen, payloadService, auditService, staffFallbackPort,
+				jobRepository, requestRepository, interpretationRepository, workflowRevisionRepository,
+				clinicPolicyRepository, ownerRepository, vetRepository, objectMapper, clock,
+				Duration.ofSeconds(ollamaProperties.getTimeoutSeconds()), new TransactionTemplate(transactionManager));
+	}
+
+	private InterpretationJobCoordinator(InterpretationClient interpretationClient,
+			InterpretationOutputValidator validator, EmergencyKeywordScreen emergencyScreen,
+			ProtectedPayloadService payloadService, AuditService auditService, StaffFallbackPort staffFallbackPort,
+			BackgroundJobRepository jobRepository, SchedulingRequestRepository requestRepository,
+			InterpretationRepository interpretationRepository, WorkflowRevisionRepository workflowRevisionRepository,
+			ClinicPolicyRepository clinicPolicyRepository, OwnerRepository ownerRepository, VetRepository vetRepository,
+			ObjectMapper objectMapper, Clock clock, Duration interpretationTimeout,
+			TransactionTemplate transactionTemplate) {
 		this.interpretationClient = interpretationClient;
 		this.validator = validator;
 		this.emergencyScreen = emergencyScreen;
 		this.payloadService = payloadService;
+		this.auditService = auditService;
 		this.staffFallbackPort = staffFallbackPort;
 		this.jobRepository = jobRepository;
 		this.requestRepository = requestRepository;
@@ -94,17 +157,70 @@ public class InterpretationJobCoordinator {
 		this.vetRepository = vetRepository;
 		this.objectMapper = objectMapper;
 		this.clock = clock;
+		this.interpretationTimeout = interpretationTimeout;
+		this.transactionTemplate = transactionTemplate;
 	}
 
-	@Transactional
+	public void executeInterpretationJob(Long jobId, String leaseToken) {
+		BackgroundJob job = inTransaction(() -> this.jobRepository.findById(jobId)
+			.orElseThrow(() -> new IllegalArgumentException("Background job not found: " + jobId)));
+		if (job.getState() != JobState.RUNNING || !Objects.equals(job.getLeaseToken(), leaseToken)) {
+			return;
+		}
+		executeInterpretationJob(job);
+	}
+
 	public void executeInterpretationJob(BackgroundJob job) {
+		PreparedInterpretation prepared = inTransaction(() -> prepare(job));
+		if (prepared == null) {
+			return;
+		}
+
+		int maxAttempts = 2;
+		InterpretationCandidate candidate = null;
+		int attempts = 0;
+		long deadlineNanos = System.nanoTime() + this.interpretationTimeout.toNanos();
+		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+			attempts = attempt;
+			try {
+				candidate = interpretWithinBudget(prepared.prompt(), deadlineNanos);
+				InterpretationOutputValidator.ValidationResult validationResult = this.validator.validate(candidate,
+						prepared.policy());
+				if (validationResult.valid()) {
+					log.info("Interpretation attempt {} passed schema validation: {}", attempt, candidate);
+					break;
+				}
+				log.warn("Interpretation attempt {} failed schema validation; errorCount={}, errors={}", attempt,
+						validationResult.errors().size(), validationResult.errors());
+				candidate = null;
+			}
+			catch (Exception ex) {
+				log.warn("Interpretation attempt {} failed; correlationId={}, category={}", attempt, UUID.randomUUID(),
+						ex.getClass().getSimpleName());
+				candidate = null;
+				if (System.nanoTime() >= deadlineNanos || ex instanceof TimeoutException) {
+					break;
+				}
+			}
+		}
+
+		InterpretationCandidate finalCandidate = candidate;
+		int finalAttempts = attempts;
+		inTransaction(() -> {
+			commit(prepared, finalCandidate, finalAttempts);
+			return null;
+		});
+	}
+
+	private PreparedInterpretation prepare(BackgroundJob suppliedJob) {
+		BackgroundJob job = reload(suppliedJob);
 		TextRevision textRevision = job.getTextRevision();
 		if (textRevision == null) {
 			log.warn("Job {} has no text revision", job.getId());
 			job.setState(JobState.FAILED);
 			job.setOutcomeCategory(OutcomeCategory.ERROR);
 			this.jobRepository.save(job);
-			return;
+			return null;
 		}
 
 		SchedulingRequest request = textRevision.getRequest();
@@ -114,7 +230,7 @@ public class InterpretationJobCoordinator {
 			log.info("Job {} is stale for request {}", job.getId(), request.getId());
 			job.setState(JobState.STALE);
 			this.jobRepository.save(job);
-			return;
+			return null;
 		}
 
 		Instant now = this.clock.instant();
@@ -122,45 +238,80 @@ public class InterpretationJobCoordinator {
 
 		// 1. Emergency keyword screen
 		EmergencyKeywordScreen.EmergencyScreenResult emergencyResult = this.emergencyScreen.screen(prose);
+		this.auditService.recordEvent(null, "EMERGENCY_SCREEN", "TextRevision", textRevision.getId().toString(),
+				emergencyResult.emergencyDetected() ? "MATCH" : "CLEAR", null, null, null);
 		if (emergencyResult.emergencyDetected()) {
 			log.warn("Emergency detected in prose for request {}", request.getId());
 			handleEmergencyDetected(job, request, textRevision, prose, emergencyResult, now);
-			return;
+			return null;
 		}
 
 		// 2. Build prompt
 		ClinicPolicy policy = this.clinicPolicyRepository.findSingleton().orElseGet(ClinicPolicy::createDefaultPolicy);
 		InterpretationPrompt prompt = buildPrompt(request, prose, textRevision.getSubmittedAt(), policy);
 
-		// 3. AI Interpretation with 1 retry
-		int maxAttempts = 2;
-		InterpretationCandidate candidate = null;
-		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-			try {
-				job.setAttemptCount(attempt);
-				candidate = this.interpretationClient.interpret(prompt);
-				InterpretationOutputValidator.ValidationResult validationResult = this.validator.validate(candidate,
-						policy);
-				if (validationResult.valid()) {
-					break;
-				}
-				else {
-					log.warn("Interpretation attempt {} validation failed: {}", attempt, validationResult.errors());
-					candidate = null;
-				}
-			}
-			catch (Exception ex) {
-				log.warn("Interpretation attempt {} threw error: {}", attempt, ex.getMessage());
-				candidate = null;
-			}
-		}
+		return new PreparedInterpretation(suppliedJob, job.getId(), job.getLeaseToken(), request.getId(),
+				textRevision.getId(), prompt, policy);
+	}
 
-		// 4. Handle Result
+	private void commit(PreparedInterpretation prepared, InterpretationCandidate candidate, int attempts) {
+		BackgroundJob job = reload(prepared.suppliedJob());
+		if (job.getState() != JobState.RUNNING || !Objects.equals(job.getLeaseToken(), prepared.leaseToken())) {
+			return;
+		}
+		TextRevision textRevision = job.getTextRevision();
+		SchedulingRequest request = textRevision != null ? textRevision.getRequest() : null;
+		if (textRevision == null || request == null || !Objects.equals(textRevision.getId(), prepared.textRevisionId())
+				|| request.getCurrentTextRevision() == null
+				|| !Objects.equals(request.getCurrentTextRevision().getId(), prepared.textRevisionId())
+				|| request.getState().isTerminal()) {
+			job.setState(JobState.STALE);
+			this.jobRepository.save(job);
+			return;
+		}
+		job.setAttemptCount(attempts);
+		Instant now = this.clock.instant();
 		if (candidate != null) {
-			handleSuccessfulInterpretation(job, request, textRevision, candidate, policy, now);
+			handleSuccessfulInterpretation(job, request, textRevision, candidate, prepared.policy(), now);
 		}
 		else {
 			handleUnusableInterpretation(job, request, textRevision, now);
+		}
+	}
+
+	private BackgroundJob reload(BackgroundJob job) {
+		if (job.getId() == null) {
+			return job;
+		}
+		return this.jobRepository.findById(job.getId()).orElse(job);
+	}
+
+	private <T> T inTransaction(Supplier<T> action) {
+		if (this.transactionTemplate == null) {
+			return action.get();
+		}
+		return this.transactionTemplate.execute(status -> action.get());
+	}
+
+	private record PreparedInterpretation(BackgroundJob suppliedJob, Long jobId, String leaseToken, Long requestId,
+			Long textRevisionId, InterpretationPrompt prompt, ClinicPolicy policy) {
+	}
+
+	private InterpretationCandidate interpretWithinBudget(InterpretationPrompt prompt, long deadlineNanos)
+			throws InterruptedException, ExecutionException, TimeoutException {
+		long remainingNanos = deadlineNanos - System.nanoTime();
+		if (remainingNanos <= 0) {
+			throw new TimeoutException("Interpretation deadline exhausted");
+		}
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			Future<InterpretationCandidate> future = executor.submit(() -> this.interpretationClient.interpret(prompt));
+			try {
+				return future.get(remainingNanos, TimeUnit.NANOSECONDS);
+			}
+			catch (TimeoutException ex) {
+				future.cancel(true);
+				throw ex;
+			}
 		}
 	}
 
@@ -186,9 +337,15 @@ public class InterpretationJobCoordinator {
 		job.setOutcomeCategory(OutcomeCategory.EMERGENCY_DETECTED);
 		job.setCompletedAt(now);
 		this.jobRepository.save(job);
+		this.auditService.recordStructuredEvent(null, "AI_EMERGENCY_SCREEN_ROUTED", "SchedulingRequest",
+				request.getId().toString(), "SUCCESS", null, null,
+				Map.of("textRevisionId", textRevision.getId(), "requestState",
+						RequestState.AWAITING_INTERPRETATION.name()),
+				Map.of("textRevisionId", textRevision.getId(), "requestState", request.getState().name(),
+						"jobCommandId", job.getCommandId(), "outcome", job.getOutcomeCategory().name()));
 
 		this.staffFallbackPort.sendToFallbackQueue(request.getId(), "EMERGENCY_DETECTED", Urgency.EMERGENCY_SUSPECTED,
-				"Emergency keywords matched: " + emergencyResult.matchedKeywords());
+				"Deterministic emergency screen requires immediate staff review");
 	}
 
 	private void handleSuccessfulInterpretation(BackgroundJob job, SchedulingRequest request, TextRevision textRevision,
@@ -233,9 +390,18 @@ public class InterpretationJobCoordinator {
 			job.setOutcomeCategory(OutcomeCategory.SUCCESS);
 			job.setCompletedAt(now);
 			this.jobRepository.save(job);
+			this.auditService.recordStructuredEvent(null, "AI_INTERPRETATION_COMPLETED", "SchedulingRequest",
+					request.getId().toString(), "SUCCESS", null, null,
+					Map.of("textRevisionId", textRevision.getId(), "requestState",
+							RequestState.AWAITING_INTERPRETATION.name()),
+					Map.of("workflowRevisionId",
+							String.valueOf(savedWorkflowRev != null ? savedWorkflowRev.getId() : null), "requestState",
+							request.getState().name(), "jobCommandId", job.getCommandId(), "outcome",
+							job.getOutcomeCategory().name()));
 		}
 		catch (Exception ex) {
-			log.error("Failed to commit successful interpretation: {}", ex.getMessage(), ex);
+			log.error("Failed to commit interpretation; correlationId={}, category={}", UUID.randomUUID(),
+					ex.getClass().getSimpleName());
 			handleUnusableInterpretation(job, request, textRevision, now);
 		}
 	}
@@ -254,6 +420,12 @@ public class InterpretationJobCoordinator {
 		job.setOutcomeCategory(OutcomeCategory.UNUSABLE_OUTPUT);
 		job.setCompletedAt(now);
 		this.jobRepository.save(job);
+		this.auditService.recordStructuredEvent(null, "AI_INTERPRETATION_FAILED", "SchedulingRequest",
+				request.getId().toString(), "FALLBACK", null, null,
+				Map.of("textRevisionId", textRevision.getId(), "requestState",
+						RequestState.AWAITING_INTERPRETATION.name()),
+				Map.of("requestState", request.getState().name(), "jobCommandId", job.getCommandId(), "outcome",
+						job.getOutcomeCategory().name()));
 
 		this.staffFallbackPort.sendToFallbackQueue(request.getId(), "UNUSABLE_OUTPUT", Urgency.ROUTINE,
 				"Automated interpretation failed or produced unusable output");

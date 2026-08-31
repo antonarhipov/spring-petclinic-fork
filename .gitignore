@@ -46,3 +46,13 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Runtime data and local secrets ###
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.mv.db
+*.trace.db
+.env*
+*.key

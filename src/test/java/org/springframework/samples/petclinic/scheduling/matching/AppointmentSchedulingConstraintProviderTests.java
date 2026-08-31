@@ -2,8 +2,8 @@ package org.springframework.samples.petclinic.scheduling.matching;
 
 import java.time.Instant;
 
-import ai.timefold.solver.core.api.score.buildin.bendable.BendableScore;
-import ai.timefold.solver.test.api.score.stream.ConstraintVerifier;
+import ai.timefold.solver.core.api.score.BendableScore;
+import ai.timefold.solver.core.api.score.stream.test.ConstraintVerifier;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -145,8 +145,8 @@ class AppointmentSchedulingConstraintProviderTests {
 		int expectedTieBreakPenalty = Math.abs(tieBreakKey.hashCode() % 10000);
 		AppointmentAssignment assignment = new AppointmentAssignment(1L, slot(true, true, false, 0, 0, tieBreakKey));
 
-		BendableScore expectedScore = BendableScore.of(new int[] { 0 },
-				new int[] { 100, 100, 0, 0, 0, -expectedTieBreakPenalty });
+		BendableScore expectedScore = BendableScore.of(new long[] { 0 },
+				new long[] { 100, 100, 0, 0, 0, -expectedTieBreakPenalty });
 
 		this.constraintVerifier.verifyThat().given(assignment).scores(expectedScore);
 	}

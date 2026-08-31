@@ -2,8 +2,11 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
 <body>
   <div class="alert alert-danger mb-4" role="alert">
-    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
-    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency hotline immediately or visit the nearest 24-hour veterinary hospital.
+	<strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+	<span th:text="${clinicPolicy.urgentCareGuidance}">Call the clinic for urgent care.</span>
+	Call <strong th:text="${clinicPolicy.clinicPhone}">555-0100</strong>
+	<span th:text="${'during ' + clinicPolicy.contactHours}">during clinic hours</span>.
+	The portal and staff queue are not emergency-response channels.
   </div>
 
   <div class="d-flex justify-content-between align-items-center mb-4">
@@ -15,14 +18,14 @@
 
   <div class="row">
     <div class="col-md-8">
-      <!-- Active Scheduling Requests -->
+      <!-- Requests that require an owner decision -->
       <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0"><span class="fa fa-clock-o"></span> Scheduling Requests</h5>
+		<div class="card-header bg-warning text-dark">
+		  <h5 class="mb-0"><span class="fa fa-exclamation-circle"></span> Items Needing Your Action</h5>
         </div>
         <div class="card-body">
-          <p class="text-muted" th:if="${requests == null || requests.empty}">No active scheduling requests.</p>
-          <div class="table-responsive" th:if="${requests != null && !requests.empty}">
+		  <p class="text-muted" th:if="${itemsNeedingAction == null || itemsNeedingAction.empty}">Nothing needs your attention right now.</p>
+		  <div class="table-responsive" th:if="${itemsNeedingAction != null && !itemsNeedingAction.empty}">
             <table class="table table-hover align-middle">
               <thead>
                 <tr>
@@ -32,16 +35,24 @@
                 </tr>
               </thead>
               <tbody>
-                <tr th:each="req : ${requests}">
+				<tr th:each="req : ${itemsNeedingAction}">
                   <td><strong th:text="${req.petName}">Pet</strong></td>
                   <td>
                     <span class="badge bg-info text-dark" th:text="${req.displayState}">STATE</span>
                     <div class="small text-muted" th:text="${req.statusMessage}">Status message</div>
                   </td>
-                  <td>
-                    <a th:href="@{'/owner/requests/' + ${req.requestId}}" class="btn btn-sm btn-outline-primary">
-                      View Request
-                    </a>
+                  <td class="text-nowrap">
+					<div class="small text-warning mb-2" th:if="${req.awaitingOwnerContact}">
+					  Contact the clinic; no appointment is currently held.
+					</div>
+					<div class="d-inline-flex align-items-center">
+					  <form th:if="${req.primaryActionPost}" th:action="${req.primaryActionUrl}" method="post">
+						<button type="submit" class="btn btn-sm btn-primary" th:text="${req.primaryActionLabel}">Take Action</button>
+					  </form>
+					  <a th:unless="${req.primaryActionPost}" th:href="${req.primaryActionUrl}"
+						 class="btn btn-sm btn-primary" th:text="${req.primaryActionLabel}">Take Action</a>
+					  <a th:href="@{'/owner/requests/' + ${req.requestId} + '/withdraw'}" class="btn btn-sm btn-outline-danger ms-1">Cancel</a>
+					</div>
                   </td>
                 </tr>
               </tbody>
@@ -49,6 +60,28 @@
           </div>
         </div>
       </div>
+
+	  <div class="card mb-4 shadow-sm">
+		<div class="card-header bg-primary text-white">
+		  <h5 class="mb-0"><span class="fa fa-clock-o"></span> Other Active Requests</h5>
+		</div>
+		<div class="card-body">
+		  <p class="text-muted" th:if="${otherActiveRequests == null || otherActiveRequests.empty}">No other active scheduling requests.</p>
+		  <div class="list-group" th:if="${otherActiveRequests != null && !otherActiveRequests.empty}">
+			<div class="list-group-item d-flex justify-content-between align-items-center" th:each="req : ${otherActiveRequests}">
+			  <div>
+			    <a th:href="@{'/owner/requests/' + ${req.requestId}}" class="fw-bold" th:text="${req.petName}">Pet</a>
+			    <span class="badge bg-info text-dark ms-2" th:text="${req.displayState}">STATE</span>
+			    <span class="d-block small text-muted" th:text="${req.statusMessage}">Status</span>
+			  </div>
+			  <div class="text-nowrap ms-2">
+			    <a th:href="@{'/owner/requests/' + ${req.requestId}}" class="btn btn-sm btn-outline-primary">View</a>
+			    <a th:href="@{'/owner/requests/' + ${req.requestId} + '/withdraw'}" class="btn btn-sm btn-outline-danger ms-1">Cancel</a>
+			  </div>
+			</div>
+		  </div>
+		</div>
+	  </div>
 
       <!-- Upcoming Appointments -->
       <div class="card mb-4 shadow-sm">
@@ -64,19 +97,39 @@
                   <th>Date & Time</th>
                   <th>Duration</th>
                   <th>Status</th>
+				  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr th:each="apt : ${appointments}">
                   <td th:text="${apt.startAt}">2026-09-01 10:00</td>
                   <td th:text="${apt.durationMinutes + ' min'}">30 min</td>
-                  <td><span class="badge bg-success" th:text="${apt.state}">CONFIRMED</span></td>
+				  <td><span class="badge bg-success" th:text="${apt.bookingState}">CONFIRMED</span></td>
+				  <td class="text-nowrap">
+					<a th:href="@{/owner/appointments/{id}(id=${apt.id})}" class="btn btn-sm btn-outline-primary">View</a>
+					<a th:href="@{/owner/appointments/{id}/cancel(id=${apt.id})}" class="btn btn-sm btn-outline-danger ms-1">Cancel</a>
+				  </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+	  <div class="card mb-4 shadow-sm">
+		<div class="card-header bg-light">
+		  <h5 class="mb-0"><span class="fa fa-history"></span> Recent History</h5>
+		</div>
+		<div class="card-body">
+		  <p class="text-muted" th:if="${recentHistory == null || recentHistory.empty}">No completed scheduling requests yet.</p>
+		  <ul class="list-group list-group-flush" th:if="${recentHistory != null && !recentHistory.empty}">
+			<li class="list-group-item px-0" th:each="req : ${recentHistory}">
+			  <a th:href="@{'/owner/requests/' + ${req.requestId}}" th:text="${req.petName + ' — ' + req.displayState}">Request</a>
+			</li>
+		  </ul>
+		  <a class="btn btn-link px-0 mt-2" th:href="@{/owner/history}">View full history</a>
+		</div>
+	  </div>
     </div>
 
     <div class="col-md-4">

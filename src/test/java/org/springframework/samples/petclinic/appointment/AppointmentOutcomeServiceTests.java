@@ -186,4 +186,15 @@ class AppointmentOutcomeServiceTests {
 			.hasMessageContaining("Cannot record no-show");
 	}
 
+	@Test
+	void recordingNoShowWithoutReasonFailsWithoutChangingAppointment() {
+		AppointmentOutcomeService.NoShowCommand cmd = new AppointmentOutcomeService.NoShowCommand(
+				this.pastAppointment.getId(), this.staffAccountId, "  ");
+
+		assertThatThrownBy(() -> this.outcomeService.recordNoShow(cmd)).isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("reason is required");
+		assertThat(this.appointmentRepository.findById(this.pastAppointment.getId()).orElseThrow().getOutcomeState())
+			.isEqualTo(OutcomeState.PENDING);
+	}
+
 }

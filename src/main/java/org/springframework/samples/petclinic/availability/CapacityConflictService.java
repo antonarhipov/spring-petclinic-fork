@@ -11,9 +11,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.samples.petclinic.appointment.Appointment;
+import org.springframework.samples.petclinic.appointment.AppointmentCapacityBlockerSource;
 import org.springframework.samples.petclinic.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.appointment.BookingState;
 import org.springframework.samples.petclinic.shared.TimeInterval;
+import org.springframework.samples.petclinic.scheduling.offer.Offer;
+import org.springframework.samples.petclinic.scheduling.offer.OfferRepository;
+import org.springframework.samples.petclinic.availability.AvailabilityConflictException.AvailabilityBlocker;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +31,17 @@ public class CapacityConflictService {
 
 	private final List<CapacityBlockerSource> blockerSources;
 
+	private final OfferRepository offerRepository;
+
 	private final Clock clock;
 
 	public CapacityConflictService(EffectiveAvailabilityService effectiveAvailabilityService,
-			AppointmentRepository appointmentRepository, List<CapacityBlockerSource> blockerSources, Clock clock) {
+			AppointmentRepository appointmentRepository, List<CapacityBlockerSource> blockerSources,
+			OfferRepository offerRepository, Clock clock) {
 		this.effectiveAvailabilityService = effectiveAvailabilityService;
 		this.appointmentRepository = appointmentRepository;
 		this.blockerSources = blockerSources;
+		this.offerRepository = offerRepository;
 		this.clock = clock;
 	}
 
@@ -69,6 +77,13 @@ public class CapacityConflictService {
 		return false;
 	}
 
+	public List<TimeInterval> findVetBlockers(Integer vetId, Instant startAt, Instant endAt) {
+		return this.blockerSources.stream()
+			.flatMap(source -> source.findVetBlockers(vetId, startAt, endAt).stream())
+			.distinct()
+			.toList();
+	}
+
 	public record BookingConflictCheck(boolean valid, List<String> errorMessages) {
 		public static BookingConflictCheck ok() {
 			return new BookingConflictCheck(true, Collections.emptyList());
@@ -89,6 +104,21 @@ public class CapacityConflictService {
 	 */
 	public BookingConflictCheck checkDirectBookingConflicts(Integer vetId, Integer ownerId, Integer petId,
 			Instant startAt, Instant endAt) {
+		return checkBookingConflicts(vetId, ownerId, petId, startAt, endAt, true, null);
+	}
+
+	public BookingConflictCheck checkStaffBookingConflicts(Integer vetId, Integer ownerId, Integer petId,
+			Instant startAt, Instant endAt) {
+		return checkBookingConflicts(vetId, ownerId, petId, startAt, endAt, false, null);
+	}
+
+	public BookingConflictCheck checkStaffBookingConflictsExcludingAppointment(Long appointmentId, Integer vetId,
+			Integer ownerId, Integer petId, Instant startAt, Instant endAt) {
+		return checkBookingConflicts(vetId, ownerId, petId, startAt, endAt, false, appointmentId);
+	}
+
+	private BookingConflictCheck checkBookingConflicts(Integer vetId, Integer ownerId, Integer petId, Instant startAt,
+			Instant endAt, boolean enforceOwnerNotice, Long excludedAppointmentId) {
 		List<String> errors = new ArrayList<>();
 		if (startAt == null || endAt == null || !endAt.isAfter(startAt)) {
 			errors.add("End time must be after start time");
@@ -118,6 +148,14 @@ public class CapacityConflictService {
 		// 3. Booking horizon check
 		LocalDate bookingDate = startZdt.toLocalDate();
 		LocalDate today = LocalDate.now(this.clock.withZone(zoneId));
+		if (!startAt.isAfter(this.clock.instant())) {
+			errors.add("Appointment start time must be in the future");
+		}
+		if (enforceOwnerNotice
+				&& startAt.isBefore(this.clock.instant().plusSeconds(policy.getOwnerNoticeMinutes() * 60L))) {
+			errors.add("Appointment does not meet the owner minimum notice of " + policy.getOwnerNoticeMinutes()
+					+ " minutes");
+		}
 		LocalDate maxDate = today.plusDays(policy.getBookingHorizonDays());
 		if (bookingDate.isAfter(maxDate)) {
 			errors.add("Appointment date " + bookingDate + " exceeds the booking horizon of "
@@ -135,7 +173,7 @@ public class CapacityConflictService {
 		// 5. Blocker checks (vet, pet, owner)
 		for (CapacityBlockerSource source : this.blockerSources) {
 			if (vetId != null) {
-				List<TimeInterval> vetBlockers = source.findVetBlockers(vetId, startAt, endAt);
+				List<TimeInterval> vetBlockers = findVetBlockers(source, excludedAppointmentId, vetId, startAt, endAt);
 				for (TimeInterval blocker : vetBlockers) {
 					if (blocker.overlaps(candidateInterval)) {
 						errors.add("The veterinarian has a conflicting appointment or hold from " + blocker.getStart()
@@ -146,7 +184,7 @@ public class CapacityConflictService {
 			}
 
 			if (petId != null) {
-				List<TimeInterval> petBlockers = source.findPetBlockers(petId, startAt, endAt);
+				List<TimeInterval> petBlockers = findPetBlockers(source, excludedAppointmentId, petId, startAt, endAt);
 				for (TimeInterval blocker : petBlockers) {
 					if (blocker.overlaps(candidateInterval)) {
 						errors.add("The pet has a conflicting appointment or hold from " + blocker.getStart() + " to "
@@ -157,7 +195,8 @@ public class CapacityConflictService {
 			}
 
 			if (ownerId != null) {
-				List<TimeInterval> ownerBlockers = source.findOwnerBlockers(ownerId, startAt, endAt);
+				List<TimeInterval> ownerBlockers = findOwnerBlockers(source, excludedAppointmentId, ownerId, startAt,
+						endAt);
 				for (TimeInterval blocker : ownerBlockers) {
 					if (blocker.overlaps(candidateInterval)) {
 						errors.add("The owner has a conflicting appointment or hold from " + blocker.getStart() + " to "
@@ -172,6 +211,42 @@ public class CapacityConflictService {
 			return BookingConflictCheck.failed(errors);
 		}
 		return BookingConflictCheck.ok();
+	}
+
+	private List<TimeInterval> findVetBlockers(CapacityBlockerSource source, Long excludedAppointmentId, Integer vetId,
+			Instant startAt, Instant endAt) {
+		if (excludedAppointmentId != null && source instanceof AppointmentCapacityBlockerSource) {
+			return this.appointmentRepository.findOverlappingByVet(vetId, BookingState.CONFIRMED, startAt, endAt)
+				.stream()
+				.filter(appointment -> !excludedAppointmentId.equals(appointment.getId()))
+				.map(appointment -> TimeInterval.of(appointment.getStartAt(), appointment.getEndAt()))
+				.toList();
+		}
+		return source.findVetBlockers(vetId, startAt, endAt);
+	}
+
+	private List<TimeInterval> findPetBlockers(CapacityBlockerSource source, Long excludedAppointmentId, Integer petId,
+			Instant startAt, Instant endAt) {
+		if (excludedAppointmentId != null && source instanceof AppointmentCapacityBlockerSource) {
+			return this.appointmentRepository.findOverlappingByPet(petId, BookingState.CONFIRMED, startAt, endAt)
+				.stream()
+				.filter(appointment -> !excludedAppointmentId.equals(appointment.getId()))
+				.map(appointment -> TimeInterval.of(appointment.getStartAt(), appointment.getEndAt()))
+				.toList();
+		}
+		return source.findPetBlockers(petId, startAt, endAt);
+	}
+
+	private List<TimeInterval> findOwnerBlockers(CapacityBlockerSource source, Long excludedAppointmentId,
+			Integer ownerId, Instant startAt, Instant endAt) {
+		if (excludedAppointmentId != null && source instanceof AppointmentCapacityBlockerSource) {
+			return this.appointmentRepository.findOverlappingByOwner(ownerId, BookingState.CONFIRMED, startAt, endAt)
+				.stream()
+				.filter(appointment -> !excludedAppointmentId.equals(appointment.getId()))
+				.map(appointment -> TimeInterval.of(appointment.getStartAt(), appointment.getEndAt()))
+				.toList();
+		}
+		return source.findOwnerBlockers(ownerId, startAt, endAt);
 	}
 
 	/**
@@ -224,6 +299,40 @@ public class CapacityConflictService {
 			}
 		}
 		return conflicting;
+	}
+
+	public List<AvailabilityBlocker> findCapacityOutsideEffectiveAvailability(Integer vetId, LocalDate startDate,
+			LocalDate endDate) {
+		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
+		Instant rangeStart = startDate != null ? startDate.atStartOfDay(zoneId).toInstant() : this.clock.instant();
+		Instant rangeEnd = endDate != null ? endDate.plusDays(1).atStartOfDay(zoneId).toInstant() : Instant.MAX;
+		List<AvailabilityBlocker> blockers = new ArrayList<>();
+
+		for (Appointment appointment : this.appointmentRepository
+			.findByBookingStateAndEndAtAfter(BookingState.CONFIRMED, rangeStart)) {
+			if ((vetId == null || vetId.equals(appointment.getVetId())) && appointment.getStartAt().isBefore(rangeEnd)
+					&& !this.effectiveAvailabilityService.isAvailable(appointment.getVetId(), appointment.getStartAt(),
+							appointment.getEndAt())) {
+				blockers.add(new AvailabilityBlocker("APPOINTMENT", appointment.getId(), appointment.getOwnerId(),
+						appointment.getPetId(), appointment.getVetId(), appointment.getStartAt(),
+						appointment.getEndAt(), "/staff/appointments/" + appointment.getId()));
+			}
+		}
+
+		for (Offer offer : this.offerRepository.findAllActiveHolds(this.clock.instant())) {
+			if ((vetId == null || vetId.equals(offer.getVetId())) && offer.getEndAt().isAfter(rangeStart)
+					&& offer.getStartAt().isBefore(rangeEnd) && !this.effectiveAvailabilityService
+						.isAvailable(offer.getVetId(), offer.getStartAt(), offer.getEndAt())) {
+				blockers.add(new AvailabilityBlocker("ACTIVE_HOLD", offer.getId(), offer.getOwnerId(), offer.getPetId(),
+						offer.getVetId(), offer.getStartAt(), offer.getEndAt(),
+						"/staff/queue?requestId=" + offer.getRequest().getId()));
+			}
+		}
+		return blockers.stream()
+			.sorted(java.util.Comparator.comparing(AvailabilityBlocker::startAt)
+				.thenComparing(AvailabilityBlocker::type)
+				.thenComparing(AvailabilityBlocker::id))
+			.toList();
 	}
 
 }

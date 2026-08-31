@@ -45,7 +45,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * @author Wick Dynex
  */
 @Controller
-@RequestMapping("/owners/{ownerId}")
+@RequestMapping("/staff/owners/{ownerId}")
 class PetController {
 
 	private static final String VIEWS_PETS_CREATE_OR_UPDATE_FORM = "pets/createOrUpdatePetForm";
@@ -133,7 +133,7 @@ class PetController {
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
-		return "redirect:/owners/{ownerId}";
+		return "redirect:/staff/owners/{ownerId}";
 	}
 
 	@GetMapping("/pets/{petId}/edit")
@@ -175,7 +175,7 @@ class PetController {
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 		redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
-		return "redirect:/owners/{ownerId}";
+		return "redirect:/staff/owners/{ownerId}";
 	}
 
 	/**

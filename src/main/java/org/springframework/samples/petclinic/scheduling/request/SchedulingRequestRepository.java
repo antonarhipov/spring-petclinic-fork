@@ -15,4 +15,8 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 
 	Optional<SchedulingRequest> findByIdAndOwnerId(Long id, Integer ownerId);
 
+	boolean existsByOwnerId(Integer ownerId);
+
+	boolean existsByPetId(Integer petId);
+
 }

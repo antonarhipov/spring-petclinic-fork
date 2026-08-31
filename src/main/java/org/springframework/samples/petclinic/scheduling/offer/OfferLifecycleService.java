@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.scheduling.offer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -90,13 +91,15 @@ public class OfferLifecycleService {
 			}
 
 			Instant now = this.clock.instant();
+			OfferState priorState = offer.getState();
+			RequestState priorRequestState = offer.getRequest().getState();
 			offer.setState(OfferState.REJECTED);
 			this.offerRepository.save(offer);
 
 			SchedulingRequest request = offer.getRequest();
 			WorkflowRevision workflowRev = offer.getWorkflowRevision();
 
-			if (workflowRev != null) {
+			if (workflowRev != null && offer.getOrigin() != OfferOrigin.STAFF_ASSISTED) {
 				OfferExclusion exclusion = new OfferExclusion(workflowRev, offer.getVetId(), offer.getStartAt(),
 						offer.getEndAt(), offer.getId(), now);
 				this.offerExclusionRepository.save(exclusion);
@@ -128,6 +131,10 @@ public class OfferLifecycleService {
 					"OFFER_REJECTED", "Offer for " + offer.getStartAt() + " was rejected"
 							+ (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""),
 					null);
+			this.auditService.recordStructuredEvent(null, "OFFER_REJECTED", "Offer", offer.getId().toString(),
+					"SUCCESS", null, null,
+					Map.of("offerState", priorState.name(), "requestState", priorRequestState.name()),
+					Map.of("offerState", offer.getState().name(), "requestState", request.getState().name()));
 
 			log.info("Rejected offer {} for request {} (origin: {})", offer.getId(), request.getId(),
 					offer.getOrigin());
@@ -150,6 +157,8 @@ public class OfferLifecycleService {
 			if (offer.getExpiresAt().isAfter(now)) {
 				return offer; // Not yet expired
 			}
+			OfferState priorState = offer.getState();
+			RequestState priorRequestState = offer.getRequest().getState();
 
 			offer.setState(OfferState.EXPIRED);
 			this.offerRepository.save(offer);
@@ -157,7 +166,7 @@ public class OfferLifecycleService {
 			SchedulingRequest request = offer.getRequest();
 			WorkflowRevision workflowRev = offer.getWorkflowRevision();
 
-			if (workflowRev != null) {
+			if (workflowRev != null && offer.getOrigin() != OfferOrigin.STAFF_ASSISTED) {
 				OfferExclusion exclusion = new OfferExclusion(workflowRev, offer.getVetId(), offer.getStartAt(),
 						offer.getEndAt(), offer.getId(), now);
 				this.offerExclusionRepository.save(exclusion);
@@ -187,6 +196,9 @@ public class OfferLifecycleService {
 
 			this.ownerHistoryService.recordOwnerHistory(offer.getOwnerId(), offer.getPetId(), request.getId(),
 					"OFFER_EXPIRED", "Held offer expired at " + offer.getExpiresAt(), null);
+			this.auditService.recordStructuredEvent(null, "OFFER_EXPIRED", "Offer", offer.getId().toString(), "SUCCESS",
+					null, null, Map.of("offerState", priorState.name(), "requestState", priorRequestState.name()),
+					Map.of("offerState", offer.getState().name(), "requestState", request.getState().name()));
 
 			log.info("Expired offer {} for request {}", offer.getId(), request.getId());
 			return offer;
@@ -231,6 +243,9 @@ public class OfferLifecycleService {
 
 		this.ownerHistoryService.recordOwnerHistory(ownerId, request.getPetId(), requestId, "MATCH_REQUESTED",
 				"Owner requested next eligible appointment offer", null);
+		this.auditService.recordStructuredEvent(null, "MATCHING_REQUESTED", "SchedulingRequest", requestId.toString(),
+				"SUCCESS", null, null, Map.of("automaticOfferCount", currentOffers),
+				Map.of("jobCommandId", job.getCommandId(), "jobRunSequence", job.getRunSequence()));
 
 		log.info("Enqueued matching job for owner {} request {} (offer count so far: {})", ownerId, requestId,
 				currentOffers);

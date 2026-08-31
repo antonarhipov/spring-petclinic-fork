@@ -105,7 +105,7 @@ public class ClinicPolicy {
 
 	public static ClinicPolicy createDefaultPolicy() {
 		ClinicPolicy policy = new ClinicPolicy();
-		policy.setAllowedDurations(new HashSet<>(Set.of(15, 30, 45, 60, 90, 120)));
+		policy.setAllowedDurations(new HashSet<>(Set.of(15, 30, 45, 60)));
 		return policy;
 	}
 

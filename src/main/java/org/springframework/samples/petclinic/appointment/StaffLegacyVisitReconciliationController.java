@@ -120,7 +120,7 @@ public class StaffLegacyVisitReconciliationController {
 
 	}
 
-	@GetMapping
+	@GetMapping({ "", "/reconciliation" })
 	public String listLegacyVisits(Model model) {
 		List<LegacyVisitReconciliationService.LegacyVisitSummaryDto> visits = this.reconciliationService
 			.findUnreconciledFutureLegacyVisits();

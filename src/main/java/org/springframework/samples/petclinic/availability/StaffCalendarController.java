@@ -67,6 +67,7 @@ public class StaffCalendarController {
 		model.addAttribute("endDate", end);
 		model.addAttribute("filterVetId", vetId);
 		model.addAttribute("allVets", this.vetRepository.findAll());
+		model.addAttribute("weekView", this.staffCalendarQueryService.getWeekView(start, vetId));
 		return "staff/calendar/table";
 	}
 

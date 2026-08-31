@@ -20,7 +20,8 @@
     </div>
   </div>
 
-  <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/emergency-clearance'}" th:object="${emergencyClearanceForm}" method="post">
+	<form th:action="@{'/staff/queue/' + ${queueItem.id} + '/emergency-clearance'}" th:object="${emergencyClearanceForm}" method="post">
+	<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Emergency Clearance Details</strong></div>
       <div class="card-body">

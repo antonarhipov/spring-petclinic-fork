@@ -56,7 +56,8 @@ public class EmergencyClearanceService {
 	}
 
 	public WorkflowRevision clearEmergency(Long queueItemId, Long actorAccountId, Urgency newUrgency,
-			String clinicalJustification) {
+			String clinicalJustification, Long expectedRequestVersion, Integer expectedWorkflowRevision,
+			Long expectedQueueVersion) {
 		Objects.requireNonNull(queueItemId, "queueItemId must not be null");
 		Objects.requireNonNull(actorAccountId, "actorAccountId must not be null");
 		Objects.requireNonNull(newUrgency, "newUrgency must not be null");
@@ -70,11 +71,13 @@ public class EmergencyClearanceService {
 
 		QueueItem queueItem = this.queueItemRepository.findById(queueItemId)
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + queueItemId));
+		queueItem.requireExpectedVersions(expectedRequestVersion, expectedWorkflowRevision, expectedQueueVersion);
 
 		if (queueItem.getState() == QueueState.RESOLVED || queueItem.getState() == QueueState.CLOSED) {
 			throw new IllegalStateException(
 					"Cannot clear emergency on inactive queue item in state: " + queueItem.getState());
 		}
+		queueItem.requireAssignedTo(actorAccountId);
 
 		Instant now = this.clock.instant();
 		ProtectedPayload justificationPayload = this.payloadService.store(UUID.randomUUID(),

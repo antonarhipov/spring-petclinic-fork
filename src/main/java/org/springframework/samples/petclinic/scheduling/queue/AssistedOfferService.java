@@ -1,7 +1,6 @@
 package org.springframework.samples.petclinic.scheduling.queue;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,6 +25,7 @@ import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.WorkflowRevision;
+import org.springframework.samples.petclinic.scheduling.request.WorkflowRevisionState;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Service;
@@ -37,8 +37,6 @@ public class AssistedOfferService {
 
 	private static final Logger log = LoggerFactory.getLogger(AssistedOfferService.class);
 
-	private static final Duration HOLD_DURATION = Duration.ofMinutes(10);
-
 	private final QueueItemRepository queueItemRepository;
 
 	private final SchedulingRequestRepository requestRepository;
@@ -46,6 +44,8 @@ public class AssistedOfferService {
 	private final OfferRepository offerRepository;
 
 	private final OfferExclusionRepository offerExclusionRepository;
+
+	private final ContactAttemptRepository contactAttemptRepository;
 
 	private final CalendarMutationCoordinator calendarCoordinator;
 
@@ -65,14 +65,15 @@ public class AssistedOfferService {
 
 	public AssistedOfferService(QueueItemRepository queueItemRepository, SchedulingRequestRepository requestRepository,
 			OfferRepository offerRepository, OfferExclusionRepository offerExclusionRepository,
-			CalendarMutationCoordinator calendarCoordinator, CalendarStateRepository calendarStateRepository,
-			CapacityConflictService capacityConflictService, EffectiveAvailabilityService effectiveAvailabilityService,
-			VetRepository vetRepository, AuditService auditService, OwnerHistoryService ownerHistoryService,
-			Clock clock) {
+			ContactAttemptRepository contactAttemptRepository, CalendarMutationCoordinator calendarCoordinator,
+			CalendarStateRepository calendarStateRepository, CapacityConflictService capacityConflictService,
+			EffectiveAvailabilityService effectiveAvailabilityService, VetRepository vetRepository,
+			AuditService auditService, OwnerHistoryService ownerHistoryService, Clock clock) {
 		this.queueItemRepository = queueItemRepository;
 		this.requestRepository = requestRepository;
 		this.offerRepository = offerRepository;
 		this.offerExclusionRepository = offerExclusionRepository;
+		this.contactAttemptRepository = contactAttemptRepository;
 		this.calendarCoordinator = calendarCoordinator;
 		this.calendarStateRepository = calendarStateRepository;
 		this.capacityConflictService = capacityConflictService;
@@ -84,7 +85,8 @@ public class AssistedOfferService {
 	}
 
 	public record AssistedOfferCommand(Long queueItemId, Long actorAccountId, Integer vetId, Instant startAt,
-			Instant endAt, String explanation) {
+			Instant endAt, String explanation, Long expectedRequestVersion, Integer expectedWorkflowRevision,
+			Long expectedQueueVersion) {
 	}
 
 	public Offer createAssistedOffer(AssistedOfferCommand cmd) {
@@ -97,10 +99,21 @@ public class AssistedOfferService {
 
 		QueueItem queueItem = this.queueItemRepository.findById(cmd.queueItemId())
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + cmd.queueItemId()));
+		queueItem.requireExpectedVersions(cmd.expectedRequestVersion(), cmd.expectedWorkflowRevision(),
+				cmd.expectedQueueVersion());
 
 		if (queueItem.getState() == QueueState.RESOLVED || queueItem.getState() == QueueState.CLOSED) {
 			throw new IllegalStateException(
 					"Cannot create offer for inactive queue item in state: " + queueItem.getState());
+		}
+		queueItem.requireAssignedTo(cmd.actorAccountId());
+		boolean reachedOwner = this.contactAttemptRepository.findByQueueItemIdOrderByAttemptedAtAsc(queueItem.getId())
+			.stream()
+			.anyMatch(attempt -> attempt.getOutcome() == ContactOutcome.REACHED_AGREED
+					|| attempt.getOutcome() == ContactOutcome.REACHED_DISAGREED
+					|| attempt.getOutcome() == ContactOutcome.REACHED_NEEDS_FOLLOWUP);
+		if (!reachedOwner) {
+			throw new IllegalStateException("Record a successful owner contact before creating an assisted offer");
 		}
 
 		Vet vet = this.vetRepository.findById(cmd.vetId())
@@ -111,19 +124,31 @@ public class AssistedOfferService {
 		if (workflowRevision == null) {
 			throw new IllegalStateException("No workflow revision found for request " + request.getId());
 		}
+		if (workflowRevision.getState() != WorkflowRevisionState.CONFIRMED) {
+			throw new IllegalStateException("The owner must confirm the interpretation before an assisted offer");
+		}
 
 		return this.calendarCoordinator.executeWithLock(() -> {
 			Instant now = this.clock.instant();
-			if (this.capacityConflictService.hasOverlappingBlocker(cmd.vetId(), request.getPetId(),
-					request.getOwnerId(), cmd.startAt(), cmd.endAt())) {
-				throw new AvailabilityConflictException("Selected appointment slot has a capacity conflict");
+			CapacityConflictService.BookingConflictCheck check = this.capacityConflictService
+				.checkStaffBookingConflicts(cmd.vetId(), request.getOwnerId(), request.getPetId(), cmd.startAt(),
+						cmd.endAt());
+			if (!check.valid()) {
+				throw new AvailabilityConflictException(
+						"Selected slot is not eligible: " + String.join(", ", check.errorMessages()));
+			}
+			if (workflowRevision.getRequiredSpecialtyId() != null && vet.getSpecialties()
+				.stream()
+				.noneMatch(specialty -> specialty.getId().equals(workflowRevision.getRequiredSpecialtyId()))) {
+				throw new AvailabilityConflictException("Selected veterinarian does not have the required specialty");
 			}
 
 			CalendarState calendarState = this.calendarStateRepository.findSingletonForUpdate().orElse(null);
 			long currentCalRev = calendarState != null ? calendarState.getRevision() : 1L;
 
 			String zoneId = this.effectiveAvailabilityService.getClinicPolicy().getZoneId();
-			Instant expiresAt = now.plus(HOLD_DURATION);
+			int holdDurationMinutes = this.effectiveAvailabilityService.getClinicPolicy().getHoldDurationMinutes();
+			Instant expiresAt = now.plusSeconds(holdDurationMinutes * 60L);
 
 			Offer offer = new Offer(request, workflowRevision, request.getOwnerId(), request.getPetId(), cmd.vetId(),
 					OfferOrigin.STAFF_ASSISTED, cmd.startAt(), cmd.endAt(), zoneId, expiresAt, OfferState.HELD, null,
@@ -165,7 +190,7 @@ public class AssistedOfferService {
 		Instant now = this.clock.instant();
 		SchedulingRequest request = offer.getRequest();
 
-		if (offer.getWorkflowRevision() != null) {
+		if (offer.getWorkflowRevision() != null && !this.offerExclusionRepository.existsByOfferId(offer.getId())) {
 			OfferExclusion exclusion = new OfferExclusion(offer.getWorkflowRevision(), offer.getVetId(),
 					offer.getStartAt(), offer.getEndAt(), offer.getId(), now);
 			this.offerExclusionRepository.save(exclusion);

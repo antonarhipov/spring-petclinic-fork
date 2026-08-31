@@ -143,12 +143,17 @@ class SchedulingRequestServiceTests {
 	}
 
 	@Test
-	void submittingDuplicateActiveRequestForSamePetFails() {
-		this.requestService.submitRequest(this.ownerId, this.petId, "First request", true);
+	void submittingDuplicateActiveRequestForSamePetReopensExistingRequest() {
+		SchedulingRequest first = this.requestService.submitRequest(this.ownerId, this.petId, "First request", true);
+		int revisionCount = this.textRevisionRepository.findAll().size();
+		int jobCount = this.backgroundJobRepository.findAll().size();
 
-		assertThatThrownBy(() -> this.requestService.submitRequest(this.ownerId, this.petId, "Second request", true))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessageContaining("Active scheduling request already exists");
+		SchedulingRequest reopened = this.requestService.submitRequest(this.ownerId, this.petId, "Second request",
+				true);
+
+		assertThat(reopened.getId()).isEqualTo(first.getId());
+		assertThat(this.textRevisionRepository.findAll()).hasSize(revisionCount);
+		assertThat(this.backgroundJobRepository.findAll()).hasSize(jobCount);
 	}
 
 	@Test
@@ -172,6 +177,26 @@ class SchedulingRequestServiceTests {
 		assertThat(status).isPresent();
 		assertThat(status.get().requestId()).isEqualTo(request.getId());
 		assertThat(status.get().displayState()).isEqualTo("INTERPRETING_REQUEST");
+		assertThat(status.get().terminal()).isFalse();
+
+		// Transition to AWAITING_REVIEW
+		request.setState(RequestState.AWAITING_REVIEW);
+		this.requestRepository.saveAndFlush(request);
+		RequestStatusResponse reviewStatus = this.requestService.getOwnerRequestStatus(request.getId(), this.ownerId)
+			.orElseThrow();
+		assertThat(reviewStatus.displayState()).isEqualTo("REVIEW_INTERPRETATION");
+		assertThat(reviewStatus.canonicalUrl()).isEqualTo("/owner/requests/" + request.getId() + "/interpretation");
+		assertThat(reviewStatus.primaryAction()).isNotNull();
+		assertThat(reviewStatus.primaryAction().url())
+			.isEqualTo("/owner/requests/" + request.getId() + "/interpretation");
+
+		// Transition to CLOSED
+		request.setState(RequestState.CLOSED);
+		this.requestRepository.saveAndFlush(request);
+		RequestStatusResponse closedStatus = this.requestService.getOwnerRequestStatus(request.getId(), this.ownerId)
+			.orElseThrow();
+		assertThat(closedStatus.displayState()).isEqualTo("CLOSED");
+		assertThat(closedStatus.terminal()).isTrue();
 	}
 
 }

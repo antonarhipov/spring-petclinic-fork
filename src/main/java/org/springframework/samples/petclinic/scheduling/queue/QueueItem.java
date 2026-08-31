@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.scheduling.queue;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -214,6 +215,23 @@ public class QueueItem {
 	public void addContactAttempt(ContactAttempt attempt) {
 		this.contactAttempts.add(attempt);
 		attempt.setQueueItem(this);
+	}
+
+	public void requireAssignedTo(Long actorAccountId) {
+		// Claiming is no longer required; any authorized clinic staff or admin can
+		// perform actions.
+	}
+
+	public void requireExpectedVersions(Long expectedRequestVersion, Integer expectedWorkflowRevision,
+			Long expectedQueueVersion) {
+		Integer currentWorkflowRevision = this.workflowRevision != null ? this.workflowRevision.getRevisionNumber()
+				: (this.request.getCurrentWorkflowRevision() != null
+						? this.request.getCurrentWorkflowRevision().getRevisionNumber() : null);
+		if (!Objects.equals(this.request.getVersion(), expectedRequestVersion)
+				|| !Objects.equals(currentWorkflowRevision, expectedWorkflowRevision)
+				|| !Objects.equals(this.version, expectedQueueVersion)) {
+			throw new IllegalStateException("This queue item changed while you were editing it. Reload and try again.");
+		}
 	}
 
 }

@@ -101,6 +101,13 @@ public class Appointment extends SchedulingEntity {
 		this.endAt = endAt;
 	}
 
+	public long getDurationMinutes() {
+		if (this.startAt == null || this.endAt == null) {
+			return 0;
+		}
+		return java.time.Duration.between(this.startAt, this.endAt).toMinutes();
+	}
+
 	public String getZoneId() {
 		return this.zoneId;
 	}

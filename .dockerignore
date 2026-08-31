@@ -1,0 +1,12 @@
+.git/
+.idea/
+.vscode/
+target/
+build/
+.gradle/
+data/
+*.log
+*.tmp
+.env*
+Dockerfile*
+.dockerignore

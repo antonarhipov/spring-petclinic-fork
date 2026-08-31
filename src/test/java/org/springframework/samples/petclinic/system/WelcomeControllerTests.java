@@ -17,22 +17,22 @@
 package org.springframework.samples.petclinic.system;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.samples.petclinic.security.WebMvcPetClinicSecurity;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import org.springframework.test.context.aot.DisabledInAotMode;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 
-@WebMvcPetClinicSecurity
-@WebMvcTest(WelcomeController.class)
-@DisabledInNativeImage
-@DisabledInAotMode
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
 class WelcomeControllerTests {
 
 	@Autowired
@@ -40,7 +40,12 @@ class WelcomeControllerTests {
 
 	@Test
 	void welcome() throws Exception {
-		mockMvc.perform(get("/")).andExpect(status().isOk()).andExpect(view().name("welcome"));
+		mockMvc.perform(get("/"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("welcome"))
+			.andExpect(content().string(containsString("/login")))
+			.andExpect(content().string(not(containsString("/owners/find"))))
+			.andExpect(content().string(not(containsString("/staff/calendar"))));
 	}
 
 }

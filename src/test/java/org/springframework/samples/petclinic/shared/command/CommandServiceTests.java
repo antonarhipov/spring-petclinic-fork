@@ -92,6 +92,16 @@ class CommandServiceTests {
 	}
 
 	@Test
+	void testIssueTokenRejectsActorMismatch() {
+		this.commandService.issueToken(this.commandId, 1L, this.action, this.target, this.requestHash);
+
+		assertThatThrownBy(
+				() -> this.commandService.issueToken(this.commandId, 2L, this.action, this.target, this.requestHash))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("mismatch");
+	}
+
+	@Test
 	void testExecuteOrReplayExecutesOnceAndReplays() {
 		AtomicInteger executionCount = new AtomicInteger(0);
 

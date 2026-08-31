@@ -61,6 +61,14 @@
     </div>
   </div>
 
+  <div class="d-flex flex-wrap gap-2 mb-3" th:if="${canCancel || canReschedule || canComplete || canRecordNoShow || canCorrectOutcome}">
+	<a th:if="${canReschedule}" th:href="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" class="btn btn-primary">Reschedule</a>
+	<a th:if="${canCancel}" th:href="@{/staff/appointments/{id}/cancel(id=${appointment.id})}" class="btn btn-outline-danger">Cancel Appointment</a>
+	<a th:if="${canComplete}" th:href="@{/staff/appointments/{id}/complete(id=${appointment.id})}" class="btn btn-success">Mark Completed</a>
+	<a th:if="${canRecordNoShow}" th:href="@{/staff/appointments/{id}/no-show(id=${appointment.id})}" class="btn btn-outline-warning">Record No-show</a>
+	<a th:if="${canCorrectOutcome}" th:href="@{/staff/appointments/{id}/correct-outcome(id=${appointment.id})}" class="btn btn-outline-secondary">Correct Outcome</a>
+  </div>
+
   <div>
     <a th:href="@{/staff/calendar/week}" class="btn btn-outline-primary">Back to Calendar</a>
     <a th:href="@{/staff/calendar/table}" class="btn btn-outline-secondary ms-2">Back to Appointments Table</a>

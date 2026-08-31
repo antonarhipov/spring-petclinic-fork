@@ -3,10 +3,13 @@ package org.springframework.samples.petclinic.scheduling.offer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.samples.petclinic.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
+import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.security.PetClinicPrincipal;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
@@ -31,14 +34,18 @@ public class OwnerOfferController {
 
 	private final VetRepository vetRepository;
 
+	private final OwnerRepository ownerRepository;
+
 	private final Clock clock;
 
 	public OwnerOfferController(OfferService offerService, OfferRepository offerRepository,
-			SchedulingRequestRepository requestRepository, VetRepository vetRepository, Clock clock) {
+			SchedulingRequestRepository requestRepository, VetRepository vetRepository, OwnerRepository ownerRepository,
+			Clock clock) {
 		this.offerService = offerService;
 		this.offerRepository = offerRepository;
 		this.requestRepository = requestRepository;
 		this.vetRepository = vetRepository;
+		this.ownerRepository = ownerRepository;
 		this.clock = clock;
 	}
 
@@ -55,11 +62,34 @@ public class OwnerOfferController {
 
 		Vet vet = this.vetRepository.findById(offer.getVetId()).orElse(null);
 		String vetName = (vet != null) ? (vet.getFirstName() + " " + vet.getLastName()) : "Veterinarian";
+		String specialties = vet != null && !vet.getSpecialties().isEmpty() ? vet.getSpecialties()
+			.stream()
+			.map(specialty -> specialty.getName())
+			.sorted()
+			.reduce((a, b) -> a + ", " + b)
+			.orElse("General practice") : "General practice";
+		String petName = this.ownerRepository.findById(ownerId)
+			.map(owner -> owner.getPet(offer.getPetId()))
+			.map(pet -> pet.getName())
+			.orElse("Your pet");
+		Instant serverNow = this.clock.instant();
+		ZoneId clinicZone = ZoneId.of(offer.getZoneId());
+		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM uuuu");
+		DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
 		model.addAttribute("offer", offer);
 		model.addAttribute("vetName", vetName);
+		model.addAttribute("vetSpecialties", specialties);
+		model.addAttribute("petName", petName);
 		model.addAttribute("durationMinutes", Duration.between(offer.getStartAt(), offer.getEndAt()).toMinutes());
-		model.addAttribute("currentTime", this.clock.instant());
+		model.addAttribute("currentTime", serverNow);
+		model.addAttribute("offerExpired",
+				offer.getState() != OfferState.HELD || !offer.getExpiresAt().isAfter(serverNow));
+		model.addAttribute("localDate", offer.getStartAt().atZone(clinicZone).format(dateFormatter));
+		model.addAttribute("localInterval", offer.getStartAt().atZone(clinicZone).format(timeFormatter) + "–"
+				+ offer.getEndAt().atZone(clinicZone).format(timeFormatter));
+		int attempts = offer.getAutomaticAttemptNumber() != null ? offer.getAutomaticAttemptNumber() : 0;
+		model.addAttribute("remainingAutomaticAttempts", Math.max(0, 5 - attempts));
 		return "owner/requests/offer";
 	}
 

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +15,17 @@ public class AuditService {
 
 	private final AuditEventRepository auditEventRepository;
 
-	public AuditService(AuditEventRepository auditEventRepository) {
+	private final ProtectedPayloadService protectedPayloadService;
+
+	private final ObjectMapper objectMapper;
+
+	public AuditService(AuditEventRepository auditEventRepository, ProtectedPayloadService protectedPayloadService,
+			ObjectMapper objectMapper) {
 		this.auditEventRepository = Objects.requireNonNull(auditEventRepository,
 				"auditEventRepository must not be null");
+		this.protectedPayloadService = Objects.requireNonNull(protectedPayloadService,
+				"protectedPayloadService must not be null");
+		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
 	}
 
 	public AuditEvent recordEvent(Long actorAccountId, String action, String targetType, String targetId,
@@ -39,6 +49,19 @@ public class AuditService {
 		return this.auditEventRepository.save(event);
 	}
 
+	public AuditEvent recordStructuredEvent(Long actorAccountId, String action, String targetType, String targetId,
+			String outcome, UUID correlationId, UUID commandId, Object before, Object after) {
+		try {
+			String snapshot = this.objectMapper.writeValueAsString(new AuditSnapshot(before, after));
+			ProtectedPayload payload = this.protectedPayloadService.storeJson("AUDIT_SNAPSHOT", snapshot);
+			return recordEvent(actorAccountId, action, targetType, targetId, outcome, correlationId, commandId,
+					payload.getId());
+		}
+		catch (JsonProcessingException ex) {
+			throw new IllegalStateException("Could not encode the structured audit snapshot", ex);
+		}
+	}
+
 	@Transactional(readOnly = true)
 	public List<AuditEvent> findEventsForTarget(String targetType, String targetId) {
 		return this.auditEventRepository.findByTargetTypeAndTargetIdOrderByOccurredAtDesc(targetType, targetId);
@@ -47,6 +70,9 @@ public class AuditService {
 	@Transactional(readOnly = true)
 	public List<AuditEvent> findEventsForActor(Long actorAccountId) {
 		return this.auditEventRepository.findByActorAccountIdOrderByOccurredAtDesc(actorAccountId);
+	}
+
+	private record AuditSnapshot(Object before, Object after) {
 	}
 
 }

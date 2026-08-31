@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.scheduling.request;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -126,6 +127,7 @@ public class OwnerRequestRevisionService {
 		});
 
 		WorkflowRevision priorRevision = request.getCurrentWorkflowRevision();
+		String priorRevisionState = priorRevision != null ? priorRevision.getState().name() : "NONE";
 		if (priorRevision != null) {
 			priorRevision.setState(WorkflowRevisionState.SUPERSEDED);
 			this.workflowRevisionRepository.save(priorRevision);
@@ -141,14 +143,14 @@ public class OwnerRequestRevisionService {
 		}
 
 		int nextRevisionNumber = priorRevision != null ? priorRevision.getRevisionNumber() + 1 : 1;
-		Urgency urgency = (cmd.urgency() != null) ? cmd.urgency()
-				: (priorRevision != null ? priorRevision.getUrgency() : Urgency.ROUTINE);
+		Urgency urgency = priorRevision != null ? priorRevision.getUrgency() : Urgency.ROUTINE;
+		Integer requiredSpecialtyId = priorRevision != null ? priorRevision.getRequiredSpecialtyId() : null;
 		Integer duration = (cmd.durationMinutes() != null) ? cmd.durationMinutes()
 				: (priorRevision != null ? priorRevision.getDurationMinutes() : 30);
 
 		WorkflowRevision newRevision = new WorkflowRevision(request, nextRevisionNumber,
-				WorkflowRevisionState.CONFIRMED, reasonPayload, duration, cmd.preferredVetId(),
-				cmd.requiredSpecialtyId(), urgency, now);
+				WorkflowRevisionState.CONFIRMED, reasonPayload, duration, cmd.preferredVetId(), requiredSpecialtyId,
+				urgency, now);
 		newRevision.setConfirmedAt(now);
 		newRevision.setAutomaticOfferCount(0);
 
@@ -196,6 +198,11 @@ public class OwnerRequestRevisionService {
 
 		this.ownerHistoryService.recordOwnerHistory(cmd.ownerId(), request.getPetId(), request.getId(),
 				"STRUCTURED_REVISED", "Structured appointment preferences updated by owner", null);
+		this.auditService.recordStructuredEvent(null, "OWNER_STRUCTURED_REVISION_CREATED", "SchedulingRequest",
+				request.getId().toString(), "SUCCESS", null, null,
+				Map.of("state", priorRevisionState, "revisionId", priorRevision != null ? priorRevision.getId() : 0),
+				Map.of("state", request.getState().name(), "revisionId", savedRevision.getId(), "revisionNumber",
+						savedRevision.getRevisionNumber()));
 
 		log.info("Owner {} revised structured details for request {} (new revision {})", cmd.ownerId(), request.getId(),
 				savedRevision.getId());
@@ -209,17 +216,13 @@ public class OwnerRequestRevisionService {
 
 		SchedulingRequest request = this.requestRepository.findByIdAndOwnerId(cmd.requestId(), cmd.ownerId())
 			.orElseThrow(() -> new IllegalArgumentException("Request not found: " + cmd.requestId()));
+		RequestState priorRequestState = request.getState();
 
 		if (request.getState().isTerminal()) {
 			throw new IllegalStateException("Cannot revise request in terminal state: " + request.getState());
 		}
 
-		if (cmd.prose() == null || cmd.prose().isBlank()) {
-			throw new IllegalArgumentException("Scheduling request prose must not be blank");
-		}
-		if (cmd.prose().length() > 2000) {
-			throw new IllegalArgumentException("Scheduling request prose must not exceed 2000 characters");
-		}
+		SchedulingProsePolicy.validate(cmd.prose());
 
 		Instant now = this.clock.instant();
 
@@ -253,6 +256,8 @@ public class OwnerRequestRevisionService {
 		request.setCurrentTextRevision(savedTextRevision);
 
 		EmergencyKeywordScreen.EmergencyScreenResult screenResult = this.emergencyScreen.screen(cmd.prose());
+		this.auditService.recordEvent(null, "EMERGENCY_SCREEN", "TextRevision", savedTextRevision.getId().toString(),
+				screenResult.emergencyDetected() ? "MATCH" : "CLEAR", null, null, null);
 
 		if (screenResult.emergencyDetected()) {
 			request.setState(RequestState.STAFF_HANDLING);
@@ -304,6 +309,12 @@ public class OwnerRequestRevisionService {
 
 		this.ownerHistoryService.recordOwnerHistory(cmd.ownerId(), request.getPetId(), request.getId(), "PROSE_REVISED",
 				"New request prose submitted (AI consent: " + cmd.aiConsent() + ")", null);
+		this.auditService.recordStructuredEvent(null, "OWNER_PROSE_REVISION_CREATED", "SchedulingRequest",
+				request.getId().toString(), "SUCCESS", null, null,
+				Map.of("state", priorRequestState.name(), "textRevisionId",
+						priorTextRev != null ? priorTextRev.getId() : 0),
+				Map.of("state", request.getState().name(), "textRevisionId", savedTextRevision.getId(), "aiConsent",
+						cmd.aiConsent()));
 
 		log.info("Owner {} revised prose for request {} (new text revision {})", cmd.ownerId(), request.getId(),
 				savedTextRevision.getId());

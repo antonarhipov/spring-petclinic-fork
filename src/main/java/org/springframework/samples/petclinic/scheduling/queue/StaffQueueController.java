@@ -7,7 +7,10 @@ import org.springframework.samples.petclinic.account.AccountRepository;
 import org.springframework.samples.petclinic.account.Role;
 import org.springframework.samples.petclinic.scheduling.interpretation.Urgency;
 import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.ContactAttemptForm;
+import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.ClaimForm;
 import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.ReassignForm;
+import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.UnclaimForm;
+import org.springframework.samples.petclinic.scheduling.queue.QueueActionForms.VersionedQueueForm;
 import org.springframework.samples.petclinic.security.PetClinicPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -62,7 +65,7 @@ public class StaffQueueController {
 	}
 
 	@GetMapping("/{id}")
-	public String viewQueueItem(@PathVariable("id") Long id, Model model) {
+	public String viewQueueItem(@PathVariable("id") Long id, Authentication authentication, Model model) {
 		StaffQueueQueryService.QueueItemDetailDto detail = this.queryService.getQueueItemDetail(id)
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + id));
 
@@ -73,17 +76,21 @@ public class StaffQueueController {
 
 		model.addAttribute("queueItem", detail);
 		model.addAttribute("staffAccounts", staffAccounts);
-		model.addAttribute("contactAttemptForm", new ContactAttemptForm());
-		model.addAttribute("reassignForm", new ReassignForm());
+		model.addAttribute("contactAttemptForm", withVersions(new ContactAttemptForm(), detail));
+		model.addAttribute("claimForm", withVersions(new ClaimForm(), detail));
+		model.addAttribute("reassignForm", withVersions(new ReassignForm(), detail));
+		model.addAttribute("unclaimForm", withVersions(new UnclaimForm(), detail));
+		model.addAttribute("currentActorId", extractActorId(authentication));
 		return "staff/queue/detail";
 	}
 
 	@PostMapping("/{id}/claim")
-	public String claimQueueItem(@PathVariable("id") Long id, Authentication authentication,
-			RedirectAttributes redirectAttributes) {
+	public String claimQueueItem(@PathVariable("id") Long id, @ModelAttribute("claimForm") ClaimForm form,
+			Authentication authentication, RedirectAttributes redirectAttributes) {
 		Long actorId = extractActorId(authentication);
 		try {
-			this.assignmentService.claim(id, actorId);
+			this.assignmentService.claim(id, actorId, form.getExpectedRequestVersion(),
+					form.getExpectedWorkflowRevision(), form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage", "Queue item claimed successfully.");
 		}
 		catch (Exception ex) {
@@ -93,11 +100,12 @@ public class StaffQueueController {
 	}
 
 	@PostMapping("/{id}/unclaim")
-	public String unclaimQueueItem(@PathVariable("id") Long id, Authentication authentication,
-			RedirectAttributes redirectAttributes) {
+	public String unclaimQueueItem(@PathVariable("id") Long id, @ModelAttribute("unclaimForm") UnclaimForm form,
+			Authentication authentication, RedirectAttributes redirectAttributes) {
 		Long actorId = extractActorId(authentication);
 		try {
-			this.assignmentService.unclaim(id, actorId);
+			this.assignmentService.unclaim(id, actorId, form.getReason(), form.getExpectedRequestVersion(),
+					form.getExpectedWorkflowRevision(), form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage", "Queue item unclaimed.");
 		}
 		catch (Exception ex) {
@@ -114,7 +122,9 @@ public class StaffQueueController {
 			if (form.getAssigneeAccountId() == null) {
 				throw new IllegalArgumentException("Please select a staff member to reassign to.");
 			}
-			this.assignmentService.reassign(id, form.getAssigneeAccountId(), actorId);
+			this.assignmentService.reassign(id, form.getAssigneeAccountId(), actorId, form.getReason(),
+					form.getExpectedRequestVersion(), form.getExpectedWorkflowRevision(),
+					form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage", "Queue item reassigned successfully.");
 		}
 		catch (Exception ex) {
@@ -129,7 +139,9 @@ public class StaffQueueController {
 			RedirectAttributes redirectAttributes) {
 		Long actorId = extractActorId(authentication);
 		try {
-			this.contactService.recordContactAttempt(id, actorId, form.getOutcome(), form.getNote());
+			this.contactService.recordContactAttempt(id, actorId, form.getOutcome(), form.getNote(),
+					form.getExpectedRequestVersion(), form.getExpectedWorkflowRevision(),
+					form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage", "Contact attempt recorded.");
 		}
 		catch (Exception ex) {
@@ -143,6 +155,13 @@ public class StaffQueueController {
 			return principal.getAccountId();
 		}
 		return 1L;
+	}
+
+	private <T extends VersionedQueueForm> T withVersions(T form, StaffQueueQueryService.QueueItemDetailDto detail) {
+		form.setExpectedRequestVersion(detail.requestVersion());
+		form.setExpectedWorkflowRevision(detail.workflowRevisionNumber());
+		form.setExpectedQueueVersion(detail.queueVersion());
+		return form;
 	}
 
 }

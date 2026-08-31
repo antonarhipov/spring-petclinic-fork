@@ -91,7 +91,7 @@ class PetControllerTests {
 
 	@Test
 	void initCreationForm() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
+		mockMvc.perform(get("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
 			.andExpect(model().attributeExists("pet"));
@@ -100,12 +100,12 @@ class PetControllerTests {
 	@Test
 	void processCreationFormSuccess() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+			.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 				.param("name", "Betty")
 				.param("type", "hamster")
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+			.andExpect(view().name("redirect:/staff/owners/{ownerId}"));
 	}
 
 	@Nested
@@ -114,7 +114,7 @@ class PetControllerTests {
 		@Test
 		void processCreationFormWithBlankName() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 					.param("name", "\t \n")
 					.param("birthDate", "2015-02-12"))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -128,7 +128,7 @@ class PetControllerTests {
 		@Test
 		void processCreationFormWithDuplicateName() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 					.param("name", "petty")
 					.param("birthDate", "2015-02-12"))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -142,7 +142,7 @@ class PetControllerTests {
 		@Test
 		void processCreationFormWithMissingPetType() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 					.param("name", "Betty")
 					.param("birthDate", "2015-02-12"))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -159,7 +159,7 @@ class PetControllerTests {
 			String futureBirthDate = currentDate.plusMonths(1).toString();
 
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 					.param("name", "Betty")
 					.param("birthDate", futureBirthDate))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -175,7 +175,7 @@ class PetControllerTests {
 			given(owners.saveAndFlush(any(Owner.class)))
 				.willThrow(new DataIntegrityViolationException("Duplicate key: unique_owner_pet_name"));
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/new", TEST_OWNER_ID).with(csrf())
 					.param("name", "Betty")
 					.param("type", "hamster")
 					.param("birthDate", "2015-02-12"))
@@ -189,7 +189,7 @@ class PetControllerTests {
 
 		@Test
 		void initUpdateForm() throws Exception {
-			mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
+			mockMvc.perform(get("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("pet"))
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
@@ -200,18 +200,18 @@ class PetControllerTests {
 	@Test
 	void processUpdateFormSuccess() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+			.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 				.param("name", "Betty")
 				.param("type", "hamster")
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+			.andExpect(view().name("redirect:/staff/owners/{ownerId}"));
 	}
 
 	@Test
 	void processUpdateFormWithSameName() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+			.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 				.param("name", "petty") // same
 				// name
 				// as
@@ -220,7 +220,7 @@ class PetControllerTests {
 				.param("type", "hamster")
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(view().name("redirect:/owners/{ownerId}"));
+			.andExpect(view().name("redirect:/staff/owners/{ownerId}"));
 	}
 
 	@Nested
@@ -229,7 +229,7 @@ class PetControllerTests {
 		@Test
 		void processUpdateFormWithDuplicateName() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID + 1).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID + 1).with(csrf())
 					.param("name", "petty")
 					.param("type", "hamster")
 					.param("birthDate", "2015-02-12"))
@@ -244,7 +244,7 @@ class PetControllerTests {
 		@Test
 		void processUpdateFormWithInvalidBirthDate() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 					.param("name", " ")
 					.param("birthDate", "2015/02/12"))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -257,7 +257,7 @@ class PetControllerTests {
 		@Test
 		void processUpdateFormWithBlankName() throws Exception {
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 					.param("name", "  ")
 					.param("birthDate", "2015-02-12"))
 				.andExpect(model().attributeHasNoErrors("owner"))
@@ -272,7 +272,7 @@ class PetControllerTests {
 			given(owners.saveAndFlush(any(Owner.class)))
 				.willThrow(new DataIntegrityViolationException("Duplicate key: unique_owner_pet_name"));
 			mockMvc
-				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+				.perform(post("/staff/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 					.param("name", "Betty")
 					.param("type", "hamster")
 					.param("birthDate", "2015-02-12"))

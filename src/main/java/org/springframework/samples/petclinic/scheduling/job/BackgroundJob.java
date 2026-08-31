@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.scheduling.job;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -73,6 +74,9 @@ public class BackgroundJob {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "outcome_category", length = 64)
 	private OutcomeCategory outcomeCategory;
+
+	@Column(name = "command_id", nullable = false, unique = true, updatable = false)
+	private UUID commandId = UUID.randomUUID();
 
 	@Version
 	@Column(name = "version", nullable = false)
@@ -204,6 +208,14 @@ public class BackgroundJob {
 
 	public OutcomeCategory getOutcomeCategory() {
 		return this.outcomeCategory;
+	}
+
+	public UUID getCommandId() {
+		return this.commandId;
+	}
+
+	public void setCommandId(UUID commandId) {
+		this.commandId = commandId;
 	}
 
 	public void setOutcomeCategory(OutcomeCategory outcomeCategory) {

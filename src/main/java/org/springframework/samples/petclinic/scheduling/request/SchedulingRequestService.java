@@ -4,11 +4,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.audit.OwnerHistoryService;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.audit.ProtectedPayload;
 import org.springframework.samples.petclinic.audit.ProtectedPayloadService;
 import org.springframework.samples.petclinic.owner.Owner;
@@ -24,6 +26,10 @@ import org.springframework.samples.petclinic.scheduling.offer.Offer;
 import org.springframework.samples.petclinic.scheduling.offer.OfferRepository;
 import org.springframework.samples.petclinic.scheduling.offer.OfferState;
 import org.springframework.samples.petclinic.scheduling.queue.StaffFallbackPort;
+import org.springframework.samples.petclinic.scheduling.queue.QueueItem;
+import org.springframework.samples.petclinic.scheduling.queue.QueueItemRepository;
+import org.springframework.samples.petclinic.scheduling.queue.QueueState;
+import org.springframework.samples.petclinic.scheduling.queue.AwaitingReason;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,13 +58,18 @@ public class SchedulingRequestService {
 
 	private final OwnerHistoryService ownerHistoryService;
 
+	private final AuditService auditService;
+
+	private final QueueItemRepository queueItemRepository;
+
 	private final Clock clock;
 
 	public SchedulingRequestService(SchedulingRequestRepository requestRepository,
 			ActiveSchedulingRequestRepository activeRequestRepository, TextRevisionRepository textRevisionRepository,
 			BackgroundJobRepository jobRepository, OfferRepository offerRepository, OwnerRepository ownerRepository,
 			ProtectedPayloadService payloadService, EmergencyKeywordScreen emergencyScreen,
-			StaffFallbackPort staffFallbackPort, OwnerHistoryService ownerHistoryService, Clock clock) {
+			StaffFallbackPort staffFallbackPort, OwnerHistoryService ownerHistoryService, AuditService auditService,
+			QueueItemRepository queueItemRepository, Clock clock) {
 		this.requestRepository = requestRepository;
 		this.activeRequestRepository = activeRequestRepository;
 		this.textRevisionRepository = textRevisionRepository;
@@ -69,6 +80,8 @@ public class SchedulingRequestService {
 		this.emergencyScreen = emergencyScreen;
 		this.staffFallbackPort = staffFallbackPort;
 		this.ownerHistoryService = ownerHistoryService;
+		this.auditService = auditService;
+		this.queueItemRepository = queueItemRepository;
 		this.clock = clock;
 	}
 
@@ -83,16 +96,16 @@ public class SchedulingRequestService {
 			.findFirst()
 			.orElseThrow(() -> new IllegalArgumentException("Pet " + petId + " does not belong to owner " + ownerId));
 
-		if (prose == null || prose.isBlank()) {
-			throw new IllegalArgumentException("Scheduling request prose must not be blank");
-		}
-		if (prose.length() > 2000) {
-			throw new IllegalArgumentException("Scheduling request prose must not exceed 2000 characters");
-		}
+		SchedulingProsePolicy.validate(prose);
 
 		Optional<ActiveSchedulingRequest> existingActive = this.activeRequestRepository.findById(petId);
 		if (existingActive.isPresent()) {
-			throw new IllegalStateException("Active scheduling request already exists for pet " + petId);
+			Optional<SchedulingRequest> existing = this.requestRepository
+				.findByIdAndOwnerId(existingActive.get().getRequestId(), ownerId);
+			if (existing.isPresent() && !existing.get().getState().isTerminal()) {
+				return existing.get();
+			}
+			this.activeRequestRepository.delete(existingActive.get());
 		}
 
 		Instant now = this.clock.instant();
@@ -123,6 +136,12 @@ public class SchedulingRequestService {
 		TextRevision savedTextRev = this.textRevisionRepository.save(textRevision);
 		savedRequest.setCurrentTextRevision(savedTextRev);
 		this.requestRepository.save(savedRequest);
+		this.auditService.recordEvent(null, "EMERGENCY_SCREEN", "TextRevision", savedTextRev.getId().toString(),
+				screenResult.emergencyDetected() ? "MATCH" : "CLEAR", null, null, null);
+		this.auditService.recordStructuredEvent(null, "SCHEDULING_REQUEST_CREATED", "SchedulingRequest",
+				savedRequest.getId().toString(), "SUCCESS", null, null, Map.of("activeRequest", false),
+				Map.of("state", initialState.name(), "textRevisionId", savedTextRev.getId(), "aiConsent", aiConsent,
+						"petId", petId));
 
 		this.ownerHistoryService.recordOwnerHistory(ownerId, petId, savedRequest.getId(), "REQUEST_SUBMITTED",
 				"Scheduling request submitted with " + (screenResult.emergencyDetected() ? "emergency routing"
@@ -131,8 +150,7 @@ public class SchedulingRequestService {
 
 		if (screenResult.emergencyDetected()) {
 			this.staffFallbackPort.sendToFallbackQueue(savedRequest.getId(), "EMERGENCY_PROSE",
-					Urgency.EMERGENCY_SUSPECTED,
-					"Prose flagged for emergency keywords: " + String.join(", ", screenResult.matchedKeywords()));
+					Urgency.EMERGENCY_SUSPECTED, "Deterministic emergency screen requires immediate staff review");
 			log.info("Request {} routed directly to staff fallback due to emergency keywords", savedRequest.getId());
 		}
 		else if (aiConsent) {
@@ -167,7 +185,7 @@ public class SchedulingRequestService {
 			Long offerId = activeOffer.map(Offer::getId).orElse(null);
 			Instant expiresAt = activeOffer.map(Offer::getExpiresAt).orElse(null);
 
-			return OwnerRequestProjection.from(req, petName, offerId, expiresAt);
+			return ownerProjection(req, petName, offerId, expiresAt);
 		}).toList();
 	}
 
@@ -189,8 +207,18 @@ public class SchedulingRequestService {
 			Long offerId = activeOffer.map(Offer::getId).orElse(null);
 			Instant expiresAt = activeOffer.map(Offer::getExpiresAt).orElse(null);
 
-			return OwnerRequestProjection.from(req, petName, offerId, expiresAt);
+			return ownerProjection(req, petName, offerId, expiresAt);
 		});
+	}
+
+	private OwnerRequestProjection ownerProjection(SchedulingRequest request, String petName, Long offerId,
+			Instant expiresAt) {
+		QueueItem queueItem = this.queueItemRepository.findByRequestId(request.getId()).orElse(null);
+		boolean matchingInProgress = request.getCurrentWorkflowRevision() != null
+				&& this.jobRepository.findByWorkflowRevisionId(request.getCurrentWorkflowRevision().getId())
+					.map(job -> job.getState() == JobState.PENDING || job.getState() == JobState.RUNNING)
+					.orElse(false);
+		return OwnerRequestProjection.from(request, petName, offerId, expiresAt, matchingInProgress, queueItem);
 	}
 
 	@Transactional(readOnly = true)
@@ -218,6 +246,9 @@ public class SchedulingRequestService {
 			boolean terminal = false;
 			int pollAfterMillis = 2000;
 			boolean urgentGuidance = false;
+			QueueItem queueItem = this.queueItemRepository.findByRequestId(req.getId()).orElse(null);
+			boolean awaitingOwnerContact = queueItem != null && queueItem.getState() == QueueState.AWAITING_OWNER
+					&& queueItem.getAwaitingReason() == AwaitingReason.CONTACT_REQUIRED;
 
 			switch (req.getState()) {
 				case AWAITING_INTERPRETATION -> {
@@ -234,6 +265,14 @@ public class SchedulingRequestService {
 				case READY_TO_MATCH -> {
 					displayState = "FINDING_APPOINTMENT";
 					canonicalUrl = "/owner/requests/" + req.getId();
+					boolean matchingInProgress = req.getCurrentWorkflowRevision() != null
+							&& this.jobRepository.findByWorkflowRevisionId(req.getCurrentWorkflowRevision().getId())
+								.map(job -> job.getState() == JobState.PENDING || job.getState() == JobState.RUNNING)
+								.orElse(false);
+					if (!matchingInProgress) {
+						primaryAction = new RequestStatusResponse.PrimaryAction("Request Another Option",
+								canonicalUrl + "/match");
+					}
 					pollAfterMillis = 2000;
 				}
 				case OFFERED -> {
@@ -247,6 +286,10 @@ public class SchedulingRequestService {
 				case STAFF_HANDLING -> {
 					displayState = "WITH_CLINIC_STAFF";
 					canonicalUrl = "/owner/requests/" + req.getId();
+					if (awaitingOwnerContact) {
+						primaryAction = new RequestStatusResponse.PrimaryAction("View Clinic Contact Details",
+								canonicalUrl);
+					}
 					pollAfterMillis = 5000;
 				}
 				case CONFIRMED -> {
@@ -260,7 +303,9 @@ public class SchedulingRequestService {
 				}
 				case CLOSED, WITHDRAWN -> {
 					displayState = "CLOSED";
-					canonicalUrl = "/owner/requests/" + req.getId();
+					canonicalUrl = "/owner/requests/new?petId=" + req.getPetId();
+					primaryAction = new RequestStatusResponse.PrimaryAction("Schedule Another Appointment",
+							canonicalUrl);
 					terminal = true;
 					pollAfterMillis = 10000;
 				}

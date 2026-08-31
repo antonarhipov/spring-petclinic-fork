@@ -354,3 +354,11 @@ Staff can provision/reset owner credentials with one-time temporary passwords, s
   - Update `README.md` and `specs/001-smart-appointment-scheduling/quickstart.md`.
 - Run final `/speckit-converge` to certify full alignment across all specifications, plans, and tasks.
 - Commit all Phase 9 and final acceptance changes to git (`feat(hardening): cross-cutting hardening, key rotation, and acceptance verification`).
+
+###   Step 7: Task Checklist Verification and Sync in tasks.md
+All 173 implementation and verification tasks (T001–T173) in `tasks.md` are marked as completed with checked boxes (`- [x]`) and committed.
+
+- Update Phase 1 through Phase 5 tasks (T001–T106) in `specs/001-smart-appointment-scheduling/tasks.md` to mark all completed setup, foundation, availability, smart request, and fallback queue tasks with `- [x]`.
+- Update Phase 6 through Phase 9 tasks (T107–T173) in `specs/001-smart-appointment-scheduling/tasks.md` to mark all completed lifecycle, outcome, provisioning, hardening, and cross-cutting acceptance tasks with `- [x]`.
+- Run `/speckit-converge` to certify 100% specification and task completion alignment.
+- Commit the updated `tasks.md` to git (`docs(tasks): check off all completed implementation tasks T001-T173`).

@@ -15,6 +15,7 @@
   </div>
 
   <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/interpretation'}" th:object="${interpretationForm}" method="post">
+	<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Structured Interpretation Form</strong></div>
       <div class="card-body">
@@ -80,9 +81,10 @@
         <div class="mb-3 row">
           <div class="col-sm-offset-3 col-sm-9">
             <div class="form-check">
-              <input type="checkbox" th:field="*{requestOwnerConfirmation}" class="form-check-input" id="confirmCheck" />
+			  <input type="checkbox" th:field="*{requestOwnerConfirmation}" class="form-check-input" id="confirmCheck" checked disabled />
+			  <input type="hidden" name="requestOwnerConfirmation" value="true" />
               <label class="form-check-label" for="confirmCheck">
-                Require owner review and confirmation in the portal before matching
+				Owner review and confirmation in the portal is required before matching or offering a slot
               </label>
             </div>
           </div>

@@ -9,17 +9,18 @@
     <div class="card-body">
       <p class="text-muted">Describe your updated visit need and scheduling preferences in free-form English.</p>
       
-      <form th:action="@{/owner/requests/{id}/text-revision(id=${requestId})}" th:object="${form}" method="post">
+	  <form th:action="@{/owner/requests/{id}/text-revision(id=${requestId})}" th:object="${form}" method="post" id="prose-revision-form">
         <div class="mb-3">
           <label class="form-label font-weight-bold">Appointment Description</label>
           <textarea class="form-control" th:field="*{prose}" rows="4" minlength="10" maxlength="2000" placeholder="e.g. Leo needs a checkup next Tuesday afternoon after 2 PM..." required></textarea>
           <div class="form-text">Between 10 and 2000 characters.</div>
+		  <div class="text-danger" th:if="${#fields.hasErrors('prose')}" th:errors="*{prose}"></div>
         </div>
 
         <div class="form-check mb-4">
           <input class="form-check-input" type="checkbox" th:field="*{aiConsent}" id="aiConsentCheck">
           <label class="form-check-label" for="aiConsentCheck">
-            I consent to using AI assistance to extract scheduling details from my description. (If unchecked, clinic staff will handle your request manually).
+			I consent to sending only this exact revised description, the selected pet, and scheduling context to the clinic's AI service to identify visit needs and time preferences. The revision, consent, validated interpretation, and audit records are retained as protected clinic records for authorized clinic staff. Leave unchecked for manual staff review.
           </label>
         </div>
 
@@ -30,6 +31,20 @@
       </form>
     </div>
   </div>
+	<script>
+	  document.addEventListener('DOMContentLoaded', () => {
+		const form = document.getElementById('prose-revision-form');
+		const prose = form && form.querySelector('textarea[name="prose"]');
+		let changed = false;
+		if (prose) prose.addEventListener('input', () => { changed = true; });
+		if (form) form.addEventListener('submit', () => { changed = false; });
+		window.addEventListener('beforeunload', event => {
+		  if (!changed) return;
+		  event.preventDefault();
+		  event.returnValue = '';
+		});
+	  });
+	</script>
 </main>
 </body>
 </html>

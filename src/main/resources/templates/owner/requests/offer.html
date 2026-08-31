@@ -2,39 +2,62 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{owner/layout :: layout (~{::body}, 'dashboard')}">
 <body>
   <div class="alert alert-danger mb-4" role="alert">
-    <strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
-    If your pet is experiencing life-threatening symptoms (severe bleeding, difficulty breathing, suspected poisoning, seizures, loss of consciousness, or bloat), please call our emergency desk at (608) 555-0199 or proceed immediately to the nearest 24-hour veterinary hospital.
+	<strong><span class="fa fa-exclamation-triangle"></span> Urgent Care Notice:</strong>
+	<span th:text="${clinicPolicy.urgentCareGuidance}">Call the clinic for urgent care.</span>
+	Call <strong th:text="${clinicPolicy.clinicPhone}">555-0100</strong>
+	<span th:text="${'during ' + clinicPolicy.contactHours}">during clinic hours</span>.
+	The portal and staff queue are not emergency-response channels.
   </div>
 
   <div class="card shadow-sm mb-4 border-success">
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
       <h4 class="mb-0"><span class="fa fa-check-circle"></span> Held Appointment Offer</h4>
-      <span class="badge bg-light text-success font-weight-bold">HELD (10 MIN)</span>
+	  <span class="badge bg-light text-success font-weight-bold" th:if="${!offerExpired}"
+			th:text="${'HELD UNTIL ' + offer.expiresAt}">HELD</span>
+	  <span class="badge bg-light text-secondary font-weight-bold" th:if="${offerExpired}">EXPIRED</span>
     </div>
     <div class="card-body">
-      <div class="alert alert-warning d-flex align-items-center" role="alert">
+	  <div class="alert alert-warning d-flex align-items-center" role="alert" th:if="${!offerExpired}">
         <span class="fa fa-hourglass-half fa-2x me-3 text-warning"></span>
         <div>
-          <strong>This slot is held exclusively for you for 10 minutes.</strong>
+		  <strong>This slot is held exclusively for you. <span id="offer-countdown">Calculating time remaining…</span></strong>
           <div class="small">
             Hold expires at: <span id="offer-expires-at" th:text="${offer.expiresAt}">2026-08-31 10:10:00 UTC</span>.
-          </div>
-        </div>
+		</div>
+	  </div>
+	  <div class="alert alert-secondary" th:if="${offerExpired}">
+		<strong>This hold has expired.</strong> The slot is no longer reserved. Return to the request to choose the next available action.
+	  </div>
       </div>
 
       <div class="p-4 bg-light rounded border my-4">
         <dl class="row mb-0">
-          <dt class="col-sm-4 text-muted">Veterinarian:</dt>
-          <dd class="col-sm-8 font-weight-bold h5 text-primary" th:text="${vetName}">Dr. Helen Leary</dd>
+		  <dt class="col-sm-4 text-muted">Pet:</dt>
+		  <dd class="col-sm-8 font-weight-bold" th:text="${petName}">Leo</dd>
 
-          <dt class="col-sm-4 text-muted">Start Time:</dt>
-          <dd class="col-sm-8 font-weight-bold" th:text="${offer.startAt}">2026-09-01 10:00</dd>
+		  <dt class="col-sm-4 text-muted">Veterinarian:</dt>
+		  <dd class="col-sm-8 font-weight-bold h5 text-primary" th:text="${vetName}">Dr. Helen Leary</dd>
 
-          <dt class="col-sm-4 text-muted">End Time:</dt>
-          <dd class="col-sm-8" th:text="${offer.endAt}">2026-09-01 10:30</dd>
+		  <dt class="col-sm-4 text-muted">Specialty:</dt>
+		  <dd class="col-sm-8" th:text="${vetSpecialties}">General practice</dd>
+
+		  <dt class="col-sm-4 text-muted">Clinic date:</dt>
+		  <dd class="col-sm-8 font-weight-bold" th:text="${localDate}">Tuesday, 1 September 2026</dd>
+
+		  <dt class="col-sm-4 text-muted">Clinic time:</dt>
+		  <dd class="col-sm-8" th:text="${localInterval}">10:00–10:30</dd>
 
           <dt class="col-sm-4 text-muted">Duration:</dt>
-          <dd class="col-sm-8" th:text="${durationMinutes + ' minutes'}">30 minutes</dd>
+		  <dd class="col-sm-8" th:text="${durationMinutes + ' minutes'}">30 minutes</dd>
+
+		  <dt class="col-sm-4 text-muted">Time zone:</dt>
+		  <dd class="col-sm-8" th:text="${offer.zoneId}">Europe/Amsterdam</dd>
+
+		  <dt class="col-sm-4 text-muted">Why this slot:</dt>
+		  <dd class="col-sm-8" th:text="${offer.matchExplanation}">Matches your preferences.</dd>
+
+		  <dt class="col-sm-4 text-muted" th:if="${offer.origin.name() == 'AUTOMATIC'}">Automatic attempts left:</dt>
+		  <dd class="col-sm-8" th:if="${offer.origin.name() == 'AUTOMATIC'}" th:text="${remainingAutomaticAttempts}">4</dd>
         </dl>
       </div>
 
@@ -43,7 +66,7 @@
           <span class="fa fa-arrow-left"></span> Back
         </a>
 
-        <form th:action="@{'/owner/requests/' + ${offer.request.id} + '/offers/' + ${offer.id} + '/accept'}" method="post">
+		<form th:if="${!offerExpired}" th:action="@{'/owner/requests/' + ${offer.request.id} + '/offers/' + ${offer.id} + '/accept'}" method="post">
           <button type="submit" class="btn btn-success btn-lg px-4" id="accept-offer-btn">
             <span class="fa fa-calendar-check-o"></span> Accept & Confirm Appointment
           </button>
@@ -51,5 +74,21 @@
       </div>
     </div>
   </div>
+	<script th:inline="javascript">
+	  document.addEventListener('DOMContentLoaded', () => {
+		const output = document.getElementById('offer-countdown');
+		if (!output) return;
+		const expiresAt = Date.parse(/*[[${offer.expiresAt.toString()}]]*/ '');
+		const serverAtLoad = Date.parse(/*[[${currentTime.toString()}]]*/ '');
+		const clientAtLoad = Date.now();
+		const update = () => {
+		  const remaining = Math.max(0, expiresAt - (serverAtLoad + Date.now() - clientAtLoad));
+		  const seconds = Math.ceil(remaining / 1000);
+		  output.textContent = seconds > 0 ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} remaining` : 'Expired — return to your request for the next action';
+		  if (seconds > 0) window.setTimeout(update, 1000);
+		};
+		update();
+	  });
+	</script>
 </body>
 </html>

@@ -59,6 +59,9 @@ public class StaffQueueInterpretationController {
 		form.setPreferredVetId(detail.preferredVetId());
 		form.setRequiredSpecialtyId(detail.requiredSpecialtyId());
 		form.setUrgency(detail.urgency());
+		form.setExpectedRequestVersion(detail.requestVersion());
+		form.setExpectedWorkflowRevision(detail.workflowRevisionNumber());
+		form.setExpectedQueueVersion(detail.queueVersion());
 
 		populateReferenceData(model);
 		model.addAttribute("queueItem", detail);
@@ -86,7 +89,8 @@ public class StaffQueueInterpretationController {
 
 		ManualInterpretationCommand cmd = new ManualInterpretationCommand(id, actorId, form.getVisitReason(),
 				form.getDurationMinutes(), form.getPreferredVetId(), form.getRequiredSpecialtyId(), form.getUrgency(),
-				windows, form.isRequestOwnerConfirmation());
+				windows, form.isRequestOwnerConfirmation(), form.getExpectedRequestVersion(),
+				form.getExpectedWorkflowRevision(), form.getExpectedQueueVersion());
 
 		try {
 			this.interpretationService.recordManualInterpretation(cmd);
@@ -108,7 +112,11 @@ public class StaffQueueInterpretationController {
 			.orElseThrow(() -> new IllegalArgumentException("Queue item not found: " + id));
 
 		model.addAttribute("queueItem", detail);
-		model.addAttribute("emergencyClearanceForm", new EmergencyClearanceForm());
+		EmergencyClearanceForm form = new EmergencyClearanceForm();
+		form.setExpectedRequestVersion(detail.requestVersion());
+		form.setExpectedWorkflowRevision(detail.workflowRevisionNumber());
+		form.setExpectedQueueVersion(detail.queueVersion());
+		model.addAttribute("emergencyClearanceForm", form);
 		return "staff/queue/emergency-clearance";
 	}
 
@@ -127,7 +135,8 @@ public class StaffQueueInterpretationController {
 
 		try {
 			this.emergencyClearanceService.clearEmergency(id, actorId, form.getNewUrgency(),
-					form.getClinicalJustification());
+					form.getClinicalJustification(), form.getExpectedRequestVersion(),
+					form.getExpectedWorkflowRevision(), form.getExpectedQueueVersion());
 			redirectAttributes.addFlashAttribute("successMessage",
 					"Emergency flag cleared. Reconfirmation requested from owner.");
 			return "redirect:/staff/queue/" + id;

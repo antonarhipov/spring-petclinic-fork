@@ -2,11 +2,16 @@ package org.springframework.samples.petclinic.scheduling.matching;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.samples.petclinic.audit.AuditService;
 import org.springframework.samples.petclinic.availability.AvailabilityConflictException;
 import org.springframework.samples.petclinic.scheduling.job.BackgroundJob;
 import org.springframework.samples.petclinic.scheduling.job.BackgroundJobRepository;
@@ -22,6 +27,9 @@ import org.springframework.samples.petclinic.scheduling.request.SchedulingReques
 import org.springframework.samples.petclinic.scheduling.request.WorkflowRevision;
 import org.springframework.samples.petclinic.scheduling.request.WorkflowRevisionRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 public class MatchingJobCoordinator {
@@ -44,10 +52,31 @@ public class MatchingJobCoordinator {
 
 	private final Clock clock;
 
+	private final AuditService auditService;
+
+	private final TransactionTemplate transactionTemplate;
+
 	public MatchingJobCoordinator(MatchingSnapshotFactory snapshotFactory, AppointmentSchedulingSolver solver,
 			OfferService offerService, StaffFallbackPort staffFallbackPort, BackgroundJobRepository jobRepository,
 			SchedulingRequestRepository requestRepository, WorkflowRevisionRepository workflowRevisionRepository,
 			Clock clock) {
+		this(snapshotFactory, solver, offerService, staffFallbackPort, jobRepository, requestRepository,
+				workflowRevisionRepository, clock, null, (TransactionTemplate) null);
+	}
+
+	@Autowired
+	public MatchingJobCoordinator(MatchingSnapshotFactory snapshotFactory, AppointmentSchedulingSolver solver,
+			OfferService offerService, StaffFallbackPort staffFallbackPort, BackgroundJobRepository jobRepository,
+			SchedulingRequestRepository requestRepository, WorkflowRevisionRepository workflowRevisionRepository,
+			Clock clock, AuditService auditService, PlatformTransactionManager transactionManager) {
+		this(snapshotFactory, solver, offerService, staffFallbackPort, jobRepository, requestRepository,
+				workflowRevisionRepository, clock, auditService, new TransactionTemplate(transactionManager));
+	}
+
+	private MatchingJobCoordinator(MatchingSnapshotFactory snapshotFactory, AppointmentSchedulingSolver solver,
+			OfferService offerService, StaffFallbackPort staffFallbackPort, BackgroundJobRepository jobRepository,
+			SchedulingRequestRepository requestRepository, WorkflowRevisionRepository workflowRevisionRepository,
+			Clock clock, AuditService auditService, TransactionTemplate transactionTemplate) {
 		this.snapshotFactory = snapshotFactory;
 		this.solver = solver;
 		this.offerService = offerService;
@@ -56,9 +85,37 @@ public class MatchingJobCoordinator {
 		this.requestRepository = requestRepository;
 		this.workflowRevisionRepository = workflowRevisionRepository;
 		this.clock = clock;
+		this.auditService = auditService;
+		this.transactionTemplate = transactionTemplate;
+	}
+
+	public void executeMatchingJob(Long jobId, String leaseToken) {
+		BackgroundJob job = inTransaction(() -> {
+			BackgroundJob loaded = this.jobRepository.findById(jobId)
+				.orElseThrow(() -> new IllegalArgumentException("Background job not found: " + jobId));
+			if (loaded.getState() != JobState.RUNNING || !Objects.equals(loaded.getLeaseToken(), leaseToken)) {
+				return null;
+			}
+			WorkflowRevision workflowRevision = loaded.getWorkflowRevision();
+			if (workflowRevision != null) {
+				Hibernate.initialize(workflowRevision);
+				Hibernate.initialize(workflowRevision.getRequest());
+				if (workflowRevision.getRequest() != null) {
+					Hibernate.initialize(workflowRevision.getRequest().getCurrentWorkflowRevision());
+				}
+			}
+			return loaded;
+		});
+		if (job != null) {
+			executeMatchingJob(job, true);
+		}
 	}
 
 	public void executeMatchingJob(BackgroundJob job) {
+		executeMatchingJob(job, false);
+	}
+
+	private void executeMatchingJob(BackgroundJob job, boolean prepared) {
 		WorkflowRevision workflowRevision = job.getWorkflowRevision();
 		if (workflowRevision == null) {
 			log.warn("Job {} has no associated workflow revision", job.getId());
@@ -66,7 +123,7 @@ public class MatchingJobCoordinator {
 			return;
 		}
 
-		if (workflowRevision.getId() != null) {
+		if (!prepared && workflowRevision.getId() != null) {
 			workflowRevision = this.workflowRevisionRepository.findById(workflowRevision.getId())
 				.orElse(workflowRevision);
 		}
@@ -81,6 +138,15 @@ public class MatchingJobCoordinator {
 				|| request.getState().isTerminal()) {
 			log.info("Job {} is stale for request {}", job.getId(), (request != null ? request.getId() : "null"));
 			updateJobState(job, JobState.STALE, null, null);
+			return;
+		}
+		if (request.getState() != RequestState.READY_TO_MATCH) {
+			if (request.getState() == RequestState.OFFERED || request.getState() == RequestState.CONFIRMED) {
+				updateJobState(job, JobState.SUCCEEDED, OutcomeCategory.SUCCESS, null);
+			}
+			else {
+				updateJobState(job, JobState.STALE, null, null);
+			}
 			return;
 		}
 
@@ -141,6 +207,10 @@ public class MatchingJobCoordinator {
 		job.setCompletedAt(this.clock.instant());
 		if (job.getId() != null) {
 			this.jobRepository.findById(job.getId()).ifPresentOrElse(managed -> {
+				if (managed.getState() != JobState.RUNNING
+						|| !Objects.equals(managed.getLeaseToken(), job.getLeaseToken())) {
+					return;
+				}
 				managed.setState(job.getState());
 				managed.setOutcomeCategory(job.getOutcomeCategory());
 				managed.setCalendarRevision(job.getCalendarRevision());
@@ -152,6 +222,20 @@ public class MatchingJobCoordinator {
 		else {
 			this.jobRepository.save(job);
 		}
+		if (this.auditService != null) {
+			this.auditService.recordStructuredEvent(null, "MATCHING_JOB_COMMITTED", "BackgroundJob",
+					String.valueOf(job.getId()), state == JobState.SUCCEEDED ? "SUCCESS" : state.name(), null, null,
+					Map.of("state", JobState.RUNNING.name(), "expectedVersion", String.valueOf(job.getVersion())),
+					Map.of("state", state.name(), "outcome", String.valueOf(outcome), "calendarRevision",
+							String.valueOf(calendarRevision), "jobCommandId", job.getCommandId()));
+		}
+	}
+
+	private <T> T inTransaction(Supplier<T> action) {
+		if (this.transactionTemplate == null) {
+			return action.get();
+		}
+		return this.transactionTemplate.execute(status -> action.get());
 	}
 
 }

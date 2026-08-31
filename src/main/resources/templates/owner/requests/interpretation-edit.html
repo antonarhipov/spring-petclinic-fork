@@ -34,34 +34,51 @@
           </div>
         </div>
 
+		<div class="row mb-3">
+		  <div class="col-md-6">
+			<label class="form-label font-weight-bold">Clinical specialty</label>
+			<input class="form-control" readonly
+				   th:value="${readOnlySpecialtyId == null ? 'No specialty required' : 'Specialty #' + readOnlySpecialtyId}" />
+			<div class="form-text">This safety classification cannot be changed in owner preferences.</div>
+		  </div>
+		  <div class="col-md-6">
+			<label class="form-label font-weight-bold">Urgency</label>
+			<input class="form-control" readonly th:value="${readOnlyUrgency}" />
+			<div class="form-text">Contact clinic staff if this urgency no longer reflects your pet's condition.</div>
+		  </div>
+		</div>
+
         <div class="card bg-light mb-3">
           <div class="card-body">
-            <h5 class="card-title">Availability Preferences</h5>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Specific Date (optional)</label>
-                <input type="date" class="form-control" th:field="*{date}" />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">From Time</label>
-                <input type="time" class="form-control" th:field="*{startTime}" />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">To Time</label>
-                <input type="time" class="form-control" th:field="*{endTime}" />
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6">
-                <label class="form-label">Or Date Range Start</label>
-                <input type="date" class="form-control" th:field="*{rangeStart}" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Date Range End</label>
-                <input type="date" class="form-control" th:field="*{rangeEnd}" />
-              </div>
-            </div>
+			<h5 class="card-title">Availability Preferences</h5>
+			<p class="small text-muted">Keep separate allowed, preferred, excluded, and fallback windows. Removing every row means any clinic operating time is allowed.</p>
+			<div id="availability-windows">
+			  <div class="availability-window border rounded p-3 mb-3" th:each="window, stat : *{windows}">
+				<div class="row g-2">
+				  <div class="col-md-3">
+					<label class="form-label">Preference</label>
+					<select class="form-select" th:field="*{windows[__${stat.index}__].classification}">
+					  <option value="ALLOWED">Allowed</option><option value="PREFERRED">Preferred</option>
+					  <option value="EXCLUDED">Excluded</option><option value="FALLBACK">Fallback</option>
+					</select>
+				  </div>
+				  <div class="col-md-3">
+					<label class="form-label">Shape</label>
+					<select class="form-select" th:field="*{windows[__${stat.index}__].shape}">
+					  <option value="ONE_OFF">Specific date</option><option value="WEEKLY">Weekly range</option>
+					</select>
+				  </div>
+				  <div class="col-md-3"><label class="form-label">From</label><input type="time" class="form-control" th:field="*{windows[__${stat.index}__].startTime}" required /></div>
+				  <div class="col-md-3"><label class="form-label">To</label><input type="time" class="form-control" th:field="*{windows[__${stat.index}__].endTime}" required /></div>
+				  <div class="col-md-4"><label class="form-label">Specific date</label><input type="date" class="form-control" th:field="*{windows[__${stat.index}__].date}" /></div>
+				  <div class="col-md-4"><label class="form-label">Range start</label><input type="date" class="form-control" th:field="*{windows[__${stat.index}__].rangeStart}" /></div>
+				  <div class="col-md-4"><label class="form-label">Range end</label><input type="date" class="form-control" th:field="*{windows[__${stat.index}__].rangeEnd}" /></div>
+				  <div class="col-md-10"><label class="form-label">Weekdays (comma separated)</label><input class="form-control" th:field="*{windows[__${stat.index}__].weekdays}" /></div>
+				  <div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-danger remove-window">Remove</button></div>
+				</div>
+			  </div>
+			</div>
+			<button type="button" class="btn btn-outline-primary" id="add-window">Add availability window</button>
           </div>
         </div>
 
@@ -72,6 +89,32 @@
       </form>
     </div>
   </div>
+	<template id="window-template">
+	  <div class="availability-window border rounded p-3 mb-3"><div class="row g-2">
+		<div class="col-md-3"><label class="form-label">Preference</label><select class="form-select" data-field="classification"><option value="ALLOWED">Allowed</option><option value="PREFERRED">Preferred</option><option value="EXCLUDED">Excluded</option><option value="FALLBACK">Fallback</option></select></div>
+		<div class="col-md-3"><label class="form-label">Shape</label><select class="form-select" data-field="shape"><option value="ONE_OFF">Specific date</option><option value="WEEKLY">Weekly range</option></select></div>
+		<div class="col-md-3"><label class="form-label">From</label><input type="time" value="09:00" class="form-control" data-field="startTime" required /></div>
+		<div class="col-md-3"><label class="form-label">To</label><input type="time" value="17:00" class="form-control" data-field="endTime" required /></div>
+		<div class="col-md-4"><label class="form-label">Specific date</label><input type="date" class="form-control" data-field="date" /></div>
+		<div class="col-md-4"><label class="form-label">Range start</label><input type="date" class="form-control" data-field="rangeStart" /></div>
+		<div class="col-md-4"><label class="form-label">Range end</label><input type="date" class="form-control" data-field="rangeEnd" /></div>
+		<div class="col-md-10"><label class="form-label">Weekdays</label><input class="form-control" value="MONDAY" data-field="weekdays" /></div>
+		<div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-danger remove-window">Remove</button></div>
+	  </div></div>
+	</template>
+	<script>
+	  document.addEventListener('DOMContentLoaded', () => {
+		const container = document.getElementById('availability-windows');
+		const renumber = () => container.querySelectorAll('.availability-window').forEach((row, index) => {
+		  row.querySelectorAll('[data-field]').forEach(input => input.name = `windows[${index}].${input.dataset.field}`);
+		});
+		container.addEventListener('click', event => { if (event.target.classList.contains('remove-window')) { event.target.closest('.availability-window').remove(); renumber(); } });
+		document.getElementById('add-window').addEventListener('click', () => {
+		  container.appendChild(document.getElementById('window-template').content.cloneNode(true));
+		  renumber();
+		});
+	  });
+	</script>
 </main>
 </body>
 </html>

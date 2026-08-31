@@ -7,7 +7,41 @@ import org.springframework.samples.petclinic.scheduling.interpretation.Urgency;
 
 public class QueueActionForms {
 
-	public static class ContactAttemptForm {
+	public abstract static class VersionedQueueForm {
+
+		private Long expectedRequestVersion;
+
+		private Integer expectedWorkflowRevision;
+
+		private Long expectedQueueVersion;
+
+		public Long getExpectedRequestVersion() {
+			return this.expectedRequestVersion;
+		}
+
+		public void setExpectedRequestVersion(Long expectedRequestVersion) {
+			this.expectedRequestVersion = expectedRequestVersion;
+		}
+
+		public Integer getExpectedWorkflowRevision() {
+			return this.expectedWorkflowRevision;
+		}
+
+		public void setExpectedWorkflowRevision(Integer expectedWorkflowRevision) {
+			this.expectedWorkflowRevision = expectedWorkflowRevision;
+		}
+
+		public Long getExpectedQueueVersion() {
+			return this.expectedQueueVersion;
+		}
+
+		public void setExpectedQueueVersion(Long expectedQueueVersion) {
+			this.expectedQueueVersion = expectedQueueVersion;
+		}
+
+	}
+
+	public static class ContactAttemptForm extends VersionedQueueForm {
 
 		private ContactOutcome outcome = ContactOutcome.REACHED_AGREED;
 
@@ -31,9 +65,15 @@ public class QueueActionForms {
 
 	}
 
-	public static class ReassignForm {
+	public static class ClaimForm extends VersionedQueueForm {
+
+	}
+
+	public static class ReassignForm extends VersionedQueueForm {
 
 		private Long assigneeAccountId;
+
+		private String reason;
 
 		public Long getAssigneeAccountId() {
 			return this.assigneeAccountId;
@@ -43,9 +83,31 @@ public class QueueActionForms {
 			this.assigneeAccountId = assigneeAccountId;
 		}
 
+		public String getReason() {
+			return this.reason;
+		}
+
+		public void setReason(String reason) {
+			this.reason = reason;
+		}
+
 	}
 
-	public static class ManualInterpretationForm {
+	public static class UnclaimForm extends VersionedQueueForm {
+
+		private String reason;
+
+		public String getReason() {
+			return this.reason;
+		}
+
+		public void setReason(String reason) {
+			this.reason = reason;
+		}
+
+	}
+
+	public static class ManualInterpretationForm extends VersionedQueueForm {
 
 		private String visitReason;
 
@@ -149,7 +211,7 @@ public class QueueActionForms {
 
 	}
 
-	public static class EmergencyClearanceForm {
+	public static class EmergencyClearanceForm extends VersionedQueueForm {
 
 		private Urgency newUrgency = Urgency.ROUTINE;
 
@@ -173,7 +235,7 @@ public class QueueActionForms {
 
 	}
 
-	public static class AssistedOfferForm {
+	public static class AssistedOfferForm extends VersionedQueueForm {
 
 		private Integer vetId;
 
@@ -227,7 +289,7 @@ public class QueueActionForms {
 
 	}
 
-	public static class QueueDirectBookForm {
+	public static class QueueDirectBookForm extends VersionedQueueForm {
 
 		private Integer vetId;
 
@@ -241,7 +303,11 @@ public class QueueActionForms {
 
 		private String agreementMedium = "PHONE";
 
+		private String reasonCategory = "OWNER_REQUEST";
+
 		private String internalReason;
+
+		private boolean confirmed;
 
 		public Integer getVetId() {
 			return this.vetId;
@@ -295,13 +361,29 @@ public class QueueActionForms {
 			return this.internalReason;
 		}
 
+		public String getReasonCategory() {
+			return this.reasonCategory;
+		}
+
+		public void setReasonCategory(String reasonCategory) {
+			this.reasonCategory = reasonCategory;
+		}
+
 		public void setInternalReason(String internalReason) {
 			this.internalReason = internalReason;
 		}
 
+		public boolean isConfirmed() {
+			return this.confirmed;
+		}
+
+		public void setConfirmed(boolean confirmed) {
+			this.confirmed = confirmed;
+		}
+
 	}
 
-	public static class CloseQueueForm {
+	public static class CloseQueueForm extends VersionedQueueForm {
 
 		private String reason;
 

@@ -14,7 +14,18 @@
     </div>
   </div>
 
+	<div class="card mb-4">
+	  <div class="card-header bg-light"><strong>Timefold-ranked eligible suggestions</strong></div>
+	  <div class="card-body">
+		<p class="text-muted" th:if="${#lists.isEmpty(suggestions)}">No eligible suggestions are currently available.</p>
+		<table class="table table-sm" th:unless="${#lists.isEmpty(suggestions)}"><thead><tr><th>Rank</th><th>Veterinarian</th><th>Start</th><th>End</th><th>Zone</th></tr></thead>
+		  <tbody><tr th:each="slot, stat : ${suggestions}"><td th:text="${stat.count}">1</td><td th:text="${slot.vetName}">Vet</td><td th:text="${slot.startAt}">Start</td><td th:text="${slot.endAt}">End</td><td th:text="${slot.zoneId}">Zone</td></tr></tbody>
+		</table>
+	  </div>
+	</div>
+
   <form th:action="@{'/staff/queue/' + ${queueItem.id} + '/offer'}" th:object="${offerForm}" method="post">
+	<input type="hidden" th:field="*{expectedRequestVersion}" /><input type="hidden" th:field="*{expectedWorkflowRevision}" /><input type="hidden" th:field="*{expectedQueueVersion}" />
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Offer Slot Details</strong></div>
       <div class="card-body">

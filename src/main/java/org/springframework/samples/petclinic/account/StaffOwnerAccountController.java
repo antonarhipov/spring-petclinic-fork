@@ -27,15 +27,18 @@ public class StaffOwnerAccountController {
 
 	private final UsernamePolicy usernamePolicy;
 
+	private final OwnerNameLookup ownerNameLookup;
+
 	public StaffOwnerAccountController(AccountRepository accountRepository,
 			AccountProvisioningService accountProvisioningService, PasswordResetService passwordResetService,
-			UsernamePolicy usernamePolicy) {
+			UsernamePolicy usernamePolicy, OwnerNameLookup ownerNameLookup) {
 		this.accountRepository = Objects.requireNonNull(accountRepository, "accountRepository must not be null");
 		this.accountProvisioningService = Objects.requireNonNull(accountProvisioningService,
 				"accountProvisioningService must not be null");
 		this.passwordResetService = Objects.requireNonNull(passwordResetService,
 				"passwordResetService must not be null");
 		this.usernamePolicy = Objects.requireNonNull(usernamePolicy, "usernamePolicy must not be null");
+		this.ownerNameLookup = Objects.requireNonNull(ownerNameLookup, "ownerNameLookup must not be null");
 	}
 
 	@GetMapping
@@ -48,7 +51,9 @@ public class StaffOwnerAccountController {
 		model.addAttribute("account", account.orElse(null));
 		model.addAttribute("commandId", UUID.randomUUID());
 		if (account.isEmpty()) {
-			model.addAttribute("suggestedUsername", "owner" + ownerId);
+			OwnerNameLookup.OwnerName owner = this.ownerNameLookup.findOwnerName(ownerId);
+			model.addAttribute("suggestedUsername",
+					this.usernamePolicy.suggestUsername(owner.firstName(), owner.lastName()));
 		}
 
 		return "staff/owners/account-form";

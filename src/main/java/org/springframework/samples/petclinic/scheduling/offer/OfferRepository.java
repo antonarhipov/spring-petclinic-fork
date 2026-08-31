@@ -32,6 +32,9 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 	@Query("SELECT o FROM Offer o WHERE o.state = 'HELD' AND o.expiresAt <= :now")
 	List<Offer> findExpiredHolds(@Param("now") Instant now);
 
+	@Query("SELECT o FROM Offer o WHERE o.state = 'HELD' AND o.expiresAt > :now")
+	List<Offer> findAllActiveHolds(@Param("now") Instant now);
+
 	@Query("SELECT o FROM Offer o WHERE o.vetId = :vetId AND o.state = 'HELD' AND o.expiresAt > :now "
 			+ "AND o.startAt < :endAt AND o.endAt > :startAt")
 	List<Offer> findOverlappingActiveHoldsForVet(@Param("vetId") Integer vetId, @Param("startAt") Instant startAt,

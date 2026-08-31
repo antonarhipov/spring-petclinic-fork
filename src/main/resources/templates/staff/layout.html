@@ -37,15 +37,20 @@
             </a>
           </li>
           <li class="nav-item">
-            <a th:class="${menu == 'owners' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/owners/find}">
+			<a th:class="${menu == 'owners' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/owners/find}">
               <span class="fa fa-search"></span> Find Owners
             </a>
           </li>
           <li class="nav-item">
-            <a th:class="${menu == 'vets' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/veterinarians}">
+			<a th:class="${menu == 'vets' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/veterinarians}">
               <span class="fa fa-user-md"></span> Veterinarians
             </a>
           </li>
+		  <li class="nav-item">
+			<a th:class="${menu == 'availability' ? 'nav-link active' : 'nav-link'}" th:href="@{/staff/clinic-policy}">
+			  <span class="fa fa-cog"></span> Policy &amp; Availability
+			</a>
+		  </li>
         </ul>
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
@@ -63,6 +68,25 @@
   <div class="container-fluid">
     <div class="container xd-container mt-4">
       <div th:replace="~{fragments/branding :: session-banner}"></div>
+	  <div class="alert alert-warning" th:if="${blockingItems != null && !blockingItems.empty}">
+		<strong>Resolve every blocking item before retrying:</strong>
+		<ul class="mb-0 mt-2">
+		  <li th:each="blocker : ${blockingItems}">
+			<span th:text="${blocker.type + ' #' + blocker.id + ' — ' + blocker.startAt + ' to ' + blocker.endAt}">Blocking item</span>
+			<a class="ms-2" th:href="${blocker.recoveryPath}">Review recovery actions</a>
+			<form class="mt-2" th:if="${blocker.type == 'ACTIVE_HOLD'}"
+				  th:action="@{/staff/availability/holds/{id}/release(id=${blocker.id})}" method="post">
+			  <input class="form-control form-control-sm mb-1" name="reason" maxlength="500"
+					 placeholder="Required audited release reason" required />
+			  <label class="form-check-label me-2">
+				<input class="form-check-input" type="checkbox" name="confirmed" value="true" required />
+				I confirm that this active hold may be released
+			  </label>
+			  <button class="btn btn-sm btn-outline-danger" type="submit">Release hold</button>
+			</form>
+		  </li>
+		</ul>
+	  </div>
       <th:block th:insert="${template}" />
       <div th:replace="~{fragments/branding :: footer}"></div>
     </div>

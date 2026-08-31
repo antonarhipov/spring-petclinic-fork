@@ -27,14 +27,22 @@ Generate a local 256-bit key once and keep it outside version control:
 openssl rand -base64 32
 ```
 
-Supply the result through the planned runtime configuration:
+Supply the result through Spring Boot's runtime configuration. JSON preserves map
+key IDs exactly, including hyphens:
 
 ```bash
-export PETCLINIC_ENCRYPTION_ACTIVE_KEY_ID=demo-v1
-export PETCLINIC_ENCRYPTION_KEYRING='demo-v1:<base64-32-byte-key>'
+export SPRING_APPLICATION_JSON='{"petclinic":{"security":{"active-key-id":"demo-v1","key-ring":{"demo-v1":"<base64-32-byte-key>"}}}}'
 ```
 
 Reuse the same key for subsequent runs against the same file-backed database. A missing active key must stop startup; a missing historical key must make only affected protected records unavailable and must never expose plaintext or ciphertext.
+
+When rotating keys, retain every key referenced by the existing database. For example,
+an IntelliJ run configuration opening data written with the original synthetic key must
+include both the new active key and:
+
+```text
+--petclinic.security.key-ring.k2026-01=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
 
 ## Optional Live Ollama Setup
 
@@ -168,3 +176,13 @@ Expected: completion creates a linked visit; cancellation/no-show does not. Corr
 ## Acceptance Completion
 
 The feature is ready for acceptance when all 15 demonstration journeys in `spec.md` pass, all route/state contracts under `contracts/` hold, restart and concurrency cases pass against file-backed H2, and the measurable outcomes in `spec.md` are recorded without real owner or clinical data.
+
+## Phase 10 Convergence Evidence (2026-08-31)
+
+- Java 21.0.8 and Maven 3.9.16 were used. The resolved tree includes Spring Boot 4.1.1, Timefold Solver 2.5.0, Flyway 12.4.0, and H2 2.4.240; the project continues to use the configured Spring AI 2.0.1 BOM.
+- `./mvnw -B verify` completed successfully in 1 minute 20 seconds: 313 tests, 0 failures, 0 errors, and 0 skipped. Java-format validation, NoHTTP Checkstyle, the Byte Buddy and JaCoCo agent composition, JaCoCo reporting, and executable-jar packaging also passed.
+- `SchedulingAcceptanceJourneyTests` ran all 15 specified journeys with 0 failures. `FlywayH2PersistenceTests` ran 4 clean migration/restart/exclusive-file checks with 0 failures.
+- The focused acceptance gate passed 38 tests across route security, operational security, direct-booking concurrency, pet concurrency, matching concurrency, and the three timing outcomes. The full suite additionally passed command replay, stale-version, lease recovery, audit immutability, key rotation, availability conflict, lifecycle, owner retention, and architecture-boundary coverage.
+- `LiveOllamaInterpretationTests` remains tagged `ollama` and produced no default Surefire report, confirming that the live-model test is excluded from deterministic verification. It requires explicit `-Dgroups=ollama` execution and was not run for this checkpoint.
+
+Known limitation: Flyway 12.4.0 logs that H2 2.4.240 is newer than the latest H2 release it has verified (2.3.232). All eight migrations, Hibernate validation, clean-start, restart, concurrency, and exclusive-file tests passed despite that compatibility warning.

@@ -128,6 +128,15 @@ class StaffFallbackJourneyTests {
 
 	private Account staffAccount;
 
+	private Integer currentWorkflowRevision(QueueItem item) {
+		return item.getWorkflowRevision() != null ? item.getWorkflowRevision().getRevisionNumber() : null;
+	}
+
+	private void claim(QueueItem item) {
+		this.queueAssignmentService.claim(item.getId(), this.staffAccount.getId(), item.getRequest().getVersion(),
+				currentWorkflowRevision(item), item.getVersion());
+	}
+
 	@BeforeEach
 	void setUp() {
 		this.owner = this.ownerRepository.findById(1).orElseThrow();
@@ -167,19 +176,23 @@ class StaffFallbackJourneyTests {
 		assertThat(queueItem.getFallbackReason()).isEqualTo("DECLINED_AI_CONSENT");
 
 		// 2. Staff claims queue item
-		this.queueAssignmentService.claim(queueItem.getId(), this.staffAccount.getId());
+		claim(queueItem);
 		queueItem = this.queueItemRepository.findById(queueItem.getId()).orElseThrow();
 		assertThat(queueItem.getState()).isEqualTo(QueueState.IN_REVIEW);
 		assertThat(queueItem.getAssigneeAccountId()).isEqualTo(this.staffAccount.getId());
 
 		// 3. Staff logs contact attempt
 		this.queueContactService.recordContactAttempt(queueItem.getId(), this.staffAccount.getId(),
-				ContactOutcome.REACHED_AGREED, "Spoke with owner, agreed to Tuesday morning slot");
+				ContactOutcome.REACHED_AGREED, "Spoke with owner, agreed to Tuesday morning slot",
+				queueItem.getRequest().getVersion(), currentWorkflowRevision(queueItem), queueItem.getVersion());
 
 		// 4. Staff manually structures interpretation
-		this.staffInterpretationService.recordManualInterpretation(
-				new StaffInterpretationService.ManualInterpretationCommand(queueItem.getId(), this.staffAccount.getId(),
-						"Ear infection check", 30, this.vet.getId(), null, Urgency.ROUTINE, null, false));
+		this.staffInterpretationService
+			.recordManualInterpretation(new StaffInterpretationService.ManualInterpretationCommand(queueItem.getId(),
+					this.staffAccount.getId(), "Ear infection check", 30, this.vet.getId(), null, Urgency.ROUTINE, null,
+					false, queueItem.getRequest().getVersion(), currentWorkflowRevision(queueItem),
+					queueItem.getVersion()));
+		this.ownerInterpretationService.confirmInterpretation(request.getId(), this.owner.getId());
 
 		// 5. Staff creates assisted offer hold
 		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
@@ -191,7 +204,8 @@ class StaffFallbackJourneyTests {
 		Instant endAt = startAt.plusSeconds(1800);
 
 		Offer offer = this.assistedOfferService.createAssistedOffer(new AssistedOfferCommand(queueItem.getId(),
-				this.staffAccount.getId(), this.vet.getId(), startAt, endAt, "Held slot per phone discussion"));
+				this.staffAccount.getId(), this.vet.getId(), startAt, endAt, "Held slot per phone discussion",
+				queueItem.getRequest().getVersion(), currentWorkflowRevision(queueItem), queueItem.getVersion()));
 
 		assertThat(offer.getOrigin()).isEqualTo(OfferOrigin.STAFF_ASSISTED);
 		assertThat(offer.getState()).isEqualTo(OfferState.HELD);
@@ -225,9 +239,10 @@ class StaffFallbackJourneyTests {
 		assertThat(queueItem.getFallbackReason()).isEqualTo("EMERGENCY_PROSE");
 
 		// 2. Staff claims and clears emergency
-		this.queueAssignmentService.claim(queueItem.getId(), this.staffAccount.getId());
+		claim(queueItem);
 		this.emergencyClearanceService.clearEmergency(queueItem.getId(), this.staffAccount.getId(), Urgency.ROUTINE,
-				"Owner called back, minor scratch only and bleeding stopped");
+				"Owner called back, minor scratch only and bleeding stopped", queueItem.getRequest().getVersion(),
+				currentWorkflowRevision(queueItem), queueItem.getVersion());
 
 		queueItem = this.queueItemRepository.findById(queueItem.getId()).orElseThrow();
 		assertThat(queueItem.getUrgency()).isEqualTo(Urgency.ROUTINE);
@@ -250,6 +265,7 @@ class StaffFallbackJourneyTests {
 				"Annual vaccination appointment needed", false);
 
 		QueueItem queueItem = this.queueItemRepository.findByRequestId(request.getId()).orElseThrow();
+		claim(queueItem);
 
 		// 2. Staff directly books agreed slot from queue
 		ZoneId zoneId = this.effectiveAvailabilityService.getClinicZoneId();
@@ -262,7 +278,8 @@ class StaffFallbackJourneyTests {
 
 		Appointment appointment = this.queueDirectBookingService
 			.directBookFromQueue(new QueueDirectBookCommand(queueItem.getId(), this.staffAccount.getId(),
-					this.vet.getId(), startAt, endAt, true, "PHONE", "Agreed directly on phone"));
+					this.vet.getId(), startAt, endAt, true, "PHONE", "Agreed directly on phone",
+					queueItem.getRequest().getVersion(), currentWorkflowRevision(queueItem), queueItem.getVersion()));
 
 		assertThat(appointment).isNotNull();
 

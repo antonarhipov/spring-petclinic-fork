@@ -8,4 +8,6 @@ public interface OfferExclusionRepository extends JpaRepository<OfferExclusion, 
 
 	List<OfferExclusion> findByWorkflowRevisionId(Long workflowRevisionId);
 
+	boolean existsByOfferId(Long offerId);
+
 }

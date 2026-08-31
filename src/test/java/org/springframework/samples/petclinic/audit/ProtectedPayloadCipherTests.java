@@ -66,7 +66,7 @@ class ProtectedPayloadCipherTests {
 		// Set non-existent key ID
 		payload.getActiveEnvelope().setKeyId("unknown-key-id");
 
-		assertThatThrownBy(() -> this.cipher.decrypt(payload)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> this.cipher.decrypt(payload)).isInstanceOf(MissingProtectedPayloadKeyException.class);
 	}
 
 }

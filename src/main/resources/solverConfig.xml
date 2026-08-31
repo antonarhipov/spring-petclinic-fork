@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver xmlns="https://timefold.ai/xsd/solver">
+  <environmentMode>NO_ASSERT</environmentMode>
+  <randomSeed>0</randomSeed>
+  <moveThreadCount>NONE</moveThreadCount>
+  <solutionClass>org.springframework.samples.petclinic.scheduling.matching.AppointmentSchedulingSolution</solutionClass>
+  <entityClass>org.springframework.samples.petclinic.scheduling.matching.AppointmentAssignment</entityClass>
+  <scoreDirectorFactory>
+    <constraintProviderClass>org.springframework.samples.petclinic.scheduling.matching.AppointmentSchedulingConstraintProvider</constraintProviderClass>
+  </scoreDirectorFactory>
+  <exhaustiveSearch>
+    <exhaustiveSearchType>BRUTE_FORCE</exhaustiveSearchType>
+    <nodeExplorationType>ORIGINAL_ORDER</nodeExplorationType>
+  </exhaustiveSearch>
+</solver>

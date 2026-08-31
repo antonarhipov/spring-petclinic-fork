@@ -24,6 +24,8 @@ public class DirectBookingForm {
 
 	private String agreementMedium = "PHONE";
 
+	private String reasonCategory = "OWNER_REQUEST";
+
 	private String internalReason;
 
 	public Integer getOwnerId() {
@@ -92,6 +94,14 @@ public class DirectBookingForm {
 
 	public String getInternalReason() {
 		return this.internalReason;
+	}
+
+	public String getReasonCategory() {
+		return this.reasonCategory;
+	}
+
+	public void setReasonCategory(String reasonCategory) {
+		this.reasonCategory = reasonCategory;
 	}
 
 	public void setInternalReason(String internalReason) {

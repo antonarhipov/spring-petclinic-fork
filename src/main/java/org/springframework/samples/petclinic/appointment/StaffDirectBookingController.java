@@ -1,5 +1,6 @@
 package org.springframework.samples.petclinic.appointment;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -41,16 +42,22 @@ public class StaffDirectBookingController {
 
 	private final VetRepository vetRepository;
 
+	private final AppointmentLifecyclePolicy lifecyclePolicy;
+
+	private final Clock clock;
+
 	public StaffDirectBookingController(DirectBookingService directBookingService,
 			EffectiveAvailabilityService effectiveAvailabilityService, AppointmentRepository appointmentRepository,
 			AppointmentChangeEventRepository appointmentChangeEventRepository, OwnerRepository ownerRepository,
-			VetRepository vetRepository) {
+			VetRepository vetRepository, AppointmentLifecyclePolicy lifecyclePolicy, Clock clock) {
 		this.directBookingService = directBookingService;
 		this.effectiveAvailabilityService = effectiveAvailabilityService;
 		this.appointmentRepository = appointmentRepository;
 		this.appointmentChangeEventRepository = appointmentChangeEventRepository;
 		this.ownerRepository = ownerRepository;
 		this.vetRepository = vetRepository;
+		this.lifecyclePolicy = lifecyclePolicy;
+		this.clock = clock;
 	}
 
 	@GetMapping("/direct-book")
@@ -82,8 +89,8 @@ public class StaffDirectBookingController {
 		Instant endAt = startAt.plus(Duration.ofMinutes(form.getDurationMinutes()));
 
 		DirectBookingRequest request = new DirectBookingRequest(form.getOwnerId(), form.getPetId(), form.getVetId(),
-				startAt, endAt, form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getInternalReason(),
-				null, null);
+				startAt, endAt, form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getReasonCategory(),
+				form.getInternalReason(), null, null);
 
 		BookingConflictCheck check = this.directBookingService.validateDirectBooking(request);
 		if (!check.valid()) {
@@ -114,8 +121,8 @@ public class StaffDirectBookingController {
 		Long actorAccountId = extractActorId(authentication);
 
 		DirectBookingRequest request = new DirectBookingRequest(form.getOwnerId(), form.getPetId(), form.getVetId(),
-				startAt, endAt, form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getInternalReason(),
-				actorAccountId, null);
+				startAt, endAt, form.isOwnerAgreementRecorded(), form.getAgreementMedium(), form.getReasonCategory(),
+				form.getInternalReason(), actorAccountId, null);
 
 		try {
 			Appointment appointment = this.directBookingService.bookDirectly(request);
@@ -145,6 +152,12 @@ public class StaffDirectBookingController {
 		model.addAttribute("vet", vet);
 		model.addAttribute("changeEvents", changeEvents);
 		model.addAttribute("zoneId", this.effectiveAvailabilityService.getClinicZoneId());
+		Instant now = this.clock.instant();
+		model.addAttribute("canCancel", this.lifecyclePolicy.canStaffCancel(appointment, now));
+		model.addAttribute("canReschedule", this.lifecyclePolicy.canReschedule(appointment, now));
+		model.addAttribute("canComplete", this.lifecyclePolicy.canComplete(appointment, now));
+		model.addAttribute("canRecordNoShow", this.lifecyclePolicy.canRecordNoShow(appointment, now));
+		model.addAttribute("canCorrectOutcome", this.lifecyclePolicy.canCorrectOutcome(appointment, now));
 		return "staff/appointments/detail";
 	}
 

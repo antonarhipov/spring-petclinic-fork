@@ -1,5 +1,6 @@
 package org.springframework.samples.petclinic.availability;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.samples.petclinic.availability.AvailabilityForms.ClosureForm;
@@ -37,12 +38,14 @@ public class AvailabilityController {
 
 	private final VetRepository vetRepository;
 
+	private final HoldReleaseService holdReleaseService;
+
 	public AvailabilityController(AvailabilityAdministrationService availabilityAdministrationService,
 			EffectiveAvailabilityService effectiveAvailabilityService,
 			RecurringShiftRepository recurringShiftRepository,
 			AvailabilityExceptionDayRepository availabilityExceptionDayRepository,
 			VeterinarianLeaveRepository veterinarianLeaveRepository, ClinicClosureRepository clinicClosureRepository,
-			VetRepository vetRepository) {
+			VetRepository vetRepository, HoldReleaseService holdReleaseService) {
 		this.availabilityAdministrationService = availabilityAdministrationService;
 		this.effectiveAvailabilityService = effectiveAvailabilityService;
 		this.recurringShiftRepository = recurringShiftRepository;
@@ -50,11 +53,13 @@ public class AvailabilityController {
 		this.veterinarianLeaveRepository = veterinarianLeaveRepository;
 		this.clinicClosureRepository = clinicClosureRepository;
 		this.vetRepository = vetRepository;
+		this.holdReleaseService = holdReleaseService;
 	}
 
 	@GetMapping("/clinic-policy")
 	public String showClinicPolicy(Model model) {
 		model.addAttribute("policy", this.effectiveAvailabilityService.getClinicPolicy());
+		model.addAttribute("weekdays", DayOfWeek.values());
 		return "staff/clinic-policy";
 	}
 
@@ -92,7 +97,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Recurring shift created successfully.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/shifts";
 	}
@@ -122,7 +127,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Recurring shift updated successfully.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/shifts";
 	}
@@ -136,7 +141,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Recurring shift deleted.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/shifts";
 	}
@@ -161,7 +166,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Exception day saved successfully.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/exceptions";
 	}
@@ -175,7 +180,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Exception day deleted.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/exceptions";
 	}
@@ -198,7 +203,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Veterinarian leave scheduled successfully.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/leave";
 	}
@@ -212,7 +217,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Veterinarian leave cancelled.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/leave";
 	}
@@ -234,7 +239,7 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Clinic closure scheduled successfully.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/closures";
 	}
@@ -248,9 +253,27 @@ public class AvailabilityController {
 			redirectAttributes.addFlashAttribute("successMessage", "Clinic closure cancelled.");
 		}
 		catch (Exception ex) {
-			redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+			addError(ex, redirectAttributes);
 		}
 		return "redirect:/staff/availability/closures";
+	}
+
+	@PostMapping("/availability/holds/{offerId}/release")
+	public String releaseBlockingHold(@PathVariable("offerId") Long offerId,
+			@org.springframework.web.bind.annotation.RequestParam(name = "confirmed",
+					defaultValue = "false") boolean confirmed,
+			@org.springframework.web.bind.annotation.RequestParam("reason") String reason,
+			Authentication authentication, RedirectAttributes redirectAttributes) {
+		try {
+			this.holdReleaseService.releaseForAvailabilityChange(offerId, extractActorId(authentication), confirmed,
+					reason);
+			redirectAttributes.addFlashAttribute("successMessage",
+					"The held time was released. Retry the availability change.");
+		}
+		catch (Exception ex) {
+			addError(ex, redirectAttributes);
+		}
+		return "redirect:/staff/calendar/week";
 	}
 
 	private Long extractActorId(Authentication authentication) {
@@ -258,6 +281,17 @@ public class AvailabilityController {
 			return principal.getAccountId();
 		}
 		return 1L;
+	}
+
+	private void addError(Exception exception, RedirectAttributes redirectAttributes) {
+		if (exception instanceof AvailabilityConflictException conflict) {
+			redirectAttributes.addFlashAttribute("errorMessage", conflict.getMessage());
+			redirectAttributes.addFlashAttribute("blockingItems", conflict.getBlockingItems());
+		}
+		else {
+			redirectAttributes.addFlashAttribute("errorMessage",
+					"The availability change could not be saved. Review the values and try again.");
+		}
 	}
 
 }

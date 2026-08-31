@@ -29,7 +29,7 @@
         </ul>
         <ul class="navbar-nav ms-auto">
           <li class="nav-item" sec:authorize="!isAuthenticated()">
-            <a class="nav-link" th:href="@{/auth/login}">
+            <a class="nav-link" th:href="@{/login}">
               <span class="fa fa-sign-in"></span> Login
             </a>
           </li>
@@ -39,8 +39,8 @@
             </a>
           </li>
           <li class="nav-item" sec:authorize="hasRole('STAFF')">
-            <a class="nav-link" th:href="@{/staff/calendar/week}">
-              <span class="fa fa-calendar"></span> Staff Calendar
+            <a class="nav-link" th:href="@{/staff/queue}">
+              <span class="fa fa-tasks"></span> Staff Queue
             </a>
           </li>
         </ul>

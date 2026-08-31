@@ -16,7 +16,12 @@
 - Q: May this phase be used with real owner or clinical data? → A: No. Phase one is restricted to synthetic and demonstration data.
 - Q: How should a veterinarian's date-specific availability exception interact with recurring shifts for that date? → A: It replaces the complete recurring schedule for that local date with explicitly entered intervals.
 - Q: What should happen when an owner rejects or lets a staff-assisted portal offer expire? → A: Release and exclude the slot, return the same assigned queue item to `IN_REVIEW`, and do not consume an automatic attempt.
-- Q: When staff clears an emergency suspicion, how is the request's replacement urgency chosen? → A: Staff explicitly selects `ROUTINE` or `PRIORITY` and records a reason; the owner reconfirms, and only `ROUTINE` may return to automatic scheduling.
+- Q: When staff clears an emergency suspicion, how is the replacement urgency chosen? → A: Staff explicitly selects `ROUTINE` or `PRIORITY` and records a reason; the owner reconfirms, and only `ROUTINE` may return to automatic scheduling.
+
+### Session 2026-08-31
+
+- Q: Is staff claiming required before a staff member or admin can resolve a queue item? → A: No. Claiming is discarded as a mandatory barrier; any authenticated clinic staff or admin can directly confirm (direct book or create an assisted offer) or cancel/close a queue item.
+- Q: At what stages can an owner cancel/withdraw their request? → A: Owners can cancel/withdraw their request at any stage before confirmation (including while awaiting interpretation, in review, or in the staff queue), releasing any held resources and closing the queue item, and can cancel confirmed future appointments.
 
 ## User Scenarios & Testing *(mandatory)*
 

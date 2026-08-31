@@ -4,6 +4,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
+import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -33,7 +34,7 @@ public class KeyRingProperties {
 
 	public byte[] getKeyBytes(String keyId) {
 		if (keyId == null || !this.keyRing.containsKey(keyId)) {
-			throw new IllegalArgumentException("Key ID '" + keyId + "' not found in key ring");
+			throw new MissingProtectedPayloadKeyException(keyId);
 		}
 		String keyMaterial = this.keyRing.get(keyId).trim();
 		byte[] keyBytes;
@@ -60,6 +61,11 @@ public class KeyRingProperties {
 			throw new IllegalStateException("Active key ID is not configured");
 		}
 		return getKeyBytes(this.activeKeyId);
+	}
+
+	@PostConstruct
+	void validateActiveKey() {
+		getActiveKeyBytes();
 	}
 
 }

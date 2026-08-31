@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -50,6 +52,12 @@ public class AuditEvent {
 		if (this.occurredAt == null) {
 			this.occurredAt = Instant.now();
 		}
+	}
+
+	@PreUpdate
+	@PreRemove
+	protected void preventMutation() {
+		throw new IllegalStateException("Audit events are append-only and cannot be updated or deleted");
 	}
 
 	public Long getId() {

@@ -68,6 +68,12 @@ class FallbackRoutingTests {
 	@Mock
 	private OwnerHistoryService ownerHistoryService;
 
+	@Mock
+	private AuditService auditService;
+
+	@Mock
+	private QueueItemRepository queueItemRepository;
+
 	private final EmergencyKeywordScreen emergencyScreen = new EmergencyKeywordScreen();
 
 	private final Clock clock = Clock.fixed(Instant.parse("2026-08-31T09:00:00Z"), ZoneId.of("UTC"));
@@ -83,7 +89,7 @@ class FallbackRoutingTests {
 		this.requestService = new SchedulingRequestService(this.requestRepository, this.activeRequestRepository,
 				this.textRevisionRepository, this.jobRepository, this.offerRepository, this.ownerRepository,
 				this.payloadService, this.emergencyScreen, this.staffFallbackPort, this.ownerHistoryService,
-				this.clock);
+				this.auditService, this.queueItemRepository, this.clock);
 
 		this.owner = new Owner();
 		this.owner.setId(1);
@@ -112,8 +118,11 @@ class FallbackRoutingTests {
 			req.setId(100L);
 			return req;
 		});
-		when(this.textRevisionRepository.save(any(TextRevision.class)))
-			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(this.textRevisionRepository.save(any(TextRevision.class))).thenAnswer(invocation -> {
+			TextRevision revision = invocation.getArgument(0);
+			revision.setId(200L);
+			return revision;
+		});
 
 		SchedulingRequest result = this.requestService.submitRequest(1, 1, "Routine vaccination please", false);
 
@@ -136,8 +145,11 @@ class FallbackRoutingTests {
 			req.setId(101L);
 			return req;
 		});
-		when(this.textRevisionRepository.save(any(TextRevision.class)))
-			.thenAnswer(invocation -> invocation.getArgument(0));
+		when(this.textRevisionRepository.save(any(TextRevision.class))).thenAnswer(invocation -> {
+			TextRevision revision = invocation.getArgument(0);
+			revision.setId(201L);
+			return revision;
+		});
 
 		SchedulingRequest result = this.requestService.submitRequest(1, 1, "My cat is bleeding heavily from an injury",
 				true);

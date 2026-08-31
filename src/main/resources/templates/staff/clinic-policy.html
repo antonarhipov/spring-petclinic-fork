@@ -39,9 +39,40 @@
     <div class="mb-3 row">
       <label class="col-sm-3 col-form-label">Start Grid (Minutes)</label>
       <div class="col-sm-6">
-        <input type="number" th:field="*{startGridMinutes}" min="5" max="60" class="form-control" required />
+		<input type="number" th:field="*{startGridMinutes}" value="15" readonly class="form-control" required />
+		<small class="text-muted">Appointment starts use the fixed 15-minute grid.</small>
       </div>
     </div>
+
+	<div class="mb-3 row">
+	  <label class="col-sm-3 col-form-label">Permitted Durations</label>
+	  <div class="col-sm-9">
+		<label class="me-3" th:each="minutes : ${ {15, 30, 45, 60} }">
+		  <input type="checkbox" th:field="*{allowedDurations}" th:value="${minutes}" />
+		  <span th:text="${minutes + ' minutes'}">30 minutes</span>
+		</label>
+	  </div>
+	</div>
+
+	<fieldset class="mb-4">
+	  <legend class="h5">Operating intervals</legend>
+	  <p class="text-muted">Intervals must stay within one day and cannot overlap.</p>
+	  <div class="row g-2 mb-2" th:each="interval, stat : *{operatingIntervals}">
+			<div class="col-md-4"><select class="form-select" th:field="*{operatingIntervals[__${stat.index}__].weekday}" th:options="${weekdays}" required></select></div>
+		<div class="col-md-3"><input type="time" step="900" class="form-control" th:field="*{operatingIntervals[__${stat.index}__].localStart}" required /></div>
+		<div class="col-md-3"><input type="time" step="900" class="form-control" th:field="*{operatingIntervals[__${stat.index}__].localEnd}" required /></div>
+	  </div>
+	</fieldset>
+
+	<fieldset class="mb-4">
+	  <legend class="h5">Named periods</legend>
+	  <p class="text-muted">Names must be unique and intervals cannot overlap.</p>
+	  <div class="row g-2 mb-2" th:each="period, stat : *{namedPeriods}">
+		<div class="col-md-4"><input type="text" maxlength="64" class="form-control" th:field="*{namedPeriods[__${stat.index}__].name}" required /></div>
+		<div class="col-md-3"><input type="time" step="900" class="form-control" th:field="*{namedPeriods[__${stat.index}__].localStart}" required /></div>
+		<div class="col-md-3"><input type="time" step="900" class="form-control" th:field="*{namedPeriods[__${stat.index}__].localEnd}" required /></div>
+	  </div>
+	</fieldset>
 
     <div class="mb-3 row">
       <label class="col-sm-3 col-form-label">Clinic Phone</label>
