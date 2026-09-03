@@ -81,6 +81,7 @@ Sample upstream's claimed structure; do not rebuild it.
 - Every AC matches one of the five EARS templates (or the Combined variant); no template-free criteria
 - **No pointer references.** No B-N, AC or RULE says "matching the tables in …", "as defined in the proposal", "see …" in place of the content itself. Every normative table appears verbatim in spec.md and its rows appear in the exactness ACs. A pointer is a BLOCKER: nothing downstream can assert it.
 - **State models are tables, not prose.** Every lifecycle entity has a state table in spec.md, one transition AC per allowed transition and one refusal AC per action in criteria.md, and a rule naming the service-level refusal.
+- **Use cases are traced.** Every UC step and extension in spec.md cites a real B-N; every step and extension is named in ≥ 1 AC `Flow:` tag; every AC has a `Flow:` tag (`UC-n step k`, `UC-n ext ka` or `cross-cutting`). An extension with no B-N or no AC is MAJOR (an untested branch); a step that names a widget or endpoint is MINOR.
 
 This category is fast. If it produces more than a handful of findings, upstream skipped its own verification pass and should be rerun before continuing review.
 
@@ -97,6 +98,8 @@ The centerpiece. No upstream step can detect these.
 - **Authorization scope narrowing**: for every negative authz AC, confirm the covering rule enumerates the **entire** URL space of the application — pre-existing routes included — and that the AC itself is phrased over "any page or action that displays …", not over the feature's own objects. Compare the rules' URL→role matrix against the route list from grounding: every route absent from the matrix, and every `permitAll` on a route that displays owner-scoped data while an AC requires isolation, is a conflict (AC ↔ RULE, BLOCKER).
 - **Loaded words left open**: any AC or rule that applies *full*, *complete*, *coherent*, *appropriate*, *all*, *minimal* to a screen, data set or test suite without a definition in spec or rules. The executor will pick the smallest reading; this is a MAJOR against the document that should define it.
 - **Verification-shape drift**: an AC whose EARS pattern demands a level (HTTP end-to-end, whole-surface authz, by-value data) while the rules' Testing Strategy table permits a weaker level (service-level, feature-prefix, count-only) for that pattern.
+- **State model ⇄ use cases**: a transition in the state table that no UC step or extension performs, or a state-changing step or extension that names no existing transition, is MAJOR against spec.md. The two models must agree in both directions.
+- **Use case ⇄ scope**: a UC step or extension that requires an item listed under `Out of scope` is scope reintroduction. **Use case ⇄ authz**: a UC whose actor performs a step the URL→role matrix forbids is AC ↔ RULE (BLOCKER). **Use case ⇄ precondition**: a UC precondition that contradicts a state table or an out-of-scope item is MAJOR.
 
 For each conflict, quote both sources verbatim. Conflicts are nearly always at least MAJOR; often BLOCKER.
 
@@ -111,6 +114,7 @@ Use the grounding pass above to verify the composed design holds against reality
 - Anything in the Design section that implies a code structure has a viable place to land in the current layout
 - If the feature ships templates, rules.md restates the project's presentation conventions (layout fragment, menu fragment, form fragments, stylesheet, message bundles) for the feature — the executor cannot inherit a convention nobody named
 - If the feature seeds data, the rules' normative source is the copied table in spec.md and the migration test is required to assert by value
+- Every actor named in a UC has a way to authenticate in the codebase (a seeded account or a documented fixture) — otherwise the end-to-end test cannot be written as the rules specify
 
 Findings here are usually BLOCKER (incompatible library, missing capability) or MAJOR (achievable but with non-trivial work not yet specified).
 
@@ -128,7 +132,7 @@ For each EARS pattern present in criteria.md, confirm rules.md's testing strateg
 - **Refusal criteria** (state machine): service-level test that sets up the disallowed state and asserts refusal plus absence of side effect
 - **Data-exactness criteria**: migration/fixture test on a fresh database asserting every row by value and every credential with the encoder; count-only strategies do not fit
 - **Fidelity criteria**: round-trip test comparing every enumerated field
-- **Lifecycle / end-to-end criteria**: HTTP-level test through the real endpoints as each role, crossing every boundary the AC names; a service-level chain does not fit
+- **Lifecycle / end-to-end criteria**: HTTP-level test **per UC main success scenario** as each named actor, with the steps copied into the rule and one leg per state-changing extension; a single "lifecycle test" with no step list, a test derived from a path no UC describes, or a service-level chain does not fit (MAJOR)
 
 Also confirm the strategy fixes the **level** (web slice vs full context vs HTTP), the **fixture** (isolated test datasource) and the **double contract** (no stub may return what production cannot). If any of the three is unspecified, it is a MAJOR: the executor will choose the cheapest and the tests will pass without proving the AC.
 

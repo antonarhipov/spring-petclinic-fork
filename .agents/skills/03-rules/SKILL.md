@@ -43,7 +43,7 @@ Coverage checklist:
 4. Code Style: naming, formatting, file organization
 5. Design Patterns: which to apply, which to avoid
 6. Error Handling: result types vs exceptions, boundaries, atomicity; **for every lifecycle enum, the allowed transitions and the named exception/result with which the *service* (not the UI) refuses all others**
-7. Testing Strategy: pyramid composition, mocking policy, fixtures, frameworks — written with the *Testing rule template* below (test data isolation, test level per AC pattern, assertion shape for negative and data ACs)
+7. Testing Strategy: pyramid composition, mocking policy, fixtures, frameworks — written with the *Testing rule template* below (test data isolation, test level per AC pattern, assertion shape for negative and data ACs, end-to-end tests derived from the spec's use cases)
 8. Security: the **full URL→role matrix for the whole application** (pre-existing routes, static resources, login/logout included), stated as a table in the rule with every `permitAll` as an explicit row; input validation, secrets, PII
 9. Observability: what to log (and not), structured format, metrics, traces
 10. Concurrency: thread safety, async patterns, blocking call rules
@@ -64,9 +64,12 @@ The testing strategy rule(s) MUST fix all four of the following. "Unit tests wit
    read or written by tests; that the working tree is unchanged after the suite.
 2. **Test level per AC pattern** — a table: negative authz ACs → web-slice test with the real security configuration
    over the **whole** URL space; state-refusal ACs → service-level test that sets up the state (not stubs it) and
-   asserts refusal plus `never()` on collaborators; lifecycle/end-to-end ACs → HTTP-level test through the real
-   endpoints as each role, crossing every boundary the AC names; data-exactness ACs → migration test on a fresh
-   database; fidelity ACs → round-trip test comparing every field; boundary ACs → three points.
+   asserts refusal plus `never()` on collaborators; lifecycle/end-to-end ACs → **one HTTP-level test per use-case main
+   success scenario**, executed as each actor the scenario names, through the real endpoints on the isolated datasource,
+   asserting state after every step; plus **one leg per extension that changes state** (an extension that only displays
+   may be covered by the step's own AC test). The rule **copies the numbered step list** from `spec.md` §Use cases — it
+   does not point at it; data-exactness ACs → migration test on a fresh database; fidelity ACs → round-trip test
+   comparing every field; boundary ACs → three points.
 3. **Assertion shape for negative ACs** — status **and** absence of disclosure (response body does not contain the
    protected data) **and** absence of mutation (`never()` / unchanged state). Status-only assertions do not satisfy a
    negative AC.
@@ -163,6 +166,8 @@ Example of a negative-decision rule:
 
 **Bad:** `MUST seed the data in proposal.md` → **Better:** `MUST seed exactly the rows in spec.md §Normative data; the migration test MUST assert each row by value and each credential with the encoder.` Pointers cannot be verified; counts prove nothing.
 
+**Bad:** `MUST write an end-to-end lifecycle test` → **Better:** `MUST implement one HTTP-level test per UC main scenario: UC-1 steps 1–5 as owner, then UC-3 steps 1–4 as staff …` with the steps copied in. "Lifecycle" without the steps lets the executor pick which path counts.
+
 **Bad:** defaulting to "stay with what's in build.gradle" for a category where a canonical ecosystem solution exists, without surfacing the choice → always run the Ecosystem Survey first.
 
 # Route-Back Triggers
@@ -173,6 +178,7 @@ Route back to an earlier step when any of:
 - A boundary, dependency, or pattern decision keeps oscillating between two equally valid options with no AC to disambiguate (route to criteria; the spec likely under-constrained the behavior)
 - The spec references normative data by pointer, has no state table for a lifecycle entity, or does not state the access policy for pre-existing pages when the feature introduces authentication (route to spec)
 - Negative authz ACs are scoped to the feature's objects rather than the whole application surface (route to criteria)
+- The spec has a lifecycle entity but no use case, or a use-case extension has no AC (route to spec / criteria)
 
 Don't paper over a missing decision with a `SHOULD` rule. That hides the gap.
 
@@ -187,6 +193,7 @@ Complete only when ALL hold:
 - Every rule is validatable by reading code (no subjective adjectives)
 - Every AC is either covered by at least one RULE or explicitly marked as needing none; any rule covering more than five ACs has a per-AC-pattern validation table
 - The Testing Rule Template is satisfied: isolation, level per AC pattern, negative assertion shape, double contract
+- If the spec has use cases, the testing rule names one HTTP-level test per main success scenario with the steps copied in, and one leg per state-changing extension
 - If the application has routes, a rule contains the full URL→role matrix as a table covering every route in the codebase, pre-existing ones included
 - If the feature has a lifecycle enum, a rule lists the allowed transitions and the service-level refusal of all others
 - If the feature has seed/reference data, a rule names the normative source in `spec.md` and requires by-value assertion of every row and every credential
@@ -231,10 +238,16 @@ One paragraph: conventions inherited from AGENTS.md, skills, and existing patter
 |---|---|---|---|
 | Negative authz | web slice + real security config, whole URL space | mocked services | status **and** no disclosure **and** `never()` |
 | State refusal | service | state set up, not stubbed | named exception **and** `never()` save |
-| Lifecycle end-to-end | HTTP, real endpoints, each role | isolated in-memory DB | state asserted after each step |
+| Lifecycle end-to-end | HTTP, real endpoints, as each actor in the UC | isolated in-memory DB | one test per UC main scenario (steps copied below), one leg per state-changing extension; state asserted after each step |
 | Data exactness | migration on fresh DB | — | every row by value; credentials via encoder |
 | Fidelity | round-trip | — | every field equal |
 | Boundary | unit | — | within / at / beyond |
+
+### End-to-end scenarios
+| UC | Test name | Steps (copied from spec.md §Use cases) | Actors |
+|---|---|---|---|
+| UC-1 | `<TestClass>.<method>` | 1. … 2. … 3. … (+ ext 4a, 5a) | owner, staff |
+| UC-n | … | … | … |
 
 ## Rules
 

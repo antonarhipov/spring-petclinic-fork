@@ -115,6 +115,9 @@ For each EARS pattern, the minimum acceptable evidence shape (mirrors `review` c
   status), not just that an error status occurred
 - Boundary → within / at / beyond, each asserted
 - Authorization → denial **and** no disclosure **and** no mutation, for anonymous, wrong-role and wrong-owner principals
+- Lifecycle / path → the test traverses **every step of the UC main success scenario the AC's `Flow:` tag names**, as
+  the named actor, through HTTP; a test that skips a step, merges two actors into one, or drives services directly is
+  MISPLACED. Ledger rows for these ACs cite the UC steps traversed (`UC-1 1–5, 4a`).
 
 ## 3. Normative Data by Value
 
@@ -138,6 +141,10 @@ For every entity with a lifecycle (status enum, state table in the spec):
   next suggestion, never an error") is CRITICAL. Dead `else` branches in controllers usually mark this pattern.
 - Concurrency claims ("never two active X", "never double-book") need a test that actually races or a DB constraint you
   can point at.
+- **Walk each UC path through the code.** For every step of every use case in the phase, find the controller entry
+  point and the service transition it triggers; for every extension, find the branch that produces the specified
+  response (not an exception the controller does not catch). A path the code cannot complete as written is CRITICAL; a
+  branch with no code is a GAP.
 
 ## 5. Fidelity and Round-trips
 
@@ -183,9 +190,11 @@ Applies to any phase that ships templates or user-visible text.
   exceptions surfaced to users), and templates for literals in attributes (`placeholder`, `title`, `value`, `alt`) and
   inside expressions (`th:text="${x} ? 'Yes' : 'No'"`). A sync test that only reads element text is WEAK evidence for
   "no hard-coded strings".
-- **Human walkthrough gate**: produce a walkthrough script (login as each role; pages to open; what must be visible;
-  which URLs must be denied). For a UI phase the verdict cannot be `APPROVE` until the user confirms the walkthrough;
-  issue `APPROVE PENDING WALKTHROUGH` and list the script.
+- **Human walkthrough gate**: the walkthrough script **is** the spec's use-case list for the phase: one block per UC
+  (actor → steps → what must be visible after each step → extensions to try → URLs that must be denied). Do not invent
+  a script; if a UC is missing, that is a spec weakness (record it under *Spec Reconciliation*). For a UI phase the
+  verdict cannot be `APPROVE` until the user confirms the walkthrough; issue `APPROVE PENDING WALKTHROUGH` and list the
+  script.
 
 ## 9. Test Hygiene
 
@@ -291,6 +300,9 @@ one, and record the answer in the report and in `status.md` *Deviations*. Never 
 - "Full", "complete", "coherent" satisfied by the smallest reading
 - A string-scan test that reads element text cited as proof of "no hard-coded strings"
 - Tests that mutate a tracked runtime database, noticed only via a dirty working tree
+- An "end-to-end" test that traverses a path no use case describes, or that omits an extension the spec marks as
+  state-changing
+- A walkthrough script written by converge instead of taken from the use cases
 
 # Success Criteria
 
@@ -324,6 +336,7 @@ same checkpoint overwrites it and notes the previous verdict.
 - Working tree after test run: <clean | files modified>
 
 ## Evidence Ledger
+(lifecycle rows cite the UC steps traversed, e.g. `UC-1 1–5, 4a`)
 | AC | Pattern | Claimed in | Evidence (file:line) | Strength | Verified |
 |---|---|---|---|---|---|
 
@@ -341,7 +354,7 @@ same checkpoint overwrites it and notes the previous verdict.
 <one line per category 1–10: pass with evidence, or finding ids>
 
 ## Walkthrough Script (UI phases only)
-<role → pages → must see / must be denied>
+<UC-n: actor → steps → must see / extensions to try / must be denied>
 
 ## Spec Reconciliation
 - Δ folded in: <B-N/RULE-N/AC-N … with note text>

@@ -17,12 +17,12 @@ product decisions. If a behavior is too ambiguous for a testable criterion, rout
 # Inputs
 
 - Resolved spec: @file:spec/spec.md (primary source; "Behaviors to verify" is the contract; "State model",
-  "Normative data", "Presentation and navigation" and "Verification expectations" feed the patterns below)
+  "Use cases", "Normative data", "Presentation and navigation" and "Verification expectations" feed the patterns below)
 - Proposal: @file:spec/proposal.md (reference)
 
 Spec takes precedence over proposal where they disagree. If the spec references a table or definition by pointer
 ("matching the tables in …") instead of containing it, that is a route-back: criteria cannot paste what the spec did
-not copy.
+not copy. Likewise if a lifecycle exists but no use case covers it: criteria cannot tag paths the spec never wrote.
 
 # EARS Templates
 
@@ -65,6 +65,7 @@ alone do not constrain the implementation; the complement does.
 `If <action> is attempted while the <entity> is not in <allowed states>, then the <system> shall refuse it and shall
 not change the <entity>'s state or produce <side effect>.`
 The refusal criterion is what a UI-only guard fails; it must be satisfiable only by the system itself.
+A transition's AC and the UC step that performs it must agree on state names; the `Flow:` tag makes the pairing explicit.
 
 **Negative** (authz, side-effect paths): use the Unwanted behavior template and state the prohibited outcome explicitly.
 `If <unauthorized trigger>, then the <system> shall respond with 403 and not produce, log, or stage X.` The "and not"
@@ -113,6 +114,10 @@ through a message key present in every locale bundle.`
 
 **Bad:** `If an owner accesses another owner's request, then SHALL return 403` → **Better:** `… any page or action that displays another owner's data … shall deny it and shall not disclose that data`. A status code alone is satisfied by a page that leaks the data elsewhere.
 
+**Bad:** `Flow: UC-1` (the whole use case) → **Better:** `Flow: UC-1 step 4`. A tag on the whole UC is coverage by bundle; no one can tell which step is untested.
+
+**Bad:** grouping ACs under `As an owner I want …` headings → **Better:** keep the flat list; the `Flow:` tag is the grouping. A story layer re-bundles ACs and strands cross-cutting ones in "misc".
+
 # Granularity
 
 One observable outcome per criterion. If the SHALL clause splits naturally or contains "and" between distinct outcomes, split.
@@ -122,6 +127,8 @@ One observable outcome per criterion. If the SHALL clause splits naturally or co
 Every criterion has:
 - Stable ID: `AC-1`, `AC-2`, ... in document order
 - `Covers:` line listing the behavior(s) it addresses, using B-N IDs from the spec
+- `Flow:` line placing it on a path, with exactly this grammar: `UC-n step k` · `UC-n ext ka` · `cross-cutting`. One AC
+  may list several (`UC-1 step 4, UC-3 step 2`). The actor is implicit in the UC; do not add a story layer.
 
 If a criterion covers spec content outside "Behaviors to verify" (e.g., an explicit assumption that doesn't appear as a
 B-N), reference by section heading and a distinguishing phrase, e.g.
@@ -141,6 +148,11 @@ Every table under the spec's "Normative data" has its exactness ACs; every state
 transition and refusal ACs; every item under "Presentation and navigation" and "Verification expectations" has an AC
 or a listed exclusion.
 
+**Paths are covered per step.** Every main-scenario step and every extension of every UC has ≥ 1 AC whose `Flow:`
+names it. Extensions are usually Unwanted-behaviour or Combined ACs (`While <state>, when <condition at step k>, the
+<system> shall <response> and shall not <error / silent fallback>`). Cross-cutting ACs (authz, localization, data
+exactness, boundaries) are tagged `cross-cutting` and are never forced under a UC.
+
 # Route-Back Threshold
 
 Route back to the spec step when any of:
@@ -150,6 +162,7 @@ Route back to the spec step when any of:
 - A boundary value, error path, or state transition is implied but not specified
 - The spec references normative data by pointer, describes a lifecycle in prose without a state table, or applies a
   loaded word (full, complete, coherent, all) to a screen or data set without defining it
+- A use-case extension has no B-N, a lifecycle entity has no use case, or a UC step names a widget or endpoint
 
 A single missing detail you can resolve by reading the codebase is not a route-back; resolve it and note the source.
 Don't pretend to understand to avoid the loop.
@@ -171,6 +184,7 @@ Complete only when ALL hold:
   or recorded under "Coverage exclusions")
 - Every AC uses an EARS template, has one SHALL outcome, avoids implementation prescription, and contains no rationale
 - Every AC has an ID and `Covers:` reference
+- Every AC has a `Flow:` line; every UC step and extension has ≥ 1 AC naming it; cross-cutting ACs are tagged as such
 
 Run a verification pass before writing. Do not write a partial file.
 
@@ -185,6 +199,7 @@ Write to `spec/criteria.md`:
 
 ### AC-1: <title>
 **Covers:** B-N[, B-M ...]
+**Flow:** UC-1 step 4
 
 <EARS statement>
 

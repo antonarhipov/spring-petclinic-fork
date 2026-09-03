@@ -26,7 +26,7 @@ Risk Hotspots from the review surface as `risk` annotations on the relevant task
 # Inputs
 
 - Proposal: @file:spec/proposal.md
-- Spec: @file:spec/spec.md (including "State model", "Normative data", "Presentation and navigation", "Verification expectations")
+- Spec: @file:spec/spec.md (including "State model", "Use cases", "Normative data", "Presentation and navigation", "Verification expectations")
 - Criteria: @file:spec/criteria.md (the AC list every task's `covers.acs` draws from)
 - Rules: @file:spec/rules.md (optional; its Security Surface and Testing Strategy tables shape the verification tasks)
 - Review: @file:spec/review.md (optional, pipeline gate)
@@ -76,7 +76,8 @@ rung that fired, and the signal that triggered it as `dec-1` (see *Recording the
 3. **No existing skeleton.** If nothing within the spec's scope currently runs end to end — new service, new module,
    new integration boundary, a new actor with no login or page, or the spec's happy path crosses a seam that has never
    been exercised (see the seam list from Codebase Grounding) — use `walking_skeleton`. The skeleton phase is
-   **phase-1** and MUST contain, thinly but really:
+   **phase-1**. The skeleton is the **primary use case's main success scenario, thin** — every step present, no
+   extensions yet — plus the mandatory tasks. It MUST contain, thinly but really:
    - login for each role the feature introduces, with the security surface for the whole URL→role matrix;
    - at least one page per role rendered inside the existing layout with that role's menu entries, signed-in state and
      logout (the *Presentation and navigation* mandatory task);
@@ -88,7 +89,9 @@ rung that fired, and the signal that triggered it as `dec-1` (see *Recording the
    A skeleton that is a service with a unit test is not a skeleton. After rung 3 fires, **re-apply rungs 4–5 to the
    remaining ACs** to order the thickening phases and record the hybrid `walking_skeleton then <result>`.
 4. **Separable ACs.** If the ACs partition into two or more clusters that could each ship on their own without the
-   others, use `feature_slice`. One cluster is not a partition.
+   others, use `feature_slice`. One cluster is not a partition. Use cases are the natural clusters: a UC whose
+   postcondition is reachable without the others is a slice. Order slices by the primary UC's extensions first (they
+   thicken the skeleton), then secondary UCs.
 5. **Fallback.** Mirror the existing architecture. For most codebases this is `layered`; use the structure you found
    during Codebase Grounding.
 
@@ -128,6 +131,10 @@ end of the phase ("an owner can log in, submit a request, and see one held sugge
 truthful demo sentence exists for a phase — only "tests pass" — the phasing is wrong for that phase; revisit the
 ladder. For a low-reasoning executor the demo sentence is also the clearest statement of the phase goal.
 
+The demo sentence is the **postcondition of the use case(s) the phase completes**, phrased for a human
+(`UC-1 postcondition: request Accepted, one Scheduled appointment under My appointments`). A phase that completes no
+UC and no extension has no demo sentence — revisit the ladder.
+
 # Task Granularity
 
 - Completable in a single focused effort (rule of thumb: under an hour)
@@ -147,7 +154,7 @@ Strategy table):
 | State transition / refusal | which service-level test sets up each disallowed state and asserts the named refusal **and** `never()` on collaborators |
 | Negative authz | which web-slice test, over **which routes** (the whole matrix, pre-existing routes included), asserts status **and** no disclosure **and** no mutation, for anonymous, wrong-role and wrong-owner |
 | Fidelity | which round-trip test compares every enumerated field |
-| Lifecycle / end-to-end | which HTTP-level test drives the real endpoints as each role through every named step, on an isolated in-memory database |
+| Lifecycle / end-to-end | which HTTP-level test drives **UC-n steps k…m** as each named actor on an isolated in-memory database, asserting state after every step; which extension legs it includes |
 | Presentation / localization | which scan or test covers templates (text **and** attributes **and** inline expressions) and code-produced messages; plus the walkthrough criterion at the checkpoint |
 | Boundary | the three values asserted |
 
@@ -169,9 +176,12 @@ another task) for:
   not as leftovers of the last one
 - **Test environment** — the isolated test datasource and the "working tree unchanged after the suite" check, in the
   first phase that adds a test
+- **Use cases** — for every UC, one HTTP-level end-to-end test task (main scenario + state-changing extensions) in the
+  phase that completes the UC; the task `description` copies the step list from `spec.md` and names the actors
 
-Under a `walking_skeleton` plan all five land in phase-1 by construction (see rung 3); under any other principle each
-lands in the phase named above, never later.
+Under a `walking_skeleton` plan all five of the first group land in phase-1 by construction (see rung 3), and the
+primary UC's end-to-end test lands in phase-1 under a skeleton; under any other principle each lands in the phase named
+above, never later.
 
 # Dependency Rules
 
@@ -196,10 +206,11 @@ as goals: name the observable outcome and the evidence shape ("migration test as
 "anonymous GET on every route in the security matrix redirects to `/login` and no service is invoked"), never "tests
 pass" or "UI works".
 
-Any phase that ships templates gets one **human walkthrough** criterion: "signed in as <each role>, the pages <list>
-render inside the existing layout with only that role's menu entries, the signed-in user and a logout action are
-visible, and <role> is denied on <URLs>". Automated tests cannot judge alignment or coherence; the walkthrough is the
-acceptance gate for UI, and converge cannot approve the phase until the user confirms it.
+Any phase that ships templates gets one **human walkthrough** criterion: "signed in as <actor>, execute **UC-n main
+scenario by hand** (and extensions <list>); pages render inside the existing layout with only that role's menu entries,
+the signed-in user and a logout action are visible, and <role> is denied on <URLs>". A walkthrough is a use case
+executed by a human; the script is not invented per phase. Automated tests cannot judge alignment or coherence; the
+walkthrough is the acceptance gate for UI, and converge cannot approve the phase until the user confirms it.
 
 Every terminal checkpoint also carries: "full suite green; `git status` shows no tracked file modified by the run".
 
@@ -292,11 +303,12 @@ Complete only when ALL hold:
 - No circular dependencies
 - Every phase ends with a checkpoint whose criteria name an observable outcome and an evidence shape; UI phases have a walkthrough criterion; terminal checkpoints have the clean-working-tree criterion
 - Every `validation` states an assertion shape matching the AC pattern (no "run tests"/"tests pass")
-- Mandatory tasks present for every spec section that triggers them (normative data, state model, security surface, presentation and navigation, test environment)
+- Mandatory tasks present for every spec section that triggers them (normative data, state model, security surface, presentation and navigation, test environment, use cases)
 - No task references a table, state model or matrix by pointer to another file
 - `organizing_principle` set by the selection ladder, with the rung and quoted signal in `dec-1`; hybrids name the handoff phase; a pure `layered` result is accompanied by evidence that rungs 2–4 did not fire
 - If rung 3 fired, phase-1 contains every skeleton item listed under rung 3 and `cp-1` has the walkthrough criterion
-- Every `phase.description` ends with a truthful demo sentence
+- Every `phase.description` ends with a truthful demo sentence, which is the postcondition of the UC(s) the phase completes
+- Every UC has an end-to-end task whose `validation` names its steps; walkthrough criteria name the UC executed; if rung 3 fired, phase-1 contains every step of the primary UC
 - All Risk Hotspots reflected in task `risk` annotations; architectural hotspots produced a `risk_first` spike phase
 - Soft limits met, or deviation justified in `decisions`
 
