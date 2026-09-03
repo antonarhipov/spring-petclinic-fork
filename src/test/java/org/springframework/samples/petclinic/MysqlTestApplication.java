@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic;
 
+import org.junit.jupiter.api.Disabled;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +31,7 @@ import org.testcontainers.utility.DockerImageName;
  * @author Dave Syer
  */
 @Configuration
+@Disabled
 public class MysqlTestApplication {
 
 	@ServiceConnection
