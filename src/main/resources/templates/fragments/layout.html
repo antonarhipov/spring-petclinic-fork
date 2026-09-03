@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org">
+<html th:fragment="layout (template, menu)" xmlns:th="https://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 
 <head>
 
@@ -19,11 +19,13 @@
 
   <nav class="navbar navbar-expand-lg navbar-dark" role="navigation">
     <div class="container-fluid">
-      <a class="navbar-brand" th:href="@{/}"><span></span></a>
+      <a sec:authorize="hasRole('OWNER')" class="navbar-brand" th:href="@{/my/appointments}"><span></span></a>
+      <a sec:authorize="hasRole('STAFF')" class="navbar-brand" th:href="@{/staff/queue}"><span></span></a>
+      <a sec:authorize="!isAuthenticated()" class="navbar-brand" th:href="@{/}"><span></span></a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-navbar">
         <span class="navbar-toggler-icon"></span>
       </button>
-      <div class="collapse navbar-collapse" id="main-navbar" style>
+      <div class="collapse navbar-collapse" id="main-navbar">
 
         <ul class="navbar-nav me-auto mb-2 mb-lg-0" th:remove="all">
 
@@ -36,11 +38,32 @@
 
         </ul>
 
-        <ul class="nav navbar-nav me-auto">
+        <!-- Owner navigation links -->
+        <ul sec:authorize="hasRole('OWNER')" class="nav navbar-nav me-auto">
 
-          <li th:replace="~{::menuItem ('/','home','home page','home',#{home})}">
-            <span class="fa fa-home" aria-hidden="true"></span>
-            <span th:text="#{home}">Home</span>
+          <li th:replace="~{::menuItem ('/my/appointments','myAppointments','my appointments','calendar',#{myAppointments})}">
+            <span class="fa fa-calendar" aria-hidden="true"></span>
+            <span th:text="#{myAppointments}">My Appointments</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/scheduling/new','scheduleAppointment','schedule appointment','plus-circle',#{scheduleAppointment})}">
+            <span class="fa fa-plus-circle" aria-hidden="true"></span>
+            <span th:text="#{scheduleAppointment}">Schedule Appointment</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/my/pets','myPets','my pets','paw',#{myPets})}">
+            <span class="fa fa-paw" aria-hidden="true"></span>
+            <span th:text="#{myPets}">My Pets</span>
+          </li>
+
+        </ul>
+
+        <!-- Staff navigation links -->
+        <ul sec:authorize="hasRole('STAFF')" class="nav navbar-nav me-auto">
+
+          <li th:replace="~{::menuItem ('/staff/queue','queue','queue','inbox',#{queue})}">
+            <span class="fa fa-inbox" aria-hidden="true"></span>
+            <span th:text="#{queue}">Queue</span>
           </li>
 
           <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
@@ -53,13 +76,66 @@
             <span th:text="#{vets}">Veterinarians</span>
           </li>
 
-          <li
-            th:replace="~{::menuItem ('/oups','error','trigger a RuntimeException to see how it is handled','exclamation-triangle',#{error})}">
-            <span class="fa exclamation-triangle" aria-hidden="true"></span>
-            <span th:text="#{error}">Error</span>
+          <li th:replace="~{::menuItem ('/staff/config','clinicConfig','clinic config','cogs',#{clinicConfig})}">
+            <span class="fa fa-cogs" aria-hidden="true"></span>
+            <span th:text="#{clinicConfig}">Clinic Config</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/staff/scheduling/new','staffSchedule','schedule appointment','calendar-plus-o',#{scheduleAppointment})}">
+            <span class="fa fa-calendar-plus-o" aria-hidden="true"></span>
+            <span th:text="#{scheduleAppointment}">Schedule Appointment</span>
           </li>
 
         </ul>
+
+        <!-- Right-aligned user session widget & language switcher -->
+        <ul class="nav navbar-nav ms-auto align-items-center">
+
+          <!-- Language Switcher -->
+          <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" href="#" id="langDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="fa fa-globe"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langDropdown">
+              <li><a class="dropdown-item" th:href="@{''(lang='en')}" th:text="'English'">English</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='de')}" th:text="'Deutsch'">Deutsch</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='es')}" th:text="'Español'">Español</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='fa')}" th:text="'فارسی'">فارسی</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='hi')}" th:text="'हिन्दी'">हिन्दी</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ja')}" th:text="'日本語'">日本語</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ko')}" th:text="'한국어'">한국어</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='pt')}" th:text="'Português'">Português</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ru')}" th:text="'Русский'">Русский</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='tr')}" th:text="'Türkçe'">Türkçe</a></li>
+            </ul>
+          </li>
+
+          <!-- Anonymous Login Link -->
+          <li sec:authorize="!isAuthenticated()" class="nav-item">
+            <a class="nav-link" th:href="@{/login}">
+              <span class="fa fa-sign-in"></span>
+              <span th:text="#{login}">Login</span>
+            </a>
+          </li>
+
+          <!-- Authenticated Session Widget (Username + Role Badge + Logout) -->
+          <li sec:authorize="isAuthenticated()" class="nav-item d-flex align-items-center">
+            <span class="navbar-text me-3">
+              <span class="fa fa-user me-1"></span>
+              <span sec:authentication="name" class="fw-bold"></span>
+              <span sec:authorize="hasRole('OWNER')" class="badge bg-info text-dark ms-1" th:text="#{owner}">Owner</span>
+              <span sec:authorize="hasRole('STAFF')" class="badge bg-warning text-dark ms-1" th:text="#{staff}">Staff</span>
+            </span>
+            <form th:action="@{/logout}" method="post" class="d-inline">
+              <button type="submit" class="btn btn-outline-light btn-sm">
+                <span class="fa fa-sign-out"></span>
+                <span th:text="#{logout}">Logout</span>
+              </button>
+            </form>
+          </li>
+
+        </ul>
+
       </div>
     </div>
   </nav>

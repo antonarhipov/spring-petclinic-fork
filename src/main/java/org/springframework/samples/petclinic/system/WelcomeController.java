@@ -16,6 +16,9 @@
 
 package org.springframework.samples.petclinic.system;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -23,8 +26,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 class WelcomeController {
 
 	@GetMapping("/")
-	public String welcome() {
-		return "welcome";
+	public String welcome(HttpServletRequest request) {
+		if (request.isUserInRole("OWNER") || request.isUserInRole("ROLE_OWNER")) {
+			return "redirect:/my/appointments";
+		}
+		if (request.isUserInRole("STAFF") || request.isUserInRole("ROLE_STAFF")) {
+			return "redirect:/staff/queue";
+		}
+		if (request.getUserPrincipal() instanceof Authentication auth) {
+			for (GrantedAuthority authority : auth.getAuthorities()) {
+				if ("ROLE_OWNER".equals(authority.getAuthority())) {
+					return "redirect:/my/appointments";
+				}
+				if ("ROLE_STAFF".equals(authority.getAuthority())) {
+					return "redirect:/staff/queue";
+				}
+			}
+		}
+		return "redirect:/login";
 	}
 
 }
