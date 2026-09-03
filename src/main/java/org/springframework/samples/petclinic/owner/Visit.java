@@ -42,11 +42,22 @@ public class Visit extends BaseEntity {
 	@NotBlank
 	private String description;
 
+	@Column(name = "appointment_id")
+	private Integer appointmentId;
+
 	/**
 	 * Creates a new instance of Visit for tomorrow
 	 */
 	public Visit() {
 		this.date = LocalDate.now().plusDays(1);
+	}
+
+	public Integer getAppointmentId() {
+		return this.appointmentId;
+	}
+
+	public void setAppointmentId(Integer appointmentId) {
+		this.appointmentId = appointmentId;
 	}
 
 	public LocalDate getDate() {

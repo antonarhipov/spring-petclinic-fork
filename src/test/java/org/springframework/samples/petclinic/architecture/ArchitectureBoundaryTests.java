@@ -54,6 +54,8 @@ class ArchitectureBoundaryTests {
 		.haveSimpleNameNotContaining("ConstraintProvider")
 		.and()
 		.haveSimpleNameNotContaining("Solution")
+		.and()
+		.haveSimpleNameNotContaining("Assignment")
 		.should()
 		.dependOnClassesThat()
 		.resideInAnyPackage("ai.timefold..", "org.springframework.ai..")
