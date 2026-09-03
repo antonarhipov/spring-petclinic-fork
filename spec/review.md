@@ -2,7 +2,7 @@
 
 ## Summary
 - Feature: Smart Appointment Scheduling (guided LLM + Timefold appointment flow for Spring PetClinic)
-- Verdict: FAIL
+- Verdict: PASS
 - Counts: 0 blockers, 0 major, 1 minor (BLOCKER-1 and MAJOR-1 resolved 2026-09-03)
 - Action: BLOCKER-1 resolved by removing urgency from the automated flow entirely — only the always-visible urgent-care banner remains (RA-17; B-71/B-72, AC-87/AC-88 and RULE-30 retired). MAJOR-1 resolved by adding the missing *staff book (leave open)* self-transition rows to the *Suggestion offered* and *With staff* states in both the spec state model and RULE-15. Only MINOR-1 (solver termination wording) remains; it is not in the Fix Plan. Rerun review to confirm.
 
