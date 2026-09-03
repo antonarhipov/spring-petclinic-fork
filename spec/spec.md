@@ -77,7 +77,7 @@ proposal text.
   opening hours, part-of-day tokens, veterinarians (id, name, specialties), and offered specialties (radiology, surgery,
   dentistry). The model answers strictly as JSON matching a Java record (Spring AI structured output /
   `BeanOutputConverter`): `reasonSummary`, `estimatedMinutes`, `careType` (`GENERAL`|`SPECIALTY`), `specialty` (closed
-  list or `OTHER:<text>`), `preferredVetId`, `urgent`, `cannotInterpret`, and three window lists. An `OTHER` specialty
+  list or `OTHER:<text>`), `preferredVetId`, `cannotInterpret`, and three window lists. An `OTHER` specialty
   is unmatched → *With staff*.
 - **RA-15 Preferred veterinarian resolution (Q43).** The model returns a vet id from the prompt list or `null`;
   unknown/ambiguous names → `null`. The app validates the id exists. The read-only review shows the resolved vet name.
@@ -87,9 +87,10 @@ proposal text.
   (RA-11) minus excluded windows is non-empty within the horizon ("anytime" is usable). Contradictory windows and an
   explicit `cannotInterpret` flag count as a failed attempt (owner may rephrase). Malformed JSON after one retry,
   transport errors and timeouts = "model unavailable" → *With staff*.
-- **RA-17 Emergency detection (Q14).** Either the AI `urgent` flag **or** an owner "this is urgent" checkbox pins the
-  request to the top of the queue. Staff can clear the flag and either book directly or place a suggestion; the request
-  stays *With staff* and never returns to the automated loop.
+- **RA-17 Emergency / urgent care (Q14). [changes proposal §8].** The automated scheduling flow does **not** detect or
+  act on urgency: there is no AI `urgent` flag, no owner "this is urgent" checkbox, and no queue pinning. Urgent care is
+  handled solely by a fixed, always-visible urgent-care banner (RA-8) that tells the owner to call the clinic; nothing in
+  the request lifecycle, interpretation, ranking or staff queue branches on urgency.
 - **RA-18 Interpretation latency (Q36). [changes proposal §5/§6].** Interpretation is **asynchronous** with a polling
   page. A new `Interpreting` lifecycle state is added. Ollama client timeout is 60 s (configurable
   `scheduling.ai.timeout`), one retry on malformed output, no retry on timeout; timeout → *With staff* with the
@@ -103,7 +104,7 @@ proposal text.
   passed and the result applied in a fresh transaction that re-checks state. On startup every request still in
   `Interpreting` is moved to *Interpretation failed* with reason "interrupted". Tests use a synchronous executor.
 - **RA-22 Runtime AI provider (Q37).** Property `scheduling.ai.provider=ollama|stub` (default `ollama`). `stub` wires a
-  rule-based interpreter (keyword matching for weekdays, parts of day, "not", specialties, "emergency") so the full flow
+  rule-based interpreter (keyword matching for weekdays, parts of day, "not", specialties) so the full flow
   can be demoed offline. Tests use this stub plus hand-built fixtures.
 
 ### Guided flow, holds and rejections
@@ -148,8 +149,8 @@ proposal text.
   interpretation is stored as a new version with provenance `STAFF`; the `AI` version is never overwritten. "Place a
   suggestion" = click a free cell on the calendar **or** press *Suggest* to run the solver — both create a hold and put
   the request into *Suggestion offered*.
-- **RA-36 Queue scope and order (Q25).** Two tabs. **Needs staff** (default) = *With staff* requests, emergencies pinned
-  first, then oldest first, with the hand-off trigger shown. **All open** lists every non-terminal request with state,
+- **RA-36 Queue scope and order (Q25).** Two tabs. **Needs staff** (default) = *With staff* requests, oldest first, with
+  the hand-off trigger shown. **All open** lists every non-terminal request with state,
   held slot and age, plus the *release hold* action.
 - **RA-37 Calendar layout (Q12).** Day view, one column per veterinarian, one row per 15-minute grid step; cells
   coloured closed / off-shift / free / booked / held; prev/next-day navigation and a date picker. Clicking a free cell
@@ -199,8 +200,8 @@ proposal text.
 
 Accepted unless challenged; each is confirmed as part of this spec.
 
-- **EA-1** Request creation is two steps: a form (pet — only pets without an active request —, reason, availability,
-  urgent checkbox) creating the request in *Awaiting consent*, followed by a consent page.
+- **EA-1** Request creation is two steps: a form (pet — only pets without an active request —, reason, availability)
+  creating the request in *Awaiting consent*, followed by a consent page.
 - **EA-2** Flyway layout: `V1__stock_schema`, `V2__stock_data`, `V3__scheduling_schema`, `V4__scheduling_seed`;
   `spring.sql.init` disabled; the same migrations run against the in-memory test H2.
 - **EA-3** Accounts live in a `users` table (username, bcrypt password, role, nullable `owner_id` FK). `/` redirects by
@@ -246,8 +247,6 @@ Edge cases that branch off a use-case step are written as extensions of that use
 - **E-14 Owner attempts to cancel a past visit or no-show** → refused with no side effect. `E-14 → UC-6 ext 1a`. (B-96)
 - **E-15 Two owners attempt to confirm the same vet-and-time / second active request for the same pet** → serialised;
   exactly one succeeds. `E-15 → UC-1 ext 8b`. (B-23, B-24, B-58)
-- **E-16 Emergency (AI flag or owner checkbox)** → automated loop skipped, pinned to top of queue. `E-16 → UC-1 ext 1a`.
-  (B-71)
 
 ---
 
@@ -300,12 +299,13 @@ non-*Abandoned* state (RA-31). Every transition not listed below is **refused by
 | | staff release hold | With staff |
 | | staff place a suggestion | Suggestion offered |
 | | staff book (attach) | Accepted |
+| | staff book (leave open) | Suggestion offered |
 | **With staff** | view status | With staff |
 | | abandon | Abandoned |
 | | staff create/edit interpretation (new STAFF version) | With staff |
-| | staff clear emergency flag | With staff |
 | | staff place a suggestion | Suggestion offered |
 | | staff book directly (attach) | Accepted |
+| | staff book directly (leave open) | With staff |
 | **Accepted** | *(terminal for the request)* — the appointment is managed under the appointment lifecycle; owner cancellation does **not** reopen the request | Accepted |
 | **Abandoned** | *(terminal)* — none | Abandoned |
 
@@ -345,7 +345,6 @@ Main success scenario
   7. Owner accepts the suggestion                                                 → B-56, B-58
   8. System confirms the appointment and shows it under My appointments           → B-56, B-78
 Extensions
-  1a. Owner marks the request urgent (or the AI later flags it) → request pinned to staff queue, automated loop skipped; → UC-4   → B-71   (E-16)
   3a. Owner declines consent → request → With staff; → UC-4                                                              → B-26   (E-1)
   4a. Application restarts while interpreting → request → Interpretation failed (reason "interrupted"); resume at 2      → B-31   (E-10)
   4b. Interpretation result arrives after the owner abandoned → result discarded; → end                                 → B-30   (E-11)
@@ -384,17 +383,16 @@ Postcondition: request Interpreted, or With staff, or awaiting another rephrase
 
 ```text
 UC-4  Staff resolve a queued request
-Actor: Staff   Precondition: request in With staff (emergencies pinned first)
+Actor: Staff   Precondition: request in With staff
 Main success scenario
   1. Staff open the request from the Needs staff queue and review its timeline     → B-68, B-100, B-49
   2. Staff create or complete the structured interpretation (new STAFF version)    → B-73, B-48
   3. Staff place a suggestion via calendar pick or by running the solver           → B-74, B-52, B-64
   4. Owner accepts or rejects the staff-placed suggestion like any other           → B-75, B-56
 Extensions
-  2a. Request is a suspected emergency → staff clear the flag; it stays With staff  → B-72   (E-16)
   3a. Staff instead book directly for the pet and attach to the open request → request → Accepted, hold released, event logged; → UC-5   → B-76, B-77   
   3b. Staff book directly and leave the request open → appointment appears under the owner's list; request untouched   → B-77, B-78
-Postcondition: request Accepted or in Suggestion offered; or still With staff after clearing an emergency
+Postcondition: request Accepted or in Suggestion offered
 ```
 
 ```text
@@ -609,7 +607,7 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 
 ### Request creation and single-active-request
 - **B-21** The system lets an owner start a request by selecting one of their pets with no active request, entering
-  reason and availability text and an optional "this is urgent" checkbox, creating a request in *Awaiting consent*.
+  reason and availability text, creating a request in *Awaiting consent*.
 - **B-22** The pet selector offers only pets without an active request.
 - **B-23** The system enforces at most one active request per pet, even under simultaneous submissions (nullable
   `active_pet_id` + unique index).
@@ -647,8 +645,8 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
   allowing rephrasing.
 
 ### Interpretation content
-- **B-38** The system derives estimated visit length, care type and specialty, preferred/allowed/excluded windows, an
-  optional preferred veterinarian, and an urgency flag.
+- **B-38** The system derives estimated visit length, care type and specialty, preferred/allowed/excluded windows, and an
+  optional preferred veterinarian.
 - **B-39** The model returns a preferred veterinarian id from the prompt list or `null`; the system validates the id
   exists and shows the resolved vet name in the read-only review; unknown/ambiguous names yield `null` (no fuzzy
   matching in Java).
@@ -668,7 +666,7 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 
 ### Interpretation storage and fidelity
 - **B-46** The system persists the complete interpretation (all three window lists, care type, specialty, duration,
-  preferred vet, urgency) plus the raw model response, model tag and prompt version; a read-back is field-for-field
+  preferred vet) plus the raw model response, model tag and prompt version; a read-back is field-for-field
   identical to what was produced.
 - **B-47** The read-only review shows the interpretation verbatim; to change it the owner edits the text, which requires
   fresh consent and re-interpretation.
@@ -718,15 +716,13 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 - **B-67** Start times fall on a 15-minute grid; the solver runs synchronously inside the locked transaction with a 1 s
   termination budget.
 
-### Staff queue and emergencies
-- **B-68** The *Needs staff* tab lists *With staff* requests with emergencies pinned first, then oldest first, showing
-  each hand-off trigger.
+### Staff queue
+- **B-68** The *Needs staff* tab lists *With staff* requests oldest first, showing each hand-off trigger.
 - **B-69** The *All open* tab lists every non-terminal request with state, held slot and age, plus a release-hold
   action.
 - **B-70** Staff release-hold moves the request to *With staff* with a reason and releases the hold.
-- **B-71** Either the AI urgent flag or the owner's urgent checkbox pins the request to the top of the staff queue and
-  skips the automated loop.
-- **B-72** Staff can clear the emergency flag; the request stays *With staff* and never returns to the automated loop.
+
+*(B-71 and B-72 retired: urgency is no longer part of the automated flow — see RA-17. Urgent care is handled solely by the always-visible urgent-care banner, B-18.)*
 
 ### Staff interpretation and suggestion placement
 - **B-73** Staff can create or edit a structured interpretation (stored as a new `STAFF` version), required for

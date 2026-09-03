@@ -90,7 +90,7 @@ here.
 | State refusal (AC-57, AC-111, AC-117, AC-123, AC-124) | service | request/appointment persisted in the disallowed state on the isolated DB | named exception (`IllegalRequestTransitionException` / `IllegalAppointmentTransitionException`) **and** `never()` save **and** no event row |
 | Lifecycle end-to-end (AC-138) | HTTP via `MockMvcTester` with the real filter chain, CSRF, interleaved owner+staff sessions | isolated in-memory H2 (same Flyway), pinned `Clock`, `stub` interpreter, synchronous executor | one test per UC main scenario (steps copied below) + one leg per state-changing extension; request/appointment state asserted after every step |
 | Data exactness (AC-125→AC-134) | migration test on a fresh in-memory H2 | Flyway `V1..V4` only | every seeded row asserted **by value** (not count); each password verified with the `PasswordEncoder`; no extra rows |
-| Fidelity (AC-53) | round-trip persistence test | isolated DB | every field (3 window lists, careType, specialty, duration, preferred vet, urgency, raw response, model tag, prompt version) equal to the produced value |
+| Fidelity (AC-53) | round-trip persistence test | isolated DB | every field (3 window lists, careType, specialty, duration, preferred vet, raw response, model tag, prompt version) equal to the produced value |
 | Boundary (AC-42/43/44, AC-50/51/52, AC-104/105/106, AC-111/112/113) | unit / service | fixtures + pinned `Clock` | within / at-boundary / beyond, all three asserted |
 | Concurrency (AC-22, AC-65, AC-141) | integration on real DB | two simultaneous transactions | at most one succeeds; the loser is refused with no second active request / no double booking |
 | Smoke (AC-139) | one `@SpringBootTest(webEnvironment=RANDOM_PORT)` | full context | login page loads + exactly one authenticated page reachable |
@@ -104,10 +104,10 @@ are required legs.
 
 | UC | Test name (suggested) | Steps (copied from spec.md §Use cases) | Actors |
 |---|---|---|---|
-| UC-1 | `SchedulingLifecycleE2eTests.ownerGuidedFlow` | 1. Owner starts a request, entering reason and availability text for a pet. 2. Owner reviews the request and grants explicit consent to interpret it. 3. System interprets the text asynchronously and shows a waiting page. 4. System presents the persisted interpretation for read-only review. 5. Owner confirms the interpretation. 6. System holds and offers exactly one ranked slot. 7. Owner accepts the suggestion. 8. System confirms the appointment and shows it under My appointments. (+ ext 1a emergency, 3a decline, 5a OTHER→staff, 6a no slots→staff, 8b concurrent confirm) | owner, staff |
+| UC-1 | `SchedulingLifecycleE2eTests.ownerGuidedFlow` | 1. Owner starts a request, entering reason and availability text for a pet. 2. Owner reviews the request and grants explicit consent to interpret it. 3. System interprets the text asynchronously and shows a waiting page. 4. System presents the persisted interpretation for read-only review. 5. Owner confirms the interpretation. 6. System holds and offers exactly one ranked slot. 7. Owner accepts the suggestion. 8. System confirms the appointment and shows it under My appointments. (+ ext 3a decline, 5a OTHER→staff, 6a no slots→staff, 8b concurrent confirm) | owner, staff |
 | UC-2 | `SchedulingLifecycleE2eTests.ownerAsksForAnotherOption` | 1. Owner rejects the current suggestion and picks a scope chip. 2. System releases the hold, records the exclusion, and offers the next slot. (+ ext 2a exhausted→staff, 3a invalid hold on reopen) | owner |
 | UC-3 | `SchedulingLifecycleE2eTests.ownerRephrases` | 1. Owner edits the reason/availability text, clearing prior rejections. 2. Owner grants fresh consent; System re-interprets and shows the review. (+ ext 1a model unavailable→staff, 1b not usable, 2a third-attempt recommendation, 3a route to staff) | owner |
-| UC-4 | `SchedulingLifecycleE2eTests.staffResolveQueuedRequest` | 1. Staff open the request from the Needs staff queue and review its timeline. 2. Staff create or complete the structured interpretation (new STAFF version). 3. Staff place a suggestion via calendar pick or by running the solver. 4. Owner accepts or rejects the staff-placed suggestion like any other. (+ ext 2a clear emergency, 3a book+attach, 3b book+leave open) | staff, owner |
+| UC-4 | `SchedulingLifecycleE2eTests.staffResolveQueuedRequest` | 1. Staff open the request from the Needs staff queue and review its timeline. 2. Staff create or complete the structured interpretation (new STAFF version). 3. Staff place a suggestion via calendar pick or by running the solver. 4. Owner accepts or rejects the staff-placed suggestion like any other. (+ ext 3a book+attach, 3b book+leave open) | staff, owner |
 | UC-5 | `SchedulingLifecycleE2eTests.staffManageAppointment` | 1. Staff open the appointment on the day-view calendar. 2. Staff reschedule or cancel it before start, recording a reason. 3. After the start time passes, staff mark it completed or no-show. 4. On completion System creates a visit prefilled and editable. (+ ext 5a availability edit conflicts confirmed→refused, 5b conflicts only holds→invalidated) | staff |
 | UC-6 | `SchedulingLifecycleE2eTests.ownerCancelsUpcoming` | 1. Owner opens My appointments and cancels an upcoming appointment. 2. System marks it Cancelled by owner and keeps it under past items. (+ ext 1a cancel past/no-show refused, 1b other-owner→404) | owner |
 
@@ -164,11 +164,11 @@ XML. Recorded so the choice is not silently re-litigated.
 ### RULE-7
 **Covers:** AC-53, AC-55, AC-56, AC-72, AC-114, AC-115, AC-119, AC-120, AC-121
 **MUST** create exactly these scheduling tables in `V3`: `users`(username, password, role, nullable `owner_id`);
-`scheduling_request`(pet, owner, state, reason_text, availability_text, urgent_owner, urgent_ai, active_pet_id nullable,
+`scheduling_request`(pet, owner, state, reason_text, availability_text, active_pet_id nullable,
 failed_attempts, held_vet_id nullable, held_start nullable, held_duration nullable, timestamps);
 `scheduling_request_event`(request, from_state, to_state, actor, action, reason, payload, timestamp);
 `interpretation`(request, version, provenance `AI|STAFF`, reason_summary, estimated_minutes, care_type, specialty,
-preferred_vet_id nullable, urgent, cannot_interpret, raw_response CLOB, model_tag, prompt_version);
+preferred_vet_id nullable, cannot_interpret, raw_response CLOB, model_tag, prompt_version);
 `interpretation_window`(interpretation, kind `PREFERRED|ALLOWED|EXCLUDED`, date/date-range/weekday, start_time,
 end_time, tokens); `appointment`(pet, vet, start, duration, status, reason, nullable back-ref from `visits`);
 `appointment_change`(appointment, actor, action, reason, timestamp); and clinic-config tables (opening hours per
@@ -234,7 +234,7 @@ FK linking owner accounts to `owners`; **MUST NOT** define any other role or aut
 **Reason:** The normative account set is closed; extra roles are a defect (EA-3, Normative data).
 
 ### RULE-15
-**Covers:** AC-24, AC-25, AC-32, AC-54, AC-57, AC-61, AC-86, AC-87, AC-88, AC-89, AC-90, AC-93, AC-94, AC-122, AC-123
+**Covers:** AC-24, AC-25, AC-32, AC-54, AC-57, AC-61, AC-86, AC-89, AC-90, AC-93, AC-94, AC-122, AC-123
 **MUST** implement the request lifecycle as a service-owned guard that refuses, with `IllegalRequestTransitionException`
 and **no side effect and no event row**, every transition not listed in the table below, and **MUST NOT** rely on the
 UI hiding an action. Actions marked *(system)* are performed by the application. "Staff book (attach/leave open)" are
@@ -280,12 +280,13 @@ available from every non-terminal, non-*Accepted*, non-*Abandoned* state.
 | | staff release hold | With staff |
 | | staff place a suggestion | Suggestion offered |
 | | staff book (attach) | Accepted |
+| | staff book (leave open) | Suggestion offered |
 | **With staff** | view status | With staff |
 | | abandon | Abandoned |
 | | staff create/edit interpretation (new STAFF version) | With staff |
-| | staff clear emergency flag | With staff |
 | | staff place a suggestion | Suggestion offered |
 | | staff book directly (attach) | Accepted |
+| | staff book directly (leave open) | With staff |
 | **Accepted** | *(terminal for the request)* | Accepted |
 | **Abandoned** | *(terminal)* | Abandoned |
 
@@ -318,7 +319,7 @@ itself, verifiably (B-101, RA-20, RA-31).
 **MUST** hide the model behind a `RequestInterpreter` interface with two adapters selected by
 `scheduling.ai.provider=ollama|stub` (default `ollama`): the `ollama` adapter uses `spring-ai-starter-model-ollama`
 with structured output (`BeanOutputConverter`) into a Java record carrying exactly `reasonSummary`, `estimatedMinutes`,
-`careType`(`GENERAL|SPECIALTY`), `specialty`(closed list or `OTHER:<text>`), `preferredVetId`, `urgent`,
+`careType`(`GENERAL|SPECIALTY`), `specialty`(closed list or `OTHER:<text>`), `preferredVetId`,
 `cannotInterpret`, and preferred/allowed/excluded window lists; the prompt **MUST** include current date/time and
 horizon end from an injectable `Clock`, weekday opening hours, part-of-day tokens, veterinarians (id, name,
 specialties) and offered specialties (radiology, surgery, dentistry). Client timeout is `scheduling.ai.timeout`
@@ -380,8 +381,8 @@ from the injectable `Clock`; a candidate starting less than 2 hours out **MUST**
 
 ### RULE-25
 **Covers:** AC-53, AC-54, AC-55, AC-56
-**MUST** persist the complete interpretation (all three window lists, care type, specialty, duration, preferred vet,
-urgency) plus raw model response, model tag and prompt version, such that a read-back is field-for-field identical;
+**MUST** persist the complete interpretation (all three window lists, care type, specialty, duration, preferred vet)
+plus raw model response, model tag and prompt version, such that a read-back is field-for-field identical;
 interpretations **MUST** be versioned per request with provenance `AI`/`STAFF` (a STAFF version never overwrites the AI
 version); the read-only owner review is verbatim and changed only by editing the text (fresh consent + re-interpret);
 raw response, model tag and prompt version are visible to **staff only**.
@@ -430,17 +431,12 @@ RA-25, RA-26, RA-27).
 
 ### RULE-29
 **Covers:** AC-84, AC-85, AC-86
-**MUST** present the queue as two tabs: **Needs staff** (default) listing *With staff* requests with emergencies pinned
-first then oldest first and each hand-off trigger shown; **All open** listing every non-terminal request with state,
+**MUST** present the queue as two tabs: **Needs staff** (default) listing *With staff* requests oldest
+first and each hand-off trigger shown; **All open** listing every non-terminal request with state,
 held slot and age plus a release-hold action that moves the request to *With staff* with a reason and releases the hold.
 **Reason:** Staff need both the actionable queue and oversight of stuck owner-flow requests (RA-36).
 
-### RULE-30
-**Covers:** AC-87, AC-88
-**MUST** pin a request to the top of the staff queue and skip the automated loop when either the AI `urgent` flag or the
-owner's "this is urgent" checkbox is set; staff clearing the flag **MUST** keep the request in *With staff* and **MUST
-NOT** return it to the automated loop.
-**Reason:** Emergencies must never wait in the automated loop and must not silently re-enter it (RA-17, E-16).
+*(RULE-30 retired: urgency removed from the automated flow — see spec RA-17. AC-87 and AC-88 are likewise retired; urgent care is handled solely by the urgent-care banner, RULE-38.)*
 
 ### RULE-31
 **Covers:** AC-89, AC-90, AC-91, AC-55 (STAFF version)
@@ -481,7 +477,7 @@ conflicts **only** with holds **MUST** invalidate those holds and apply. Weekly 
 EA-5).
 
 ### RULE-35
-**Covers:** AC-104, AC-105, AC-106, AC-87 (bounds scope)
+**Covers:** AC-104, AC-105, AC-106
 **MUST** apply the booking horizon and the 15–60 duration bounds to **owners and the solver only**: an owner slot
 strictly within or on the last horizon day is allowed, beyond it is excluded; staff may book any future date with any
 grid-multiple duration that fits the vet's block, and past days are viewable but not bookable.
@@ -621,8 +617,8 @@ staff-only, so they must not leak into logs.
 | AC-13 | RULE-13, RULE-2 | | AC-84 | RULE-29 |
 | AC-14 | RULE-39 | | AC-85 | RULE-29 |
 | AC-15 | RULE-39 | | AC-86 | RULE-29, RULE-15 |
-| AC-16 | RULE-39 | | AC-87 | RULE-30, RULE-35 |
-| AC-17 | RULE-39 | | AC-88 | RULE-30 |
+| AC-16 | RULE-39 | | AC-87 | *(retired)* |
+| AC-17 | RULE-39 | | AC-88 | *(retired)* |
 | AC-18 | RULE-39 | | AC-89 | RULE-31, RULE-15 |
 | AC-19 | RULE-38 | | AC-90 | RULE-31, RULE-15 |
 | AC-20 | RULE-15 | | AC-91 | RULE-31 |

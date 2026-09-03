@@ -45,7 +45,7 @@ appointment kept as a visible record? Where do mandatory staff reasons (book/res
 calendar.
 
 ### Q24 — Request-level event log
-**Question.** Requests also have staff actions with reasons (release hold, clear emergency flag, staff-authored
+**Question.** Requests also have staff actions with reasons (release hold, staff-authored
 interpretation) and owner actions (rejections with chips, edits, abandon). Keep a request-level event log?
 **Options.** Full request event log · Rejections table only.
 **Resolution.** *Request event log.* One `scheduling_request_event` table (request, from-state, to-state, actor, action,
@@ -130,7 +130,7 @@ Monday EVENING = empty and is dropped).
 opening hours, part-of-day tokens, veterinarians (id, name, specialties), offered specialties (stock: radiology,
 surgery, dentistry). The model answers strictly as JSON matching a Java record (Spring AI structured output /
 `BeanOutputConverter`): `reasonSummary`, `estimatedMinutes`, `careType` (`GENERAL`|`SPECIALTY`), `specialty` (closed
-list or `OTHER:<text>`), `preferredVetId`, `urgent`, `cannotInterpret`, and three window lists. `OTHER` specialty →
+list or `OTHER:<text>`), `preferredVetId`, `cannotInterpret`, and three window lists. `OTHER` specialty →
 unmatched → *With staff*.
 
 ### Q43 — Preferred veterinarian resolution
@@ -154,9 +154,10 @@ and timeouts = "model unavailable" → *With staff*.
 **Question.** "Any sign of urgency" is AI-derived, but an owner who declines consent can't be flagged. Owner checkbox
 too? May staff downgrade a false positive?
 **Options.** AI or checkbox, staff clears · AI only · Checkbox only.
-**Resolution.** *AI or checkbox, staff clears.* Either the AI `urgent` flag **or** an owner "this is urgent" checkbox
-pins the request to the top of the queue. Staff can clear the flag and either book directly or place a suggestion; the
-request stays *With staff* and never returns to the automated loop.
+**Resolution.** **Superseded — urgency removed from the automated flow.** The original decision (*AI or checkbox, staff
+clears*, with queue pinning) was reversed: the automated scheduling flow no longer detects or acts on urgency — there is
+no AI `urgent` flag, no owner "this is urgent" checkbox, and no queue pinning. Urgent care is handled solely by the
+always-visible urgent-care banner with the clinic phone (Q29). See spec RA-17.
 
 ### Q36 — Interpretation latency
 **Question.** The interpretation call may take 10–60 s on a local `gemma4` model. Synchronous form POST or async job
@@ -195,7 +196,7 @@ owner can consent again. Tests use a synchronous executor.
 the double be selectable at runtime?
 **Options.** Selectable stub provider · Test-only double.
 **Resolution.** *Selectable stub provider.* Property `scheduling.ai.provider=ollama|stub` (default `ollama`). `stub`
-wires a rule-based interpreter (keyword matching for weekdays, parts of day, "not", specialties, "emergency") so the
+wires a rule-based interpreter (keyword matching for weekdays, parts of day, "not", specialties) so the
 full flow can be demoed offline. Tests use this stub plus hand-built fixtures.
 
 ---
@@ -314,8 +315,8 @@ the request into *Suggestion offered*.
 ### Q25 — Queue scope and order
 **Question.** Only *With staff* requests, or all open requests so staff can oversee stuck owner-flow requests?
 **Options.** Two tabs · Needs staff only.
-**Resolution.** *Two tabs.* Default **Needs staff** = *With staff* requests, emergencies pinned first, then oldest
-first, hand-off trigger shown (declined consent, unmatched specialty, exhausted…). **All open** lists every
+**Resolution.** *Two tabs.* Default **Needs staff** = *With staff* requests, oldest first, hand-off trigger shown
+(declined consent, unmatched specialty, exhausted…). **All open** lists every
 non-terminal request with state, held slot and age, with the *release hold* action.
 
 ### Q12 — Calendar layout
@@ -435,8 +436,8 @@ feature** (listed explicitly in the test). Stock templates are not retro-fitted.
 
 ## H. Assumptions made explicit (accepted unless challenged)
 
-- Request creation is two steps: form (pet — only pets without an active request —, reason, availability, urgent
-  checkbox) → *Awaiting consent* → consent page.
+- Request creation is two steps: form (pet — only pets without an active request —, reason, availability) → *Awaiting
+  consent* → consent page.
 - Flyway layout: `V1__stock_schema`, `V2__stock_data`, `V3__scheduling_schema`, `V4__scheduling_seed`;
   `spring.sql.init` disabled; the same migrations run against the in-memory test H2.
 - Accounts: `users` (username, bcrypt password, role, nullable `owner_id` FK); `/` redirects by role; the login page
@@ -455,10 +456,10 @@ Decisions that change or sharpen `spec/proposal.md` and must be folded back in:
 | Section | Change |
 |---|---|
 | §3 / §4 | Owner URL space `/my/**`; stock and `/staff/**` URLs staff-only (Q35). Denial semantics 404/403/redirect (Q28). |
-| §5 | Two input fields (Q2); window model with preferred∪allowed as hard universe (Q3); tokens and 2 h lead (Q4, Q19); closed-vocabulary JSON output (Q20, Q43); "usable" definition (Q15); emergency = AI or checkbox (Q14); async interpretation with `Interpreting` state (Q36, Q45–Q47); stub provider (Q37); provenance columns (Q16). |
+| §5 | Two input fields (Q2); window model with preferred∪allowed as hard universe (Q3); tokens and 2 h lead (Q4, Q19); closed-vocabulary JSON output (Q20, Q43); "usable" definition (Q15); async interpretation with `Interpreting` state (Q36, Q45–Q47); stub provider (Q37); provenance columns (Q16); urgency removed from the automated flow, urgent-care banner only (Q14, Q29). |
 | §6 | New `Interpreting` state; rejection scope chips and their semantics (Q6, Q49); rejections cleared on edit (Q7); staff release hold (Q5); hold re-validation on view (Q30); staff booking over holds and attach-from-any-state (Q9, Q42); ruled-out list shown (Q34). |
 | §7 | Owner self-overlap hard constraint (Q23); preferred/allowed union as hard constraint (Q3); `HardMediumSoft` priority order and single-entity model (Q10, Q48). |
-| §8 | Staff interpretation form with versioning/provenance; suggest via calendar pick or solver (Q8); staff may clear the emergency flag (Q14); queue tabs (Q25). |
+| §8 | Staff interpretation form with versioning/provenance; suggest via calendar pick or solver (Q8); no urgency handling in the automated flow, urgent-care banner only (Q14, Q29); queue tabs (Q25). |
 | §9 | Day-view calendar, picking mode, booking form, attach (Q12, Q26); availability edits refused on conflicts (Q9); horizon and duration bounds for owner flow only (Q40, Q41); completion after start (Q17); visit prefilled/editable (Q33); owner sees staff reasons (Q38); cancellation record + audit tables (Q11, Q24). |
 | §10 | `emergency_phone` setting (Q29); exception may alter hours, precedence rule (Q27). |
 | §12 | Test clock 2026-09-07 09:00 (Q32); MockMvc + smoke (Q31); localization check scope (Q39); `Interpreting` transitions in lifecycle tests (Q46); concurrency mechanism to target (Q13). |

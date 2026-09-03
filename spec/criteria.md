@@ -120,7 +120,7 @@ The system shall display the urgent-care banner with the configured emergency ph
 **Covers:** B-21
 **Flow:** UC-1 step 1
 
-When an owner submits the start-request form for one of their pets that has no active request, providing reason text, availability text, and an optional "this is urgent" checkbox, the system shall create a request in *Awaiting consent*.
+When an owner submits the start-request form for one of their pets that has no active request, providing reason text and availability text, the system shall create a request in *Awaiting consent*.
 
 ### AC-21: Pet selector excludes pets with an active request
 **Covers:** B-22
@@ -234,7 +234,7 @@ While a request has had more than three failed interpretation attempts, the syst
 **Covers:** B-38
 **Flow:** UC-1 step 4
 
-When the system interprets a request, it shall derive an estimated visit length, a care type, a specialty, preferred, allowed, and excluded windows, an optional preferred veterinarian, and an urgency flag.
+When the system interprets a request, it shall derive an estimated visit length, a care type, a specialty, preferred, allowed, and excluded windows, and an optional preferred veterinarian.
 
 ### AC-40: Preferred veterinarian id validated and resolved to a name
 **Covers:** B-39
@@ -318,7 +318,7 @@ If a candidate slot starts less than 2 hours after the reference time, then the 
 **Covers:** B-46
 **Flow:** UC-1 step 4
 
-When the interpreter yields an interpretation, the system shall persist and read it back such that all three window lists, care type, specialty, duration, preferred veterinarian, urgency, the raw model response, the model tag, and the prompt version are field-for-field identical to the produced values.
+When the interpreter yields an interpretation, the system shall persist and read it back such that all three window lists, care type, specialty, duration, preferred veterinarian, the raw model response, the model tag, and the prompt version are field-for-field identical to the produced values.
 
 ### AC-54: Read-only review is verbatim and changed only by editing text
 **Covers:** B-47
@@ -504,7 +504,7 @@ The system shall place start times on a 15-minute grid and run the solver synchr
 **Covers:** B-68
 **Flow:** UC-4 step 1
 
-While the *Needs staff* tab is shown, the system shall list *With staff* requests with emergencies pinned first, then oldest first, and shall show each request's hand-off trigger.
+While the *Needs staff* tab is shown, the system shall list *With staff* requests oldest first, and shall show each request's hand-off trigger.
 
 ### AC-85: All open tab contents
 **Covers:** B-69
@@ -518,17 +518,7 @@ While the *All open* tab is shown, the system shall list every non-terminal requ
 
 When staff release a hold, the system shall move the request to *With staff* with a reason and release the hold.
 
-### AC-87: Emergency pinning skips the automated loop
-**Covers:** B-71
-**Flow:** UC-1 ext 1a
-
-When either the AI urgent flag or the owner's urgent checkbox is set, the system shall pin the request to the top of the staff queue and skip the automated loop.
-
-### AC-88: Clearing the emergency flag keeps the request with staff
-**Covers:** B-72
-**Flow:** UC-4 ext 2a
-
-When staff clear the emergency flag, the system shall keep the request in *With staff* and shall not return it to the automated loop.
+*(AC-87 and AC-88 retired: urgency removed from the automated flow — see spec RA-17. Urgent care is covered by the urgent-care banner, AC-19.)*
 
 ### AC-89: Staff create or edit an interpretation
 **Covers:** B-73

@@ -63,12 +63,12 @@ The owner describes the reason for the visit and when they are (and are not) ava
 uses AI to turn that into a structured interpretation.
 
 - **What is derived** — estimated visit length, whether general or specialty care is needed (and which specialty),
-  preferred / allowed / excluded time windows, an optional preferred veterinarian, and any sign of urgency.
+  preferred / allowed / excluded time windows, and an optional preferred veterinarian.
 - **Explicit consent** — the owner must knowingly agree before their text is sent to the AI. If they decline, the
   request goes to staff.
 - **Read-only review and confirmation** — the owner reviews the interpretation in readable form and confirms it before
   anything is scheduled. Nothing derived by the AI is discarded or recomputed: the **complete interpretation is
-  persisted** and shown verbatim (all three window lists, care type and specialty, duration, preferred vet, urgency).
+  persisted** and shown verbatim (all three window lists, care type and specialty, duration, preferred vet).
   To change it, the owner edits the text, which requires fresh consent and a fresh interpretation.
 - **Rephrasing** — if the AI cannot produce usable availability, the owner may rephrase as often as they like; the
   option to route the request to staff is always offered; from the third failed attempt on, the application recommends
@@ -104,14 +104,14 @@ one active request per pet**.
 | Interpretation failed | AI could not produce usable availability | rephrase (fresh consent) · route to staff · abandon |
 | Interpreted | Read-only interpretation shown, awaiting confirmation | confirm and get a suggestion · edit text · route to staff · abandon |
 | Suggestion offered | Exactly one slot is held for this owner | accept · ask for another option · route to staff · edit text · abandon |
-| With staff | In the staff queue (declined consent, AI or solver unavailable, unmatched specialty, emergency, exhausted, or owner's choice) | view status · abandon — staff book directly or place a suggestion |
+| With staff | In the staff queue (declined consent, AI or solver unavailable, unmatched specialty, exhausted, or owner's choice) | view status · abandon — staff book directly or place a suggestion |
 | Accepted | Appointment confirmed | manage it under *My appointments* |
 | Abandoned | Closed by the owner | — |
 
 Invariants:
 
 - A suggestion may be produced **only** from a confirmed interpretation (state *Interpreted*, or *Suggestion offered*
-  when asking again). Requests in any other state — including declined-consent, emergency and staff-queued requests —
+  when asking again). Requests in any other state — including declined-consent and staff-queued requests —
   are refused by the system itself, not merely hidden by the UI.
 - If the slot the owner accepts has become unavailable in the meantime, the owner is shown the next suggestion (or the
   staff hand-off) with an explanation — **never an error page**.
@@ -132,17 +132,19 @@ and uses Timefold to rank them; the top slot is suggested, and re-ranking happen
 - **Slot sizing** — start times on a 15-minute grid; estimated duration clamped to the configured bounds (default
   15–60 minutes, default duration 30). The solver runs with a short fixed time budget so suggestions feel instant.
 
-## 8. Staff fallback and emergencies
+## 8. Staff fallback and urgent care
 
 The automated flow never leaves an owner stuck: when it cannot proceed, the request is handed to staff.
 
 - **Triggers** — owner declines consent; AI or solver unavailable; no veterinarian offers the required specialty;
-  request still un-interpretable after rephrasing; suspected emergency; suggestions exhausted; owner asks for staff.
+  request still un-interpretable after rephrasing; suggestions exhausted; owner asks for staff.
 - **Staff-assisted scheduling** — staff verify or complete the interpretation and then either **book directly**
   (the owner sees the appointment on next login and may cancel it) or **place a suggestion** the owner accepts or
   rejects like any other.
-- **Emergencies** — a suspected emergency skips the automated loop and is pinned to the top of the staff queue. Clear
-  urgent-care guidance is always visible on every owner scheduling page so owners know what to do right away.
+- **Urgent care** — the automated scheduling flow does **not** attempt to detect or handle emergencies, and there is no
+  urgency flag or checkbox. Instead, clear urgent-care guidance with the clinic's contact details is always visible on
+  every owner scheduling page and the request detail page, so an owner whose pet needs immediate attention knows to
+  call the clinic right away rather than wait for a suggestion.
 
 ## 9. Staff calendar and appointment management
 
