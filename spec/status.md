@@ -3,7 +3,7 @@
 ## Current
 
 - Task: phase-1 checkpoint
-- Status: NOT_STARTED
+- Status: PENDING
 
 ## Completed
 
@@ -40,3 +40,4 @@
 - task-1.5: Implemented RequestLifecycleService and AppointmentLifecycleService enforcing closed transition tables; added ClockConfig with injectable Clock bean and pinned test Clock configuration.
 - task-1.6: Implemented RequestInterpreter interface, value records (InterpretationResult, AvailabilityWindow), JPA entities (Interpretation, InterpretationWindow), repositories, and deterministic StubRequestInterpreter.
 - task-1.7: Implemented AppointmentAssignment planning entity, ScheduleSolution planning solution, AppointmentConstraintProvider with 8-tier score specification, SlotRanker adapter interface, SuggestionService with pessimistic vet locking, and end-to-end UC-1 / smoke test suites.
+- cp-1 convergence (2026-09-04): REJECT — 7 critical and 6 gap findings remain open; see `convergence/cp-1.md`. phase-1 stays PENDING.

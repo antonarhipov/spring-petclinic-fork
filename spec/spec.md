@@ -819,3 +819,34 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 - **ED-2 Emergency phone number.** The real clinic phone number for the urgent-care banner is a business value not
   provided. *Decision/default:* seed `emergency_phone` with a placeholder number, staff-editable in clinic settings
   (RA-8). *Resolution path:* staff update it via the *Clinic settings* page.
+
+## As-built convergence (cp-1)
+
+Checkpoint cp-1 was independently verified on 2026-09-04 and rejected. The following findings are not accepted as
+as-built behavior and remain open:
+
+- **F-1 (cp-1/C-1):** The ArchUnit rule uses name-based Timefold exemptions and does not enforce RULE-2 as written.
+- **F-2 (cp-1/C-2):** The exact security surface, closed role model, and service ownership guard are absent or violated.
+- **F-3 (cp-1/C-3):** Required owner/staff pages are absent; navigation, urgent-banner, and localization behavior do not conform.
+- **F-4 (cp-1/C-4):** Time is not sourced from one configured clinic time zone.
+- **F-5 (cp-1/C-5):** Owner request initiation and selectable Ollama/stub interpretation wiring are absent.
+- **F-6 (cp-1/C-6):** The production suggestion path does not rank with Timefold or normative clinic/vet availability.
+- **F-7 (cp-1/C-7):** The claimed UC-1 lifecycle does not traverse HTTP and cannot be walked through the application.
+- **F-8 (cp-1/G-1):** Normative seed tests are not fully by-value or closed-set, although a fresh migrated snapshot matched.
+- **F-9 (cp-1/G-2):** Authentication and negative authorization assertions do not prove session, disclosure, or mutation outcomes.
+- **F-10 (cp-1/G-3):** Lifecycle refusal evidence does not cover the complete request matrix or every appointment side effect.
+- **F-11 (cp-1/G-4):** Interpretation round-trip evidence omits individual window fields and preferred veterinarian.
+- **F-12 (cp-1/G-5):** Accept-success evidence does not prove lock-first overlap re-validation.
+- **F-13 (cp-1/G-6):** The random-port smoke test loads no authenticated page.
+
+### Spec weaknesses exposed by cp-1
+
+- **RULE-2/RULE-26 contradiction (upstream: rules):** RULE-2 literally permits Timefold imports only in the `SlotRanker`
+  adapter classes, while RULE-26 requires Timefold-annotated planning entity, solution, and constraint-provider support
+  types. Recommended resolution: define an exact private adapter-support boundary; do not use substring/name wildcards.
+- **Unlisted `/403` surface (upstream: rules):** the Security Surface claims every route is listed but omits the explicit
+  `/403` controller used by the access-denied forward, while `permitAll` is limited to login/error/static.
+- **AC-138 phase placement (upstream: tasks/criteria):** phase-1 claims full AC-138 coverage while task-1.7 explicitly
+  delivers only thin UC-1 and defers the mandatory interleaved scenario to phase-5.
+- **Missing web-controller ownership (upstream: tasks/review):** phase-1's artifact map assigns no controller artifact for
+  its required owner/staff HTTP skeleton; it also calls `/oups` pre-existing after that controller was removed.

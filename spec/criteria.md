@@ -1,5 +1,7 @@
 # Acceptance Criteria: Smart Appointment Scheduling
 
+> Converged at cp-1 on 2026-09-04: REJECT. Verification-placement notes: phase-1's AC-138 evidence is service-level rather than HTTP/MockMvc; negative authorization evidence is status-only; normative seed evidence is not fully by-value; AC-53 does not compare every persisted field. See `convergence/cp-1.md`.
+
 ## Functional
 
 ### AC-1: Authentication required on every non-public URL
