@@ -71,6 +71,8 @@ public class SecurityConfiguration {
 				.authenticated()
 				.requestMatchers("/oups", "/owners/**", "/vets", "/vets.html", "/vets/**", "/staff/**", "/actuator/**")
 				.hasRole("STAFF")
+				.requestMatchers("/my/requests/**")
+				.hasRole("OWNER")
 				.requestMatchers("/my/**")
 				.hasRole("OWNER")
 				.anyRequest()

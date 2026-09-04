@@ -152,6 +152,21 @@ public class SuggestionService {
 		return appointment;
 	}
 
+	/**
+	 * HTTP entry point for the ask-another action. Rejection persistence and scoped
+	 * re-ranking are added by the dedicated ask-another slice; until then this method
+	 * exposes the action only in its legal request state without mutating the hold.
+	 */
+	public SchedulingRequest requestAnotherOption(SchedulingRequest request, String actor, String scope) {
+		Objects.requireNonNull(request, "request must not be null");
+		Objects.requireNonNull(actor, "actor must not be null");
+		Objects.requireNonNull(scope, "scope must not be null");
+		if (request.getState() != RequestState.SUGGESTION_OFFERED) {
+			throw new IllegalRequestTransitionException(request.getState(), "ask for another option");
+		}
+		return request;
+	}
+
 	private boolean isSlotAvailable(Integer vetId, ZonedDateTime start, int duration, Integer currentRequestId) {
 		ZonedDateTime end = start.plusMinutes(duration);
 

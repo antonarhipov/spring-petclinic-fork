@@ -3,12 +3,22 @@
 <body>
   <h2 th:text="#{requestDetails}">Request details</h2>
   <div th:if="${actionNotAllowed}" class="alert alert-danger" th:text="#{requestActionNotAllowed}"></div>
+  <div th:if="${requestEdited}" class="alert alert-info" th:text="#{requestEdited}"></div>
+  <div th:if="${requestAbandoned}" class="alert alert-info" th:text="#{requestAbandoned}"></div>
+  <div th:if="${requestRoutedToStaff}" class="alert alert-info" th:text="#{requestRoutedToStaff}"></div>
+  <form th:if="${editing}" th:action="@{/my/requests/{id}/edit(id=${request.id})}" th:object="${editForm}" method="post" class="form-horizontal">
+    <h3 th:text="#{editRequest}">Edit request</h3>
+    <div class="form-group mb-3"><label for="reasonText" th:text="#{reason}">Reason</label><textarea id="reasonText" th:field="*{reasonText}" class="form-control" required></textarea></div>
+    <div class="form-group mb-3"><label for="availabilityText" th:text="#{availability}">Availability</label><textarea id="availabilityText" th:field="*{availabilityText}" class="form-control" required></textarea></div>
+    <button class="btn btn-primary" type="submit" th:text="#{saveRequestChanges}">Save changes</button>
+  </form>
+  <div th:unless="${editing}">
   <dl><dt th:text="#{pet}">Pet</dt><dd th:text="${request.pet.name}"></dd><dt th:text="#{reason}">Reason</dt><dd th:text="${request.reasonText}"></dd><dt th:text="#{availability}">Availability</dt><dd th:text="${request.availabilityText}"></dd><dt th:text="#{status}">Status</dt><dd th:text="${request.state}"></dd></dl>
   <div th:if="${request.state.name() == 'AWAITING_CONSENT'}">
     <form th:action="@{/my/requests/{id}/consent(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{grantConsent}">Grant consent</button></form>
     <form th:action="@{/my/requests/{id}/decline(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{declineConsent}">Decline consent</button></form>
   </div>
-  <section th:if="${interpretation}">
+  <section th:if="${interpretation != null and request.state.name() != 'AWAITING_CONSENT'}">
     <h3 th:text="#{interpretation}">Interpretation</h3>
     <p th:text="${interpretation.reasonSummary}"></p>
     <dl><dt th:text="#{estimatedMinutes}">Estimated minutes</dt><dd th:text="${interpretation.estimatedMinutes}"></dd><dt th:text="#{careType}">Care type</dt><dd th:text="${interpretation.careType}"></dd><dt th:text="#{specialties}">Specialty</dt><dd th:text="${interpretation.specialty}"></dd><dt th:text="#{preferredVet}">Preferred veterinarian</dt><dd th:text="${interpretation.preferredVet == null ? '-' : interpretation.preferredVet.firstName + ' ' + interpretation.preferredVet.lastName}"></dd></dl>
@@ -17,6 +27,15 @@
   <section th:if="${request.state.name() == 'SUGGESTION_OFFERED'}">
     <h3 th:text="#{suggestion}">Suggested appointment</h3><p><span th:text="${request.heldVet.firstName + ' ' + request.heldVet.lastName}"></span> <span th:text="${request.heldStart}"></span></p>
     <form th:action="@{/my/requests/{id}/accept(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{acceptSuggestion}">Accept suggestion</button></form>
+    <form th:action="@{/my/requests/{id}/another(id=${request.id})}" method="post">
+      <button name="scope" value="NOT_THIS_TIME" class="btn btn-secondary" type="submit" th:text="#{notThisTime}">Not this time</button>
+      <button name="scope" value="NOT_THIS_DAY" class="btn btn-secondary" type="submit" th:text="#{notThisDay}">Not this day</button>
+      <button name="scope" value="NOT_THIS_VET" class="btn btn-secondary" type="submit" th:text="#{notThisVet}">Not this veterinarian</button>
+    </form>
   </section>
+  <p><a th:if="${request.state.name() == 'AWAITING_CONSENT' or request.state.name() == 'INTERPRETATION_FAILED' or request.state.name() == 'INTERPRETED' or request.state.name() == 'SUGGESTION_OFFERED'}" th:href="@{/my/requests/{id}/edit(id=${request.id})}" th:text="#{editRequest}">Edit request</a></p>
+  <form th:if="${request.state.name() == 'INTERPRETATION_FAILED' or request.state.name() == 'INTERPRETED' or request.state.name() == 'SUGGESTION_OFFERED'}" th:action="@{/my/requests/{id}/route-to-staff(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{routeToStaff}">Route to staff</button></form>
+  <form th:if="${request.state.name() != 'ACCEPTED' and request.state.name() != 'ABANDONED'}" th:action="@{/my/requests/{id}/abandon(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{abandonRequest}">Abandon request</button></form>
+  </div>
 </body>
 </html>

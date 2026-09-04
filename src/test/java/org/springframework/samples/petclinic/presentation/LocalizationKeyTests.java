@@ -44,7 +44,12 @@ class LocalizationKeyTests {
 			"requestNew", "reason", "availability", "selectPet", "createRequest", "requestDetails", "consent",
 			"grantConsent", "declineConsent", "interpretation", "estimatedMinutes", "careType", "preferredVet",
 			"confirmInterpretation", "suggestion", "acceptSuggestion", "springLogo", "activeRequestUnavailable",
-			"requestActionNotAllowed");
+			"requestActionNotAllowed", "editRequest", "saveRequestChanges", "requestEdited", "abandonRequest",
+			"requestAbandoned", "routeToStaff", "requestRoutedToStaff", "askAnotherOption", "notThisTime", "notThisDay",
+			"notThisVet", "interpretingRequest", "interpretingRequestMessage", "interpretationFailed",
+			"interpretationFailedMessage", "requestWithStaff", "requestWithStaffMessage", "routingRecommended",
+			"noSlotsAvailable", "holdUnavailable", "ruledOut", "rejectionScope", "freshConsentRequired",
+			"modelUnavailable", "requestInterrupted");
 
 	@Test
 	void everyReferencedTemplateKeyExistsInTheDefaultBundle() throws IOException {

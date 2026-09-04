@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.4 (Owner request action HTTP surface)
+- Task: task-2.5 (Dedicated asynchronous interpretation execution)
 - Status: NOT_STARTED
 
 ## Completed
@@ -17,6 +17,7 @@
 - task-2.1
 - task-2.2
 - task-2.3
+- task-2.4
 
 ## Phase Approvals
 
@@ -43,6 +44,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.4: base commit 9ed48a9. Gate 1 artifacts: `OwnerRequestActionController.java`, `OwnerRequestEditForm.java`, and `OwnerRequestRouteTests.java` exist at the exact declared paths with all three declared methods. Gate 2 scope: `git diff --name-only 9ed48a9` plus untracked files contains only declared artifacts, declared production/template/bundle modifications, the supporting `SuggestionService` route entry point and `LocalizationKeyTests`, and `status.md`. Gate 3 AC citations: AC-54 at `OwnerRequestRouteTests.java:152-198`; AC-122 at `:201-239` (AC-10 route/owner-scope evidence at `:102-150`). Gate 4 validation: the verbatim persisted review, edit reset to AWAITING_CONSENT, hidden stale review and fresh version-2 consent cycle are asserted at `OwnerRequestRouteTests.java:161-198`; every allowed route-to-staff origin, exactly one added event and all event fields are asserted at `:206-234`. Gate 5 rules: RULE-12 CSRF and owner matcher at `SecurityConfiguration.java:61-77` plus HTTP assertions at `OwnerRequestRouteTests.java:109-143`; RULE-13 session owner lookup at `OwnerRequestActionController.java:130-133` and identical other-owner 404/no-mutation evidence at `OwnerRequestRouteTests.java:135-149`; RULE-15 edit/abandon/route guards at `RequestLifecycleService.java:102-121,207-212`; RULE-25 verbatim/hide-until-fresh-consent presentation at `requestDetail.html:15-25` and `OwnerRequestRouteTests.java:161-198`; RULE-28 scope controls and forwarding at `requestDetail.html:30-34` and `OwnerRequestActionController.java:117-127` (rejection persistence/re-ranking remains owned by task-2.16). Gate 6 routes: GET/POST `/my/requests/{requestId}/edit` and POST `/abandon`, `/route-to-staff`, `/another` map at `OwnerRequestActionController.java:63-127`; route/CSRF/session-owner checks pass at `OwnerRequestRouteTests.java:102-150`. Gate 7 plan guards: rerun after COMPLETE status PASS (6/0/0/0), including deliberate broken fixtures. Gate 8 suite: Java 21 with Byte Buddy agent, 171/0/0/0; working tree after the suite contains only task-attributable files. Non-obvious: task-2.4 establishes the ask-another HTTP/service seam and fixed scope values without implementing task-2.16's rejection persistence and re-ranking early; all 25 Phase-2 owner-visible keys are pinned identically across the 11 bundles by `LocalizationKeyTests.java:38-52,69-84`.
 
 - task-2.3: base commit 8d03027. Gate 1 artifact: `OwnerRequestContractTests.java` exists at the exact declared path with all three declared methods. Gate 2 scope: diff from 8d03027 contains only the declared test artifact and `status.md`; the planned existing tests required no assertion changes. Gate 3 AC citations: AC-21 at `OwnerRequestContractTests.java:108-118`; AC-58 at `:120-146`. Gate 4 validation: rendered eligible/active selector values at `:109-117`; production `SlotRanker` invocation and first tuple held by vet/start/duration at `:121-145`; all four refusal POSTs plus unchanged state/event/appointment/request snapshots at `:149-169`. Gate 5 rules: RULE-8 first ranked hold at `:127-145`; RULE-15 illegal-state refusal matrix at `:149-169`; RULE-44 real filter chain, CSRF, isolated H2 and conforming `SlotRanker` interface double at `:66-69,98-99,132-145`. Gate 6 routes: no new routes owned by this task. Gate 7 plan guards: all pass after completion. Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 168/0/0/0; working tree contains only task-attributable files.
 
