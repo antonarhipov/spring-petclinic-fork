@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.18 (Concurrent active-request guarantee)
+- Task: task-2.19 (UC-1 owner guided-flow HTTP end to end)
 - Status: NOT_STARTED
 
 ## Completed
@@ -31,6 +31,7 @@
 - task-2.15
 - task-2.16
 - task-2.17
+- task-2.18
 
 ## Phase Approvals
 
@@ -57,6 +58,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.18: base commit b4c7656. Gate 1 artifact: `ConcurrentActiveRequestTests.java` exists at the exact declared path with both declared methods. Gate 2 scope: diff from b4c7656 plus the untracked artifact contains only the declared test and `status.md`; the planned `RequestLifecycleService` mapping was already present and needed no production edit. Gate 3 AC citations: AC-22/23 are tagged at `ConcurrentActiveRequestTests.java:60-80`. Gate 4 validation: two READ_COMMITTED transactions synchronize before service invocation, then exactly one succeeds and one active row exists at `:62-75,97-129`; the losing transaction returns exactly `ActiveRequestExistsException`, while request/event counts each grow by only one at `:80-94`. Gate 5 RULE-9: nullable `active_pet_id` and its unique constraint remain at `V3__scheduling_schema.sql:17,28`, with service pre-check/constraint mapping at `RequestLifecycleService.java:51-87`; RULE-44 isolated Flyway H2, pinned clock and two real transaction templates are at `ConcurrentActiveRequestTests.java:37-39,63-65,97-129`. Gate 6 routes: none. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 232/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Non-obvious: the observed race reached the database guard (H2 reported `uq_scheduling_request_active_pet` for one insert), proving the pre-check is not the concurrency guarantee; the existing `saveAndFlush` catch maps that losing transaction to the named domain refusal.
 
 - task-2.17: base commit 1f09c2b. Gate 1 artifact: `RuledOutPresentationTests.java` exists at the exact declared path with both declared methods. Gate 2 scope: diff from 1f09c2b plus the untracked artifact contains only the declared test/template/service modifications, the supporting controller model attribute, and `status.md`. Gate 3 AC citations: AC-71/72 are tagged at `RuledOutPresentationTests.java:79-100`. Gate 4 validation: authenticated request detail renders both applied exclusions and the localized compact heading while asserting no Undo text/control at `:80-95`; the single rejection event compares from/to state, actor, action selection, reason, and the parsed interpretation-version/vet/start/scope payload by value at `:100-118`. Gate 5 RULE-28: current-version rejection selection is at `SuggestionService.java:204-210`, controller exposure at `OwnerRequestController.java:81-90`, and compact no-undo rendering at `requestDetail.html:43-46`; RULE-43 complete event fields are written at `SuggestionService.java:187-198` and compared by value at `RuledOutPresentationTests.java:103-118`. Gate 6 routes: no new route; existing GET `/my/requests/{requestId}` exposes the list through `OwnerRequestController.detail`. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 230/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Approved blocker resolution: render the localized heading plus colon as one `th:text` value and restore the direct rendered-content assertion (`PROCEED WITH`, user, 2026-09-04). Corrective attempts before approval: a separate colon text node was visually correct but not contiguous in raw HTML; XPath could not parse the stock non-XHTML layout.
 
