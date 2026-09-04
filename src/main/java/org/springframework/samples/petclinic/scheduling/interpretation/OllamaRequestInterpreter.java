@@ -19,9 +19,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-/** Spring AI 2.x structured-output adapter. */
+/** Spring AI 2.x structured-output adapter; the RULE-17 default provider. */
 @Service
-@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "ollama")
+@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "ollama", matchIfMissing = true)
 public class OllamaRequestInterpreter implements RequestInterpreter {
 
 	private static final String PROMPT_VERSION = "1.0";

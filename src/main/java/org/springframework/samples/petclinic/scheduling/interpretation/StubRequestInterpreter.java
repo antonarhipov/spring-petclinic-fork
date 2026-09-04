@@ -32,7 +32,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
  * Never invokes external LLM services.
  */
 @Service
-@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "stub", matchIfMissing = true)
+@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "stub")
 public class StubRequestInterpreter implements RequestInterpreter {
 
 	private final Map<String, InterpretationResult> responsesByKeyword = new HashMap<>();

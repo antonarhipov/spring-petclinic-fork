@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "ollama")
+@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "ollama", matchIfMissing = true)
 public class OllamaChatConfiguration {
 
 	static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
