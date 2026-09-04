@@ -68,7 +68,8 @@ class HoldLifecycleTests {
 		VetRepository vets = mock(VetRepository.class);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
 				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
-				mock(VetExceptionRepository.class), Clock.fixed(NOW.toInstant(), ZONE));
+				mock(VetExceptionRepository.class), mock(SchedulingRequestEventRepository.class),
+				Clock.fixed(NOW.toInstant(), ZONE));
 		SchedulingRequest request = request(1, RequestState.AWAITING_CONSENT);
 
 		assertThatThrownBy(() -> service.confirm(request, "owner"))
@@ -205,7 +206,7 @@ class HoldLifecycleTests {
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
 				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
-				mock(VetExceptionRepository.class), Clock.fixed(NOW.toInstant(), ZONE));
+				mock(VetExceptionRepository.class), events, Clock.fixed(NOW.toInstant(), ZONE));
 		return new Fixture(requests, events, ranker, appointments, vets, service);
 	}
 

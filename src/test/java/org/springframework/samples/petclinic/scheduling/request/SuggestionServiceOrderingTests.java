@@ -50,7 +50,7 @@ class SuggestionServiceOrderingTests {
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
 				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
-				mock(VetExceptionRepository.class), clock);
+				mock(VetExceptionRepository.class), mock(SchedulingRequestEventRepository.class), clock);
 
 		Vet vet = new Vet();
 		vet.setId(1);

@@ -35,6 +35,7 @@ import org.springframework.samples.petclinic.scheduling.interpretation.Interpret
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEventRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.HoldService;
 import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
@@ -122,7 +123,8 @@ class SolverBudgetAndHorizonTests {
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, recordingDouble,
 				appointments, this.vetRepository, mock(ClinicOpeningHourRepository.class),
-				mock(VetWeeklyBlockRepository.class), mock(VetExceptionRepository.class), this.clock);
+				mock(VetWeeklyBlockRepository.class), mock(VetExceptionRepository.class),
+				mock(SchedulingRequestEventRepository.class), this.clock);
 		Owner owner = this.ownerRepository.findById(1).orElseThrow();
 		SchedulingRequest request = request(owner, owner.getPet(1));
 

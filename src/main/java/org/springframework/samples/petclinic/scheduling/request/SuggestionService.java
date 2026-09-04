@@ -63,13 +63,15 @@ public class SuggestionService {
 
 	private final VetExceptionRepository exceptionRepository;
 
+	private final SchedulingRequestEventRepository eventRepository;
+
 	private final Clock clock;
 
 	public SuggestionService(RequestLifecycleService requestLifecycleService, HoldService holdService,
 			InterpretationRepository interpretationRepository, SlotRanker slotRanker,
 			AppointmentLifecycleService appointmentLifecycleService, VetRepository vetRepository,
 			ClinicOpeningHourRepository openingHourRepository, VetWeeklyBlockRepository weeklyBlockRepository,
-			VetExceptionRepository exceptionRepository, Clock clock) {
+			VetExceptionRepository exceptionRepository, SchedulingRequestEventRepository eventRepository, Clock clock) {
 		this.requestLifecycleService = requestLifecycleService;
 		this.holdService = holdService;
 		this.interpretationRepository = interpretationRepository;
@@ -79,6 +81,7 @@ public class SuggestionService {
 		this.openingHourRepository = openingHourRepository;
 		this.weeklyBlockRepository = weeklyBlockRepository;
 		this.exceptionRepository = exceptionRepository;
+		this.eventRepository = eventRepository;
 		this.clock = clock;
 	}
 
@@ -170,19 +173,32 @@ public class SuggestionService {
 		return true;
 	}
 
-	/**
-	 * HTTP entry point for the ask-another action. Rejection persistence and scoped
-	 * re-ranking are added by the dedicated ask-another slice; until then this method
-	 * exposes the action only in its legal request state without mutating the hold.
-	 */
 	public SchedulingRequest requestAnotherOption(SchedulingRequest request, String actor, String scope) {
 		Objects.requireNonNull(request, "request must not be null");
 		Objects.requireNonNull(actor, "actor must not be null");
 		Objects.requireNonNull(scope, "scope must not be null");
-		if (request.getState() != RequestState.SUGGESTION_OFFERED) {
+		if (request.getState() != RequestState.SUGGESTION_OFFERED || !request.hasHold()) {
 			throw new IllegalRequestTransitionException(request.getState(), "ask for another option");
 		}
-		return request;
+		Interpretation interpretation = this.interpretationRepository
+			.findTopByRequestIdOrderByVersionDesc(request.getId())
+			.orElse(null);
+		int version = interpretation == null ? 0 : interpretation.getVersion();
+		SuggestionRejection rejection = new SuggestionRejection(version, request.getHeldVet().getId(),
+				request.getHeldStart(), RejectionScope.parse(scope));
+		SchedulingRequestEvent event = new SchedulingRequestEvent();
+		event.setRequest(request);
+		event.setFromState(RequestState.SUGGESTION_OFFERED);
+		event.setToState(RequestState.SUGGESTION_OFFERED);
+		event.setActor(actor);
+		event.setAction(SuggestionRejection.EVENT_ACTION);
+		event.setReason(rejection.scope().name());
+		event.setPayload(rejection.payload());
+		event.setTimestamp(ZonedDateTime.now(this.clock));
+		this.eventRepository.saveAndFlush(event);
+
+		request.clearHold();
+		return confirm(request, actor);
 	}
 
 	private boolean isCurrentHoldValid(SchedulingRequest request) {

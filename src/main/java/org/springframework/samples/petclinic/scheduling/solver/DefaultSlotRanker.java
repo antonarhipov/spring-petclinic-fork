@@ -35,7 +35,9 @@ import org.springframework.samples.petclinic.scheduling.interpretation.Interpret
 import org.springframework.samples.petclinic.scheduling.interpretation.AvailabilityWindow;
 import org.springframework.samples.petclinic.scheduling.interpretation.WindowMatcher;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEventRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
+import org.springframework.samples.petclinic.scheduling.request.SuggestionRejection;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Service;
@@ -64,6 +66,8 @@ public class DefaultSlotRanker implements SlotRanker {
 
 	private final SchedulingRequestRepository requestRepository;
 
+	private final SchedulingRequestEventRepository eventRepository;
+
 	private final SolverManager<ScheduleSolution> solverManager;
 
 	private final Clock clock;
@@ -71,7 +75,8 @@ public class DefaultSlotRanker implements SlotRanker {
 	public DefaultSlotRanker(VetRepository vetRepository, ClinicConfigRepository configRepository,
 			ClinicOpeningHourRepository openingHourRepository, VetWeeklyBlockRepository weeklyBlockRepository,
 			VetExceptionRepository exceptionRepository, AppointmentRepository appointmentRepository,
-			SchedulingRequestRepository requestRepository, SolverManager<ScheduleSolution> solverManager, Clock clock) {
+			SchedulingRequestRepository requestRepository, SchedulingRequestEventRepository eventRepository,
+			SolverManager<ScheduleSolution> solverManager, Clock clock) {
 		this.vetRepository = vetRepository;
 		this.configRepository = configRepository;
 		this.openingHourRepository = openingHourRepository;
@@ -79,6 +84,7 @@ public class DefaultSlotRanker implements SlotRanker {
 		this.exceptionRepository = exceptionRepository;
 		this.appointmentRepository = appointmentRepository;
 		this.requestRepository = requestRepository;
+		this.eventRepository = eventRepository;
 		this.solverManager = solverManager;
 		this.clock = clock;
 	}
@@ -104,6 +110,9 @@ public class DefaultSlotRanker implements SlotRanker {
 		Collection<Vet> vets = this.vetRepository.findAll();
 		List<AvailabilityWindow> windows = interpretation == null ? List.of()
 				: interpretation.getWindows().stream().map(DefaultSlotRanker::toValue).toList();
+		int interpretationVersion = interpretation == null ? 0 : interpretation.getVersion();
+		List<SuggestionRejection> rejections = SuggestionRejection
+			.activeFor(this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()), interpretationVersion);
 
 		for (Vet vet : vets) {
 			if (!hasRequiredSpecialty(vet, interpretation)) {
@@ -114,7 +123,10 @@ public class DefaultSlotRanker implements SlotRanker {
 			List<ZonedDateTime> candidates = enumerate(vet, clinicHours, blocks, config, now, duration, appointments,
 					holds, interpretation == null ? null : interpretation.getSpecialty(), windows, now, horizonEnd,
 					request.getOwner().getId(), request.getPet().getId());
-			candidates.forEach(candidate -> feasibleSlots.add(new AppointmentSlot(vet, candidate)));
+			candidates.stream()
+				.filter(candidate -> rejections.stream()
+					.noneMatch(rejection -> rejection.excludes(vet.getId(), candidate, interpretationVersion)))
+				.forEach(candidate -> feasibleSlots.add(new AppointmentSlot(vet, candidate)));
 		}
 		if (feasibleSlots.isEmpty()) {
 			return List.of();

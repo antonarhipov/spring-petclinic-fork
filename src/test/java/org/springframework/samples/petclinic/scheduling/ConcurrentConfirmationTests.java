@@ -35,6 +35,7 @@ import org.springframework.samples.petclinic.scheduling.request.HoldService;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEventRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
 import org.springframework.samples.petclinic.scheduling.solver.SlotRanker;
@@ -91,6 +92,9 @@ class ConcurrentConfirmationTests {
 	private HoldService holdService;
 
 	@Autowired
+	private SchedulingRequestEventRepository eventRepository;
+
+	@Autowired
 	private Clock clock;
 
 	@Test
@@ -107,7 +111,8 @@ class ConcurrentConfirmationTests {
 			.of(new SlotRanker.RankedSlot(vet, contested, 30, "contested", "0hard/0medium/0soft"));
 		SuggestionService service = new SuggestionService(this.lifecycleService, this.holdService,
 				this.interpretationRepository, sameSlot, this.appointmentLifecycleService, this.vetRepository,
-				this.openingHourRepository, this.weeklyBlockRepository, this.exceptionRepository, this.clock);
+				this.openingHourRepository, this.weeklyBlockRepository, this.exceptionRepository, this.eventRepository,
+				this.clock);
 		CountDownLatch ready = new CountDownLatch(2);
 		CountDownLatch start = new CountDownLatch(1);
 		ExecutorService executor = Executors.newFixedThreadPool(2);
