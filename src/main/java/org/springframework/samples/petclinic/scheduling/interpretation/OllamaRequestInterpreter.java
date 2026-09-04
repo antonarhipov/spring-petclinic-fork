@@ -34,8 +34,9 @@ public class OllamaRequestInterpreter implements RequestInterpreter {
 	private final String modelTag;
 
 	public OllamaRequestInterpreter(ChatClient schedulingOllamaChatClient,
-			@Value("${spring.ai.ollama.chat.model}") String modelTag) {
-		this((reason, availability) -> callModel(schedulingOllamaChatClient, reason, availability), modelTag);
+			@Value("${spring.ai.ollama.chat.model}") String modelTag, InterpretationPromptFactory promptFactory) {
+		this((reason, availability) -> callModel(schedulingOllamaChatClient,
+				promptFactory.create(reason, availability)), modelTag);
 	}
 
 	OllamaRequestInterpreter(ModelCall modelCall, String modelTag) {
@@ -69,10 +70,10 @@ public class OllamaRequestInterpreter implements RequestInterpreter {
 				exchange.rawResponse(), this.modelTag, PROMPT_VERSION);
 	}
 
-	private static ModelExchange callModel(ChatClient chatClient, String reasonText, String availabilityText) {
+	private static ModelExchange callModel(ChatClient chatClient, String prompt) {
 		ResponseEntity<ChatResponse, ModelOutput> exchange = chatClient.prompt()
 			.system("Extract a veterinary scheduling request. Use only GENERAL or SPECIALTY care types and preserve all availability windows.")
-			.user("Reason: " + reasonText + "\nAvailability: " + availabilityText)
+			.user(prompt)
 			.call()
 			.responseEntity(ModelOutput.class, spec -> spec.useProviderStructuredOutput().validateSchema());
 		return new ModelExchange(exchange.entity(), exchange.response().getResult().getOutput().getText());
