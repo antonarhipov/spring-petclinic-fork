@@ -39,8 +39,8 @@
     <label class="col-sm-2 control-label" th:text="#{careType}">Care type</label>
     <div class="col-sm-10">
       <select class="form-control" th:field="*{careType}">
-        <option value="GENERAL">GENERAL</option>
-        <option value="SPECIALTY">SPECIALTY</option>
+        <option value="GENERAL" th:text="#{careTypeGeneral}">General</option>
+        <option value="SPECIALTY" th:text="#{careTypeSpecialty}">Specialty</option>
       </select>
     </div>
   </div>
@@ -56,7 +56,7 @@
     <label class="col-sm-2 control-label" th:text="#{preferredVet}">Preferred veterinarian</label>
     <div class="col-sm-10">
       <select class="form-control" th:field="*{preferredVetId}">
-        <option value="">-</option>
+        <option value="" th:text="#{noPreferredVet}">No preferred veterinarian</option>
         <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Vet</option>
       </select>
     </div>
@@ -77,7 +77,7 @@
     <label class="col-sm-2 control-label" th:text="#{preferredWindows}">Preferred windows</label>
     <div class="col-sm-10">
       <textarea class="form-control" rows="2" th:field="*{preferredWindows}"></textarea>
-      <span class="help-block">e.g. MONDAY:09:00-12:00; 2026-09-10:14:00-17:00</span>
+      <span class="help-block" th:text="#{windowFormatHint}">Window format example</span>
     </div>
   </div>
 

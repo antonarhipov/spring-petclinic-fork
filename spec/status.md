@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.1 (cp-3/C-2 revision)
-- Status: COMPLETE (cp-3/C-2,C-3,P-2 revision)
+- Task: task-3.3 (cp-3/C-3 localization revision)
+- Status: COMPLETE (cp-3/C-3 localization revision)
 
 ## Completed
 
@@ -69,6 +69,15 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.3 cp-3/C-3 localization revision: base commit `50aa90e`. Gate 1: the declared
+  `staff/interpretationForm.html` artifact remains at its exact path. Gate 2 scope: only that template and `status.md`;
+  task-3.1 owns the synchronized bundle additions. Gate 3: existing AC-55/56/89/121 citations remain in
+  `StaffInterpretationTests`. Gate 4/5: template lines 42-43, 59 and 80 now resolve the task-3.1-owned keys instead of
+  emitting visible literals, satisfying RULE-41 while retaining the same form values. Gate 6: no route changes.
+  Complete `LocalizationKeyTests` and `I18nPropertiesSyncTest` pass, including the `openRequests` reference introduced
+  by task-3.5's booking form; `StaffInterpretationTests` and `StaffDirectBookingTests` also pass. Focused Java 21
+  validation: 14/0/0/0. Full suite remains pending the remaining cp-3 evidence-strength revisions.
 
 - task-3.1 cp-3/C-2,C-3,P-2 revision: base commit `b53bc0f`. Gate 1: all six declared artifacts remain at their
   exact paths; supporting `StaffOperationsQueryService.java` exists. Gate 2 scope: the two declared controllers, the
