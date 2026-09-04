@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'requestNew')}">
 <body>
-  <div class="alert alert-warning"><strong th:text="#{urgentCare}">Need urgent care?</strong> <span th:text="#{urgentCareMessage(${emergencyPhone})}">Call the clinic.</span></div>
   <h2 th:text="#{requestNew}">Start a scheduling request</h2>
 	  <div th:if="${activeRequestUnavailable}" class="alert alert-danger" th:text="#{activeRequestUnavailable}"></div>
   <form th:action="@{/my/requests}" method="post" class="form-horizontal">

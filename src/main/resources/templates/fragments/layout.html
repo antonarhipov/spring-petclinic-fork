@@ -137,6 +137,12 @@
   <div class="container-fluid">
     <div class="container xd-container">
 
+      <div sec:authorize="hasRole('OWNER')" class="alert alert-warning"
+        th:with="emergencyPhone=${@clinicConfigService.current().emergencyPhone}">
+        <strong th:text="#{urgentCare}">Need urgent care?</strong>
+        <span th:text="#{urgentCareMessage(${emergencyPhone})}">Call the clinic.</span>
+      </div>
+
       <th:block th:insert="${template}" />
 
       <br />

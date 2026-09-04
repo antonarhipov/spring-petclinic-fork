@@ -91,7 +91,7 @@ public class OwnerRequestController {
 			this.lifecycleService.consent(request, actor);
 			this.interpretationService.interpret(request, actor);
 		}
-		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);
 		}
 		return "redirect:/my/requests/" + requestId;
@@ -103,7 +103,7 @@ public class OwnerRequestController {
 		try {
 			this.lifecycleService.declineConsent(request, SecurityUtils.getCurrentUsername().orElseThrow());
 		}
-		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);
 		}
 		return "redirect:/my/requests/" + requestId;
@@ -115,7 +115,7 @@ public class OwnerRequestController {
 		try {
 			this.suggestionService.confirm(request, SecurityUtils.getCurrentUsername().orElseThrow());
 		}
-		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);
 		}
 		return "redirect:/my/requests/" + requestId;
@@ -127,7 +127,7 @@ public class OwnerRequestController {
 		try {
 			this.suggestionService.accept(request, SecurityUtils.getCurrentUsername().orElseThrow());
 		}
-		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);
 		}
 		return "redirect:/my/appointments";

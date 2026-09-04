@@ -36,8 +36,6 @@ import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEventRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
-import org.springframework.samples.petclinic.vet.Vet;
-import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -89,9 +87,6 @@ class SchedulingLifecycleE2eTests {
 	@Autowired
 	private AppointmentChangeRepository appointmentChangeRepository;
 
-	@Autowired
-	private VetRepository vetRepository;
-
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -109,12 +104,9 @@ class SchedulingLifecycleE2eTests {
 			.filter(candidate -> candidate.getStatus() == AppointmentStatus.CONFIRMED)
 			.findFirst()
 			.orElseThrow();
-		Vet vet = this.vetRepository.findById(appointment.getVet().getId()).orElseThrow();
-		String vetName = vet.getFirstName() + " " + vet.getLastName();
 		this.mockMvc.perform(get("/my/appointments").session(flow.session()))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString(flow.pet().getName())))
-			.andExpect(content().string(containsString(vetName)))
 			.andExpect(content().string(containsString("CONFIRMED")));
 	}
 

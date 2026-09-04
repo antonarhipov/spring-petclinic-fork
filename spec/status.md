@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.2 (Checkpoint 1 presentation and cosmetic remediation)
+- Task: task-2.3 (Checkpoint 1 selector, ranking, and refusal remediation)
 - Status: NOT_STARTED
 
 ## Completed
@@ -15,6 +15,7 @@
 - task-1.6
 - task-1.7
 - task-2.1
+- task-2.2
 
 ## Phase Approvals
 
@@ -41,6 +42,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.2: base commit 811bc57. Gate 1 artifacts: `CrashController.java`, `OwnerPresentationContractTests.java`, and `SchedulingErrorHandlingTests.java` exist at exact declared paths. Gate 2 scope: `git diff --name-only 811bc57` plus untracked files contains only declared artifacts, listed production/template modifications, supporting Phase-1 assertion alignment, and `status.md`. Gate 3 AC citations: AC-7/16/17/18/19 are carried by the exact `OwnerPresentationContractTests` methods at lines 84-151. Gate 4 validation: every-page identity/logout/banner at `OwnerPresentationContractTests.java:84-96`; stock layout/read-only pets at `:108-129`; request-only vet exposure at `:131-151`; `/oups` staff 500 stock page and owner 403 forward at `SchedulingErrorHandlingTests.java:90-101`; domain refusal redirect/no mutation at `:103-127`; unexpected `IllegalStateException` propagation at `:129-141`. Gate 5 rules: RULE-38 shared configured-phone banner at `layout.html:140-145`; RULE-39 role navigation/session widget and single stock layout at `layout.html:20-134` plus request-only vet presentation at `requestDetail.html:12-15`; RULE-41 banner keys at `layout.html:142-143` and `LocalizationKeyTests` all-11-bundle checks; RULE-44 isolated H2/rollback presentation tests at `OwnerPresentationContractTests.java:57-60` and full suite. Gate 6 route: GET `/oups` maps at `CrashController.java:28-35`, is staff-only at `SecurityConfiguration.java:72-74`, and `RouteInventoryTest` passes. Gate 7 plan guards: all pass after task completion. Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 165/0/0/0; working tree contains only task-attributable files. Non-obvious: the old Phase-1 appointment-page vet assertion was removed because task-2.2 explicitly remediates exposure so veterinarian details render only on request pages; the stock schema constraint test can pollute a shared context with deliberately invalid enum rows, so the new contract starts with a fresh isolated context.
 
 - task-2.1: base commit 4a1828a. Gate 1 artifacts: `ArtifactInventoryTest.java`, `RouteInventoryTest.java`, and `AcTagCoverageTest.java` present at exact declared paths. Gate 2 scope: `git diff --name-only 4a1828a` contains only declared guard artifacts, the property/test evidence supporting their validation, and `status.md`. Gate 3 AC citations: task covers no ACs; the completed-task citation guard passes all 33 phase-1 ACs. Gate 4 validation: model/test-copy equality at `SchedulingProviderPinningTests.java:68-78`; missing artifact failure at `ArtifactInventoryTest.java:33-41`; unmapped/security-matrix route failure at `RouteInventoryTest.java:36-52,73-100`; untagged AC failure at `AcTagCoverageTest.java:27-42,55-59`. Gate 5 RULE-44: isolated plan parsing and exact complete-task inventory at `PlanGuardSupport.java:55-123`; test citation contract at `PlanGuardSupport.java:136-152`; live-model exclusion at `SchedulingProviderPinningTests.java:55-63`. Gate 6 routes: `RouteInventoryTest.java:35-45` resolves every completed owner task route, including filter-backed POST `/login`, and checks every route against the Security Surface. Gate 7 plan guards: targeted run PASS (8/0/0/0), including all three deliberate broken fixtures. Gate 8 suite: Java 21 with Byte Buddy agent, 158/0/0/0; the agent avoids this environment's Mockito self-attach failure; working tree after the suite contains only task-attributable files. Non-obvious: `OllamaChatConfigurationTests` now asserts the Spring AI model property contract without hard-coding a model tag, per accepted delta D-4.
 

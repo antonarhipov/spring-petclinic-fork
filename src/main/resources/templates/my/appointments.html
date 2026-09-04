@@ -4,8 +4,8 @@
   <h2 th:text="#{myAppointments}">My Appointments</h2>
   <p th:if="${#lists.isEmpty(appointments)}" th:text="#{noAppointments}">No appointments</p>
   <table th:unless="${#lists.isEmpty(appointments)}" class="table table-striped">
-    <thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{date}">Date</th><th th:text="#{vets}">Veterinarian</th><th th:text="#{status}">Status</th></tr></thead>
-    <tbody><tr th:each="appointment : ${appointments}"><td th:text="${appointment.pet.name}"></td><td th:text="${appointment.startTime}"></td><td th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}"></td><td th:text="${appointment.status}"></td></tr></tbody>
+    <thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{date}">Date</th><th th:text="#{status}">Status</th></tr></thead>
+    <tbody><tr th:each="appointment : ${appointments}"><td th:text="${appointment.pet.name}"></td><td th:text="${appointment.startTime}"></td><td th:text="${appointment.status}"></td></tr></tbody>
   </table>
   <a class="btn btn-primary" th:href="@{/my/requests/new}" th:text="#{startRequest}">Start a request</a>
 </body>

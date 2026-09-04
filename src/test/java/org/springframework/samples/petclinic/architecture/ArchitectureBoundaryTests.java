@@ -53,7 +53,6 @@ class ArchitectureBoundaryTests {
 			"org.springframework.samples.petclinic.scheduling.solver.ScheduleSolution",
 			"org.springframework.samples.petclinic.scheduling.solver.AppointmentConstraintProvider",
 			"org.springframework.samples.petclinic.scheduling.solver.DefaultSlotRanker",
-			"org.springframework.samples.petclinic.scheduling.solver.TimefoldSlotRanker",
 			"org.springframework.samples.petclinic.scheduling.interpretation.OllamaRequestInterpreter");
 
 	private static JavaClasses productionClasses;
