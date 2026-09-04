@@ -12,6 +12,10 @@ Tech stack (pinned): Java 21; Spring Boot 4.1.0 (`spring-boot-starter-parent`); 
 (`spring-ai-starter-model-ollama`, model tag default `gemma4:latest`); Timefold 2.5.0
 (`timefold-solver-spring-boot-starter`); ArchUnit (test scope); 11 message bundles under `messages/`.
 
+*As built (post cp-1.1, user commit 9aa650c, Δ D-4):* the shipped model tag default is `ministral-3:14b`
+(`spring.ai.ollama.chat.model=${SPRING_AI_OLLAMA_CHAT_MODEL:ministral-3:14b}`); the tag is configuration, never
+asserted by an AC. The test copy of `application.properties` must carry the same default (see plan task-2.1).
+
 Source of truth: [spec/spec.md](spec.md) and [spec/criteria.md](criteria.md) (AC-1 … AC-141). Where a technical choice
 was open, it was resolved with the stakeholder (see *External Dependencies* and the architecture decision recorded in
 RULE-1/RULE-2/RULE-3).
@@ -70,6 +74,7 @@ missing id). CSRF is enabled for all state-changing requests.
 | `/login` (GET, POST), `/error` | GET pre-existing / new | public (`permitAll`) | RULE-12 |
 | `/resources/**`, `/webjars/**`, `/*.css`, favicon (static resources) | yes | public (`permitAll`) | RULE-12 |
 | `/logout` (POST) | new | authenticated (any role) | RULE-12 |
+| `/403` (GET) | new | authenticated (any role); the access-denied page rendered for wrong-role requests (RULE-13); anonymous → 302 `/login` | RULE-12, RULE-13 |
 | `/` | yes | authenticated; redirect by role (owner→`/my/appointments`, staff→`/staff/queue`) | RULE-12, RULE-39 |
 | `/oups` | yes | staff only | RULE-12 |
 | `/owners/**` (`/owners/new`, `/owners/find`, `/owners`, `/owners/{id}`, `/owners/{id}/edit`, `/owners/{id}/pets/**`, `/owners/{id}/pets/{petId}/visits/new`) | yes | staff only | RULE-12 |
@@ -583,6 +588,13 @@ do not see the raw timeline).
 2. **Pinned clock & determinism** — "now" pinned to Monday 2026-09-07 09:00 Europe/Amsterdam via the injectable `Clock`
    (horizon 2026-09-07..2026-10-07); the `stub` `RequestInterpreter` with a synchronous executor; the live model is
    never called.
+   *Clarification (plan review, MAJOR-3):* the synchronous executor makes the `INTERPRETING` waiting state
+   unobservable over HTTP in the lifecycle test, so "state after each step" is satisfied for UC-1 step 3 by asserting
+   the state **transition** (`AWAITING_CONSENT` → `INTERPRETED`, event rows `CONSENT_GRANTED` then
+   `INTERPRETATION_APPLIED`) after the consent POST. The waiting page itself (`INTERPRETING` rendered with the meta
+   refresh, AC-27/AC-28) is proven by a separate web-slice test whose `RequestInterpreter` double blocks on a
+   `CountDownLatch` behind the real named executor (`RequestInterpretationService` with the production
+   `TaskExecutor`), released by the test after the page assertion. That double still conforms to item 5.
 3. **End-to-end** — the mandatory MockMvc lifecycle test (real filter chain, CSRF, interleaved owner+staff sessions)
    drives request → consent → interpretation → suggestion → ask again → staff hand-off → staff suggestion → accept →
    completed visit, plus a declined-consent request booked by staff and closed as no-show, asserting state after each
@@ -697,7 +709,7 @@ staff-only, so they must not leak into logs.
 - **ED-1 Architecture style decision.** *Question:* stock package-by-feature MVC vs the bundled `spring-boot` skill's
   DDD layout. *Resolution:* stakeholder chose **stock layout + an ArchUnit boundary guard** (RULE-1, RULE-2, RULE-3);
   no Spring Modulith. No blocker.
-- **ED-2 Local Ollama model availability.** The runtime default provider `ollama` (model `gemma4:latest`) may be absent
+- **ED-2 Local Ollama model availability.** The runtime default provider `ollama` (model `gemma4:latest`; *as built: `ministral-3:14b`, Δ D-4*) may be absent
   in CI or on a reviewer's machine. *Default in use:* the selectable `stub` provider (`scheduling.ai.provider=stub`,
   RULE-17) gives a deterministic offline interpreter; tests always use it. *Resolution path:* install/point Ollama at
   the model for a live demo — no code change.

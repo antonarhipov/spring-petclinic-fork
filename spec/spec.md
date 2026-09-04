@@ -811,7 +811,7 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 
 ## External dependencies
 
-- **ED-1 Local Ollama model availability.** The runtime default provider is `ollama` with model tag `gemma4:latest`,
+- **ED-1 Local Ollama model availability.** The runtime default provider is `ollama` with model tag `gemma4:latest` (*as built: `ministral-3:14b`, Δ D-4*),
   which may be unavailable in CI or on a reviewer's machine. *Decision/default:* the selectable `stub` provider
   (`scheduling.ai.provider=stub`, RA-22) provides a deterministic rule-based interpreter so the full flow can be demoed
   and tested offline; automated tests always use the stub. *Resolution path:* install/point Ollama at the configured
@@ -836,6 +836,11 @@ F-19, F-21..F-25 remain open and are carried into the `tasks` re-plan as `Checkp
 - **Δ D-3 — RULE-2 / RULE-26:** the Timefold/Spring-AI import boundary is an exact class set
   (`FRAMEWORK_ADAPTER_BOUNDARY` in `ArchitectureBoundaryTests`): the ranker/interpreter adapters plus the Timefold
   planning entity, solution and constraint-provider support types; no substring exemptions.
+- **Δ D-4 — ED-1 / rules Overview & ED-2 (post cp-1.1, user commit `9aa650c`):** the shipped Ollama model tag default is
+  `ministral-3:14b` instead of `gemma4:latest`. The tag is configuration (`SPRING_AI_OLLAMA_CHAT_MODEL`), no AC asserts
+  it; the test copy of `application.properties` is synchronized by plan task-2.1 (plan review BLOCKER-1).
+- **Rules amendment (plan review BLOCKER-5):** `/403` (GET, authenticated any role) added to the rules' Security
+  Surface matrix; closes the "Unlisted `/403`" spec weakness below.
 
 ### F-n open (not accepted as as-built behavior)
 

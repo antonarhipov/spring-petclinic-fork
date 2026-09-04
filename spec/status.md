@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: phase-1 checkpoint
-- Status: PENDING
+- Task: task-2.1 (Install executable plan guards) — first task of the re-planned `tasks.yaml` (`replanned_after: cp-1.1`; `plan-review.md` round 2 PASS)
+- Status: NOT_STARTED
 
 ## Completed
 
@@ -37,6 +37,7 @@
 - Waiver cp-1/G-1 (AC-138): phase-1 proves the thin UC-1 path only; AC-138's full interleaved lifecycle is a single claim of the later phase that completes it (re-plan removes AC-138 from phase-1 `covers`). Approved by the user on 2026-09-04.
 - cp-1/D-2 (RULE-17 default provider): NOT accepted as Δ. User decision: restore the `ollama` default per RULE-17 (`SCHEDULING_AI_PROVIDER` defaults to `ollama`; `matchIfMissing` on the Ollama interpreter); tests pin `scheduling.ai.provider=stub` in the test profile. Applied as a REVISE on task-1.6 together with REVISE 1–3.
 - task-1.3: `SecurityConfig.java` (declared) was built as `SecurityConfiguration.java`; rename recorded here per cp-1/P-4. The re-plan uses the as-built name.
+- Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
 
