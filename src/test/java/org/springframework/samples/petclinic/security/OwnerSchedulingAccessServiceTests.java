@@ -52,6 +52,7 @@ class OwnerSchedulingAccessServiceTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-13: other-owner and missing pets have identical no-mutation outcomes")
 	void otherOwnersPetAndMissingPetHaveTheSameOutcomeWithoutMutation() {
 		Owner george = new Owner();
 		george.setId(1);
@@ -74,6 +75,7 @@ class OwnerSchedulingAccessServiceTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-10: all owner queries include the authenticated owner id")
 	void requestAndAppointmentQueriesAlwaysIncludeAuthenticatedOwnerId() {
 		when(this.requestRepository.findByIdAndOwnerId(77, 1)).thenReturn(Optional.empty());
 		when(this.appointmentRepository.findOwnedById(1, 88)).thenReturn(Optional.empty());

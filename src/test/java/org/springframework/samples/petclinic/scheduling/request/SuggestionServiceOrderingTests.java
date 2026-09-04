@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 class SuggestionServiceOrderingTests {
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-63: accept locks vet before overlap recheck and creates nothing on conflict")
 	void acceptLocksVetBeforeRecheckingAndRefusesAConflictingAppointment() {
 		SchedulingRequestRepository requests = mock(SchedulingRequestRepository.class);
 		RequestLifecycleService lifecycle = mock(RequestLifecycleService.class);

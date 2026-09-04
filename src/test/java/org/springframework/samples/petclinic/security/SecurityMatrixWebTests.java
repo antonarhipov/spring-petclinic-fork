@@ -112,6 +112,7 @@ class SecurityMatrixWebTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-1 AC-2: anonymous protected surface redirects without disclosure or mutation")
 	void anonymousProtectedSurfaceRedirectsWithoutDisclosureOrMutation() throws Exception {
 		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
 		for (String route : ANONYMOUS_GET_ROUTES) {
@@ -124,6 +125,7 @@ class SecurityMatrixWebTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-8 AC-9: owner cannot reach staff surface or mutate staff data")
 	void ownerCannotReachAnyStaffSurfaceOrMutateStaffData() throws Exception {
 		MockHttpSession owner = login("george", "george123");
 		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
@@ -150,6 +152,7 @@ class SecurityMatrixWebTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-11 AC-12: other-owner and missing requests are identical and immutable")
 	void otherOwnerAndMissingRequestAreIdenticalAndCannotBeMutated() throws Exception {
 		Owner betty = this.ownerRepository.findById(2).orElseThrow();
 		Pet bettysPet = betty.getPets().stream().findFirst().orElseThrow();

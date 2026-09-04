@@ -64,6 +64,7 @@ class NavBarRenderingTests {
 
 	@Test
 	@WithMockUser(username = "george", roles = "OWNER")
+	@org.junit.jupiter.api.DisplayName("AC-14: owner navigation contains only owner entries")
 	void ownerNavBarRendersOwnerLinksAndSessionWidget() throws Exception {
 		this.mockMvc.perform(get("/login"))
 			.andExpect(status().isOk())
@@ -80,6 +81,7 @@ class NavBarRenderingTests {
 
 	@Test
 	@WithMockUser(username = "staff", roles = "STAFF")
+	@org.junit.jupiter.api.DisplayName("AC-15: staff navigation contains stock and scheduling entries")
 	void staffNavBarRendersStaffLinksAndSessionWidget() throws Exception {
 		this.mockMvc.perform(get("/vets.html"))
 			.andExpect(status().isOk())

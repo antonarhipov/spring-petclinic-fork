@@ -125,6 +125,7 @@ class AppointmentLifecycleRefusalTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-124: terminal appointment states refuse all actions without mutation")
 	void terminalStatesRefuseAllActions() {
 		List<AppointmentStatus> terminalStates = List.of(AppointmentStatus.CANCELLED_BY_OWNER,
 				AppointmentStatus.CANCELLED_BY_STAFF, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW);

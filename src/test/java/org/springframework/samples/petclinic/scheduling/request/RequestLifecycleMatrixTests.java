@@ -39,6 +39,7 @@ class RequestLifecycleMatrixTests {
 	private static final Map<RequestState, Set<Action>> ALLOWED = allowedActions();
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-123: every disallowed action refuses before mutation or event persistence")
 	void everyDisallowedActionRefusesBeforeMutationOrEventPersistence() {
 		for (RequestState state : RequestState.values()) {
 			for (Action action : Action.values()) {

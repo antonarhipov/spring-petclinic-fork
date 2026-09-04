@@ -52,6 +52,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-135: isolated in-memory database")
 	void usesOnlyAnIsolatedInMemoryDatabase() {
 		assertThat(databaseUrl).startsWith("jdbc:h2:mem:seed-migration-");
 		assertThat(jdbc.queryForObject(
@@ -61,6 +62,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-125 AC-126 AC-127: exact normative accounts, roles, and credentials")
 	void seedsExactlyTheNormativeAccountsAndRoles() {
 		List<AccountSeed> actual = jdbc.query(
 				"SELECT u.username, u.password, u.role, o.first_name, o.last_name FROM users u LEFT JOIN owners o ON o.id = u.owner_id ORDER BY u.id",
@@ -97,6 +99,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-128: exact clinic opening hours")
 	void seedsExactlyClinicAOpeningHours() {
 		List<OpeningHour> actual = jdbc.query(
 				"SELECT clinic_name, day_of_week, open_time, close_time, closed FROM clinic_opening_hour ORDER BY id",
@@ -115,6 +118,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-129 AC-130: exact closed set of weekly blocks")
 	void seedsExactlyAllVetWeeklyBlocks() {
 		List<VetBlock> actual = jdbc.query(
 				"SELECT CONCAT(v.first_name, ' ', v.last_name) vet_name, b.day_of_week, b.start_time, b.end_time FROM vet_weekly_block b JOIN vets v ON v.id = b.vet_id ORDER BY b.id",
@@ -133,6 +137,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-131 AC-132: exact exceptions and no leave or closures")
 	void seedsExactlyAllUnavailableExceptionsAndNoLeaveOrClosures() {
 		List<VetException> actual = jdbc.query(
 				"SELECT CONCAT(v.first_name, ' ', v.last_name) vet_name, e.exception_date, e.unavailable FROM vet_exception e JOIN vets v ON v.id = e.vet_id ORDER BY e.id",
@@ -150,6 +155,7 @@ class SeedMigrationTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-133 AC-134: exact parts of day and closed config set")
 	void seedsExactlyAllPartsOfDayAndTheSingleConfigRow() {
 		List<PartOfDay> parts = jdbc.query("SELECT name, start_time, end_time FROM clinic_part_of_day ORDER BY id",
 				(rs, row) -> new PartOfDay(rs.getString("name"), rs.getTime("start_time").toLocalTime(),

@@ -116,6 +116,7 @@ class InterpretationFidelityTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-53: every interpretation field survives flush and reload")
 	void interpretationFidelityRoundTrip() {
 		SchedulingRequest request = this.requestLifecycleService.createRequest(this.testOwner, this.testPet1,
 				"Dental cleaning and x-ray", "Mondays between 9 and 12", "owner_1");
@@ -155,6 +156,7 @@ class InterpretationFidelityTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-20: owned pet starts one awaiting-consent request")
 	void startRequestEnforcesSingleActiveRequestPerPet() {
 		// First request starts in AWAITING_CONSENT with activePetId set (AC-20)
 		SchedulingRequest request1 = this.requestLifecycleService.createRequest(this.testOwner, this.testPet1,

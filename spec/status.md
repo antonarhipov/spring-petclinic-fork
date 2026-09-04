@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.1 (Install executable plan guards) — first task of the re-planned `tasks.yaml` (`replanned_after: cp-1.1`; `plan-review.md` round 2 PASS)
+- Task: task-2.2 (Checkpoint 1 presentation and cosmetic remediation)
 - Status: NOT_STARTED
 
 ## Completed
@@ -14,6 +14,7 @@
 - task-1.5
 - task-1.6
 - task-1.7
+- task-2.1
 
 ## Phase Approvals
 
@@ -40,6 +41,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.1: base commit 4a1828a. Gate 1 artifacts: `ArtifactInventoryTest.java`, `RouteInventoryTest.java`, and `AcTagCoverageTest.java` present at exact declared paths. Gate 2 scope: `git diff --name-only 4a1828a` contains only declared guard artifacts, the property/test evidence supporting their validation, and `status.md`. Gate 3 AC citations: task covers no ACs; the completed-task citation guard passes all 33 phase-1 ACs. Gate 4 validation: model/test-copy equality at `SchedulingProviderPinningTests.java:68-78`; missing artifact failure at `ArtifactInventoryTest.java:33-41`; unmapped/security-matrix route failure at `RouteInventoryTest.java:36-52,73-100`; untagged AC failure at `AcTagCoverageTest.java:27-42,55-59`. Gate 5 RULE-44: isolated plan parsing and exact complete-task inventory at `PlanGuardSupport.java:55-123`; test citation contract at `PlanGuardSupport.java:136-152`; live-model exclusion at `SchedulingProviderPinningTests.java:55-63`. Gate 6 routes: `RouteInventoryTest.java:35-45` resolves every completed owner task route, including filter-backed POST `/login`, and checks every route against the Security Surface. Gate 7 plan guards: targeted run PASS (8/0/0/0), including all three deliberate broken fixtures. Gate 8 suite: Java 21 with Byte Buddy agent, 158/0/0/0; the agent avoids this environment's Mockito self-attach failure; working tree after the suite contains only task-attributable files. Non-obvious: `OllamaChatConfigurationTests` now asserts the Spring AI model property contract without hard-coding a model tag, per accepted delta D-4.
 
 - task-1.1: Configured Flyway and ArchUnit dependencies; excluded generated build artifacts in checkstyle nohttp config. Revised after cp-1: RULE-2/RULE-26 is resolved as an exact boundary containing the three Timefold support types required by RULE-26 plus the named ranker/interpreter adapter implementations; substring/name-pattern exemptions are forbidden and a `ViolatingSolutionSupport` fixture proves the rule bites.
 - task-1.2: Implemented V1-V4 migrations with BCrypt hashed seeded accounts and exact clinic configurations; validated active_pet_id partial unique constraint behavior. Revised after cp-1 with `SeedMigrationTests`, which migrates a unique in-memory H2 database and compares every normative account, owner link, password, opening hour, vet block, exception, part-of-day, and config field as closed sets.

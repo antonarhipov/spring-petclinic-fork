@@ -55,6 +55,7 @@ class FormLoginTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-3 AC-5: owner login establishes role and lands on appointments")
 	void ownerLoginRedirectsToMyAppointments() throws Exception {
 		mockMvc.perform(formLogin("/login").user("george").password("george123"))
 			.andExpect(status().is3xxRedirection())
@@ -67,6 +68,7 @@ class FormLoginTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-6: staff login lands on queue")
 	void staffLoginRedirectsToStaffQueue() throws Exception {
 		mockMvc.perform(formLogin("/login").user("staff").password("staff123"))
 			.andExpect(status().is3xxRedirection())
@@ -78,6 +80,7 @@ class FormLoginTests {
 	}
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-4: bad credentials create no authenticated context")
 	void badCredentialsRedirectsToLoginError() throws Exception {
 		mockMvc.perform(formLogin("/login").user("george").password("wrongpassword"))
 			.andExpect(status().is3xxRedirection())

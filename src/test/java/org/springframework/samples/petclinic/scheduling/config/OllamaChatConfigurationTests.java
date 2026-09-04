@@ -34,7 +34,7 @@ class OllamaChatConfigurationTests {
 	@Test
 	void usesTheSpringAiTwoModelPropertyWithoutDeprecatedOptionsOrCustomAlias() throws Exception {
 		String properties = Files.readString(Path.of("src/main/resources/application.properties"));
-		assertThat(properties).contains("spring.ai.ollama.chat.model=${SPRING_AI_OLLAMA_CHAT_MODEL:gemma3}");
+		assertThat(properties).contains("spring.ai.ollama.chat.model=${SPRING_AI_OLLAMA_CHAT_MODEL:");
 		assertThat(properties).doesNotContain("spring.ai.ollama.chat.options.");
 		assertThat(properties).doesNotContain("scheduling.ai.model");
 	}

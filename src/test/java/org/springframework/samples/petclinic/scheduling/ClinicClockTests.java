@@ -31,6 +31,7 @@ class ClinicClockTests {
 	private Clock clock;
 
 	@Test
+	@org.junit.jupiter.api.DisplayName("AC-108: runtime clock uses the seeded clinic time zone")
 	void runtimeClockUsesTheSeededClinicTimeZone() {
 		assertThat(this.clock.getZone()).isEqualTo(ZoneId.of("Europe/Amsterdam"));
 	}
