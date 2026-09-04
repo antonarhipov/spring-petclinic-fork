@@ -282,6 +282,57 @@ When rung 3 fires, order phase-1 **from the outside in** so the executor cannot 
 Every task from 3 onward names in `validation` the UC step the `skeleton_test` must reach after it. A task after which
 the skeleton test does not advance is either misplaced or building something the skeleton does not need.
 
+# Re-planning After Partial Execution
+
+Sometimes the plan is regenerated after one or more phases have already been executed and converged (typically because
+this skill's contract changed, or because a checkpoint exposed plan defects that the remaining phases share). In that
+case the invocation says so ("phase-1 is as-built …") and you run in **re-plan mode**. Additional inputs:
+
+- Progress: @file:spec/status.md (which phases/tasks are `COMPLETE`, which checkpoints are approved, the *Deviations*)
+- The existing plan: `spec/tasks.yaml` (the ids and `covers` the committed work and the convergence reports refer to)
+- Convergence reports: `spec/convergence/cp-*.md` (open `F-n` findings, accepted `Δ` deltas, plan weaknesses)
+- The working tree (`git ls-files`, `git log`), which is the ground truth for what an executed phase produced
+
+Rules for re-plan mode:
+
+1. **Completed phases are records, not tasks.** A phase whose checkpoint is `APPROVED` (or whose closure is recorded in
+   `status.md` under a user-approved waiver) keeps its `id`, its task ids, its task order, and its `checkpoint.id`.
+   Never add, remove, split or reorder its tasks, and never rewrite its `description` into new work: a regenerated task
+   for code that already exists invites the executor to "run the loop" against existing files, which is
+   self-certification by another name. Mark the phase `status: as_built` and give each of its tasks `status: COMPLETE`
+   with the commit that landed it (from `git log`).
+2. **As-built artifact lists are exact and taken from the tree.** Replace each completed task's `artifact` with the
+   list of paths that **now exist** and belong to that task (`git ls-files` + the commits in `status.md`), one per
+   line, test classes with their methods — so the `ArtifactInventoryTest` plan guard can check them retroactively. A
+   path that the original plan named but that does not exist is dropped (with a `decisions` entry naming the rename
+   recorded in *Deviations*); a path that exists but no task owns is assigned to the task whose description it serves.
+3. **Keep `covers` truthful.** A completed task's `covers.acs` becomes the set of ACs whose STRONG evidence converge
+   located in that task's artifacts (the Evidence Ledger of the last `cp-N.md`). ACs the ledger graded WEAK / ABSENT /
+   MISPLACED and that were not fixed are removed from the completed phase and re-planned in the first new phase (see
+   rule 6). `phase.covers` remains the union of the tasks' `covers.acs`. Do not leave an AC claimed twice.
+4. **Add `routes` retroactively.** Enumerate the request mappings the completed phase introduced (from the controllers
+   in its as-built artifacts) and record them as `"<METHOD> <path> → task-N.M"` so the `RouteInventoryTest` guard has
+   something to check for the completed phase too.
+5. **Plan guards move to the first new phase.** If the completed phases did not ship the *Plan guards* mandatory task,
+   it becomes the **first task** of the first new phase (`task-M.1`), and its `validation` states that the three guards
+   pass over the as-built phases as well ("`ArtifactInventoryTest` passes for every task marked `COMPLETE`, including
+   phase-1's as-built artifacts"). The same applies to the *Test environment* task if it is missing.
+6. **Remaining phases are regenerated in full** under the current contract — exact `artifact` lists, `routes`, ≤ 5 ACs
+   per task, `TestClass.method → AC-n → shape` validation bullets, no unsplit `L` without an intermediate checkpoint —
+   from the spec inputs, not by patching the old tasks. Open `F-n` findings from the last convergence that were waived
+   (not fixed) become tasks with `source: converge/cp-N/F-n`; accepted `Δ` deltas are treated as spec. ACs removed from
+   a completed phase by rule 3 land in the first new phase that touches their area.
+7. **Ids stay stable.** New phases continue the numbering (`phase-2`, `phase-3`, …) and their task ids start at
+   `task-M.1` even when the old plan's phase-M looked different; `status.md`, the convergence reports and the commit
+   messages key on the completed ids only, so the new ones are free.
+8. **Record the re-plan.** `dec-1` keeps the phasing decision; add `dec-2` (`decision: "re-plan after phase-N
+   as-built"`) naming the completed phases, the waiver or approval they close under, the ACs moved out of them, and the
+   plan-guard relocation. Set top-level `replanned_after: cp-N`.
+
+Everything else in this skill applies unchanged to the regenerated phases. The verification pass before writing adds:
+every completed task's `artifact` path exists in the working tree (`ls`), and no new task's `artifact` names a path a
+completed task already owns.
+
 # Dependency Rules
 
 - No circular dependencies
@@ -425,6 +476,8 @@ on the task they follow.
 
 **Optional**: `assumptions`, further `decisions`, `coverage_deferrals`, `entry_criteria`, `complexity`, `risk`, `source`, `skeleton_test` (required when rung 3 fired), task-level `checkpoint`.
 
+**Re-plan mode only**: top-level `replanned_after: cp-N`; phase `status: as_built` on completed phases; task `status: COMPLETE` and `commit: <hash>` on their tasks; `dec-2` recording the re-plan.
+
 # Success Criteria
 
 Complete only when ALL hold:
@@ -450,6 +503,7 @@ Complete only when ALL hold:
 - Every UC has an end-to-end task whose `validation` names its steps; walkthrough criteria name the UC executed; if rung 3 fired, phase-1 contains every step of the primary UC
 - All Risk Hotspots reflected in task `risk` annotations; architectural hotspots produced a `risk_first` spike phase
 - Soft limits met, or deviation justified in `decisions`
+- In re-plan mode: completed phases keep their ids, task ids and order; their `artifact` lists name only paths that exist; their `covers` contain only ACs with STRONG evidence in the last convergence; plan guards are the first task of the first new phase if not already shipped; `dec-2` and `replanned_after` present
 
 Verification pass before writing:
 - Walk phases in order; every `depends_on` points to a task that has appeared

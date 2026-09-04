@@ -103,6 +103,16 @@ is no point grading the evidence behind a phase whose report does not exist or w
    test class (or a controller) is out-of-task scope: `P-N`, and grade the task's own deliverable with suspicion —
    effort spent on the interesting problem was taken from the assigned one.
 
+**Legacy waiver (one-off, per checkpoint).** A phase executed before the per-task-commit protocol existed cannot
+satisfy item 2 without rewriting history, which is never acceptable. Item 2 (and item 3 when `plan-review.md`
+post-dates the plan, and item 5 for closure-gate evidence) may be waived for **one named checkpoint** only when
+`status.md` → *Deviations* carries an explicit, user-approved entry of the form
+`Legacy waiver cp-N: items <2[,3][,5]> of the converge Protocol Gate waived — phase executed before the protocol
+(commits <hashes>); approved by <user> on <date>`. The waiver never covers item 1 (the executor writes
+`spec/checkpoints/cp-N.md` retroactively from the committed state), item 4, item 6 or item 7, and it never extends to
+the next checkpoint: `cp-N+1` is audited under the full gate. Record the waiver in the report's *Protocol* section and
+treat the waived items as `P-N (waived)` so the omission stays visible.
+
 # Grounding (run first)
 
 1. Read `status.md`; confirm which phase/tasks are claimed complete and which prior F-n findings are still open.
@@ -315,7 +325,8 @@ spec *permits*, never for differences the spec did not foresee.
 - **APPROVE PENDING WALKTHROUGH** — zero CRITICAL, zero GAP, zero PROTOCOL, UI phase; becomes APPROVE when the user
   confirms the script.
 - **REJECT** — any CRITICAL, GAP or PROTOCOL. Emit ordered `REVISE:` directives and/or a remediation phase.
-- **REFUSED (protocol)** — Protocol Gate item 1 or 2 failed; the audit was not performed. The response is a single
+- **REFUSED (protocol)** — Protocol Gate item 1 or 2 failed (and no recorded *Legacy waiver* covers item 2 for this
+  checkpoint); the audit was not performed. The response is a single
   `REVISE:` that names the protocol repair (commit the report; split the batched commit per task with the closure gate
   re-run for each). Re-run converge once the executor has done so.
 
