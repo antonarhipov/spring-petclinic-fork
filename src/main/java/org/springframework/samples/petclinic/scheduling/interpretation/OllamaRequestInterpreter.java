@@ -18,6 +18,7 @@ import java.util.List;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class OllamaRequestInterpreter implements RequestInterpreter {
 
 	private final String modelTag;
 
+	@Autowired
 	public OllamaRequestInterpreter(ChatClient schedulingOllamaChatClient,
 			@Value("${spring.ai.ollama.chat.model}") String modelTag, InterpretationPromptFactory promptFactory) {
 		this((reason, availability) -> callModel(schedulingOllamaChatClient,

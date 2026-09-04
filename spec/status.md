@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: cp-3 (Phase 3 checkpoint)
-- Status: REJECTED (cp-3 convergence; remediation required)
+- Task: task-1.6 (cp-3/C-1 revision)
+- Status: COMPLETE (cp-3/C-1 revision)
 
 ## Completed
 
@@ -69,6 +69,16 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-1.6 cp-3/C-1 revision: base commit `1cbfd74`. Gate 1 artifact/supporting test:
+  `OllamaRequestInterpreter.java` and `OllamaProviderContextTests.java` exist. Gate 2 scope: only those files and
+  `status.md`. Gate 3/4 validation: `OllamaProviderContextTests.java:22-36` activates `ollama`, starts the complete
+  context, asserts exactly one `OllamaRequestInterpreter` and the real `schedulingOllamaChatClient`, without invoking
+  `interpret`; `SchedulingProviderPinningTests.java:55-78` still pins the normal test suite to the stub and verifies the
+  shipped default. Gate 5 RULE-17: `OllamaRequestInterpreter.java:37-41` marks the production constructor explicitly;
+  the model property remains `spring.ai.ollama.chat.model`. Focused Java 21 validation 3/0/0/0. The first broader run
+  under sandbox JDK 25 hit the pre-existing Mockito self-attach restriction in `OllamaAdapterContractTests`; it did not
+  fail the new context test. Remaining known cp-3 suite failures belong to the following revision directives.
 
 - cp-3 convergence (2026-09-04): **REJECT** — 4 critical, 6 gaps, 4 protocol findings. Full suite is
   265/4/0/0; the default application context fails at `ollamaRequestInterpreter`; phase controllers violate RULE-2;
