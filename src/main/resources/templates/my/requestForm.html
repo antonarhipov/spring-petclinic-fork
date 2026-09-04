@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'requestNew')}">
+<body>
+  <div class="alert alert-warning"><strong th:text="#{urgentCare}">Need urgent care?</strong> <span th:text="#{urgentCareMessage(${emergencyPhone})}">Call the clinic.</span></div>
+  <h2 th:text="#{requestNew}">Start a scheduling request</h2>
+	  <div th:if="${activeRequestUnavailable}" class="alert alert-danger" th:text="#{activeRequestUnavailable}"></div>
+  <form th:action="@{/my/requests}" method="post" class="form-horizontal">
+    <div class="form-group mb-3"><label for="petId" th:text="#{selectPet}">Select a pet</label><select id="petId" name="petId" class="form-control" required><option th:each="pet : ${pets}" th:value="${pet.id}" th:text="${pet.name}"></option></select></div>
+    <div class="form-group mb-3"><label for="reasonText" th:text="#{reason}">Reason</label><textarea id="reasonText" name="reasonText" class="form-control" required></textarea></div>
+    <div class="form-group mb-3"><label for="availabilityText" th:text="#{availability}">Availability</label><textarea id="availabilityText" name="availabilityText" class="form-control" required></textarea></div>
+    <button type="submit" class="btn btn-primary" th:text="#{createRequest}">Create request</button>
+  </form>
+</body>
+</html>

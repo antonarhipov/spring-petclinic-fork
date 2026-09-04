@@ -25,12 +25,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
  * Deterministic offline adapter for {@link RequestInterpreter} (RULE-2, RULE-17, AC-137).
  * Never invokes external LLM services.
  */
 @Service
+@ConditionalOnProperty(name = "scheduling.ai.provider", havingValue = "stub", matchIfMissing = true)
 public class StubRequestInterpreter implements RequestInterpreter {
 
 	private final Map<String, InterpretationResult> responsesByKeyword = new HashMap<>();

@@ -24,14 +24,18 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -54,7 +58,12 @@ class FormLoginTests {
 	void ownerLoginRedirectsToMyAppointments() throws Exception {
 		mockMvc.perform(formLogin("/login").user("george").password("george123"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(redirectedUrl("/my/appointments"));
+			.andExpect(redirectedUrl("/my/appointments"))
+			.andExpect(request().sessionAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+					org.hamcrest.Matchers.<SecurityContext>hasProperty("authentication",
+							org.hamcrest.Matchers.hasProperty("authorities",
+									org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.hasProperty("authority",
+											org.hamcrest.Matchers.is("ROLE_OWNER")))))));
 	}
 
 	@Test
@@ -72,11 +81,15 @@ class FormLoginTests {
 	void badCredentialsRedirectsToLoginError() throws Exception {
 		mockMvc.perform(formLogin("/login").user("george").password("wrongpassword"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(redirectedUrl("/login?error"));
+			.andExpect(redirectedUrl("/login?error"))
+			.andExpect(request()
+				.sessionAttributeDoesNotExist(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY));
 
 		mockMvc.perform(formLogin("/login").user("nonexistent").password("password"))
 			.andExpect(status().is3xxRedirection())
-			.andExpect(redirectedUrl("/login?error"));
+			.andExpect(redirectedUrl("/login?error"))
+			.andExpect(request()
+				.sessionAttributeDoesNotExist(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY));
 	}
 
 	@Test
@@ -97,7 +110,7 @@ class FormLoginTests {
 
 	@Test
 	void logoutRedirectsToLoginWithLogoutParam() throws Exception {
-		mockMvc.perform(post("/logout").with(csrf()))
+		mockMvc.perform(post("/logout").with(user("george").roles("OWNER")).with(csrf()))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/login?logout"));
 	}

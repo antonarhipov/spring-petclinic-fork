@@ -16,6 +16,10 @@
 
 package org.springframework.samples.petclinic.architecture;
 
+import java.util.Set;
+
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.samples.petclinic.architecture.fixtures.scheduling.request.ViolatingSchedulingService;
 import org.springframework.samples.petclinic.architecture.fixtures.scheduling.solver.ViolatingSolverClass;
+import org.springframework.samples.petclinic.architecture.fixtures.scheduling.solver.ViolatingSolutionSupport;
 import org.springframework.samples.petclinic.architecture.fixtures.scheduling.web.ViolatingSchedulingController;
 import org.springframework.stereotype.Controller;
 
@@ -36,6 +41,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ArchitectureBoundaryTests {
 
+	/**
+	 * RULE-2's adapter boundary includes these exact implementation/support types. The
+	 * three Timefold support types are required by RULE-26; the ranker and interpreter
+	 * implementations are the framework-facing adapters. Keeping this list exact avoids
+	 * granting framework access merely because a class name contains words such as
+	 * "Solution" or "Assignment".
+	 */
+	private static final Set<String> FRAMEWORK_ADAPTER_BOUNDARY = Set.of(
+			"org.springframework.samples.petclinic.scheduling.solver.AppointmentAssignment",
+			"org.springframework.samples.petclinic.scheduling.solver.ScheduleSolution",
+			"org.springframework.samples.petclinic.scheduling.solver.AppointmentConstraintProvider",
+			"org.springframework.samples.petclinic.scheduling.solver.DefaultSlotRanker",
+			"org.springframework.samples.petclinic.scheduling.solver.TimefoldSlotRanker",
+			"org.springframework.samples.petclinic.scheduling.interpretation.OllamaRequestInterpreter");
+
 	private static JavaClasses productionClasses;
 
 	@BeforeAll
@@ -46,16 +66,12 @@ class ArchitectureBoundaryTests {
 
 	static final ArchRule RULE_NO_AI_OR_TIMEFOLD_OUTSIDE_ADAPTERS = noClasses().that()
 		.resideInAnyPackage("..scheduling.solver..", "..scheduling.interpretation..")
-		.and()
-		.haveSimpleNameNotContaining("SlotRanker")
-		.and()
-		.haveSimpleNameNotContaining("RequestInterpreter")
-		.and()
-		.haveSimpleNameNotContaining("ConstraintProvider")
-		.and()
-		.haveSimpleNameNotContaining("Solution")
-		.and()
-		.haveSimpleNameNotContaining("Assignment")
+		.and(new DescribedPredicate<JavaClass>("outside the exact framework adapter boundary") {
+			@Override
+			public boolean test(JavaClass javaClass) {
+				return !FRAMEWORK_ADAPTER_BOUNDARY.contains(javaClass.getName());
+			}
+		})
 		.should()
 		.dependOnClassesThat()
 		.resideInAnyPackage("ai.timefold..", "org.springframework.ai..")
@@ -95,9 +111,12 @@ class ArchitectureBoundaryTests {
 
 	@Test
 	void ruleNoAiOrTimefoldOutsideAdaptersFailsOnViolatingFixture() {
-		JavaClasses violating = new ClassFileImporter().importClasses(ViolatingSolverClass.class);
+		JavaClasses violating = new ClassFileImporter().importClasses(ViolatingSolverClass.class,
+				ViolatingSolutionSupport.class);
 		EvaluationResult result = RULE_NO_AI_OR_TIMEFOLD_OUTSIDE_ADAPTERS.evaluate(violating);
 		assertThat(result.hasViolation()).isTrue();
+		assertThat(result.getFailureReport().getDetails())
+			.anyMatch(detail -> detail.contains("ViolatingSolutionSupport"));
 	}
 
 	@Test

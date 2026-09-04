@@ -60,10 +60,7 @@ public class AppointmentAssignment {
 	private List<AvailabilityWindow> preferredWindows = new ArrayList<>();
 
 	@PlanningVariable
-	private Vet vet;
-
-	@PlanningVariable
-	private ZonedDateTime startTime;
+	private AppointmentSlot slot;
 
 	public AppointmentAssignment() {
 	}
@@ -165,63 +162,71 @@ public class AppointmentAssignment {
 	}
 
 	public Vet getVet() {
-		return this.vet;
+		return this.slot == null ? null : this.slot.vet();
 	}
 
 	public void setVet(Vet vet) {
-		this.vet = vet;
+		this.slot = new AppointmentSlot(vet, getStartTime());
 	}
 
 	public ZonedDateTime getStartTime() {
-		return this.startTime;
+		return this.slot == null ? null : this.slot.startTime();
 	}
 
 	public void setStartTime(ZonedDateTime startTime) {
-		this.startTime = startTime;
+		this.slot = new AppointmentSlot(getVet(), startTime);
+	}
+
+	public AppointmentSlot getSlot() {
+		return this.slot;
+	}
+
+	public void setSlot(AppointmentSlot slot) {
+		this.slot = slot;
 	}
 
 	public ZonedDateTime getEndTime() {
-		return this.startTime != null ? this.startTime.plusMinutes(this.duration) : null;
+		return getStartTime() != null ? getStartTime().plusMinutes(this.duration) : null;
 	}
 
 	public boolean overlapsWith(AppointmentAssignment other) {
-		if (this.vet == null || other.vet == null || this.startTime == null || other.startTime == null) {
+		if (getVet() == null || other.getVet() == null || getStartTime() == null || other.getStartTime() == null) {
 			return false;
 		}
-		if (!Objects.equals(this.vet.getId(), other.vet.getId())) {
+		if (!Objects.equals(getVet().getId(), other.getVet().getId())) {
 			return false;
 		}
-		return this.startTime.isBefore(other.getEndTime()) && this.getEndTime().isAfter(other.startTime);
+		return getStartTime().isBefore(other.getEndTime()) && this.getEndTime().isAfter(other.getStartTime());
 	}
 
 	public boolean overlapsWithExisting(Appointment existing) {
-		if (this.vet == null || existing.getVet() == null || this.startTime == null
+		if (getVet() == null || existing.getVet() == null || getStartTime() == null
 				|| existing.getStartTime() == null) {
 			return false;
 		}
-		if (!Objects.equals(this.vet.getId(), existing.getVet().getId())) {
+		if (!Objects.equals(getVet().getId(), existing.getVet().getId())) {
 			return false;
 		}
-		return this.startTime.isBefore(existing.getEndTime()) && this.getEndTime().isAfter(existing.getStartTime());
+		return getStartTime().isBefore(existing.getEndTime()) && this.getEndTime().isAfter(existing.getStartTime());
 	}
 
 	public boolean overlapsWithActiveHold(SchedulingRequest activeHold) {
-		if (this.vet == null || activeHold.getHeldVet() == null || this.startTime == null
+		if (getVet() == null || activeHold.getHeldVet() == null || getStartTime() == null
 				|| activeHold.getHeldStart() == null || activeHold.getHeldDuration() == null) {
 			return false;
 		}
-		if (!Objects.equals(this.vet.getId(), activeHold.getHeldVet().getId())) {
+		if (!Objects.equals(getVet().getId(), activeHold.getHeldVet().getId())) {
 			return false;
 		}
 		ZonedDateTime holdEnd = activeHold.getHeldStart().plusMinutes(activeHold.getHeldDuration());
-		return this.startTime.isBefore(holdEnd) && this.getEndTime().isAfter(activeHold.getHeldStart());
+		return getStartTime().isBefore(holdEnd) && this.getEndTime().isAfter(activeHold.getHeldStart());
 	}
 
 	public boolean isWithinClinicHours() {
-		if (this.startTime == null) {
+		if (getStartTime() == null) {
 			return false;
 		}
-		ZonedDateTime start = this.startTime;
+		ZonedDateTime start = getStartTime();
 		ZonedDateTime end = getEndTime();
 		if (!start.toLocalDate().equals(end.toLocalDate())) {
 			return false;
@@ -251,10 +256,10 @@ public class AppointmentAssignment {
 		if (this.requiredSpecialty == null || this.requiredSpecialty.isBlank()) {
 			return false;
 		}
-		if (this.vet == null) {
+		if (getVet() == null) {
 			return false;
 		}
-		for (Specialty s : this.vet.getSpecialties()) {
+		for (Specialty s : getVet().getSpecialties()) {
 			if (s.getName() != null && s.getName().equalsIgnoreCase(this.requiredSpecialty.trim())) {
 				return false;
 			}
@@ -266,10 +271,10 @@ public class AppointmentAssignment {
 		if (this.requiredSpecialty == null || this.requiredSpecialty.isBlank()) {
 			return false;
 		}
-		if (this.vet == null) {
+		if (getVet() == null) {
 			return false;
 		}
-		for (Specialty s : this.vet.getSpecialties()) {
+		for (Specialty s : getVet().getSpecialties()) {
 			if (s.getName() != null && s.getName().equalsIgnoreCase(this.requiredSpecialty.trim())) {
 				return true;
 			}
@@ -278,17 +283,17 @@ public class AppointmentAssignment {
 	}
 
 	public boolean matchesPreviousVet() {
-		if (this.previousVetId == null || this.vet == null) {
+		if (this.previousVetId == null || getVet() == null) {
 			return false;
 		}
-		return Objects.equals(this.vet.getId(), this.previousVetId);
+		return Objects.equals(getVet().getId(), this.previousVetId);
 	}
 
 	public boolean isWithinPreferredWindow() {
-		if (this.startTime == null || this.preferredWindows == null || this.preferredWindows.isEmpty()) {
+		if (getStartTime() == null || this.preferredWindows == null || this.preferredWindows.isEmpty()) {
 			return false;
 		}
-		ZonedDateTime start = this.startTime;
+		ZonedDateTime start = getStartTime();
 		ZonedDateTime end = getEndTime();
 
 		for (AvailabilityWindow window : this.preferredWindows) {

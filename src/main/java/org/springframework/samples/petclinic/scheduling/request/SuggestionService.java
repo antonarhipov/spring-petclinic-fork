@@ -21,8 +21,6 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
@@ -59,13 +57,10 @@ public class SuggestionService {
 
 	private final Clock clock;
 
-	private final EntityManager entityManager;
-
 	public SuggestionService(SchedulingRequestRepository requestRepository,
 			RequestLifecycleService requestLifecycleService, InterpretationRepository interpretationRepository,
 			SlotRanker slotRanker, AppointmentLifecycleService appointmentLifecycleService,
-			AppointmentRepository appointmentRepository, VetRepository vetRepository, Clock clock,
-			EntityManager entityManager) {
+			AppointmentRepository appointmentRepository, VetRepository vetRepository, Clock clock) {
 		this.requestRepository = requestRepository;
 		this.requestLifecycleService = requestLifecycleService;
 		this.interpretationRepository = interpretationRepository;
@@ -74,7 +69,6 @@ public class SuggestionService {
 		this.appointmentRepository = appointmentRepository;
 		this.vetRepository = vetRepository;
 		this.clock = clock;
-		this.entityManager = entityManager;
 	}
 
 	public SchedulingRequest confirm(SchedulingRequest request, String actor) {
@@ -94,13 +88,13 @@ public class SuggestionService {
 			Vet vet = candidate.vet();
 			if (vet != null && vet.getId() != null) {
 				// Acquire pessimistic write lock on the vet row (RULE-10)
-				this.entityManager.find(Vet.class, vet.getId(), LockModeType.PESSIMISTIC_WRITE);
+				Vet lockedVet = this.vetRepository.findByIdForUpdate(vet.getId()).orElseThrow();
 
 				// Verify slot availability against confirmed appointments and active
 				// holds
 				if (isSlotAvailable(vet.getId(), candidate.startTime(), candidate.duration(), request.getId())) {
-					return this.requestLifecycleService.confirmFeasible(request, actor, vet, candidate.startTime(),
-							candidate.duration());
+					return this.requestLifecycleService.confirmFeasible(request, actor, lockedVet,
+							candidate.startTime(), candidate.duration());
 				}
 			}
 		}
@@ -120,7 +114,7 @@ public class SuggestionService {
 		int heldDuration = request.getHeldDuration();
 
 		// Acquire pessimistic write lock on held vet (RULE-10)
-		this.entityManager.find(Vet.class, heldVet.getId(), LockModeType.PESSIMISTIC_WRITE);
+		heldVet = this.vetRepository.findByIdForUpdate(heldVet.getId()).orElseThrow();
 
 		// Re-validate hold under lock (RULE-11)
 		if (!isSlotAvailable(heldVet.getId(), heldStart, heldDuration, request.getId())) {

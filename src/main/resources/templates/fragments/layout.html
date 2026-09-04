@@ -41,19 +41,14 @@
         <!-- Owner navigation links -->
         <ul sec:authorize="hasRole('OWNER')" class="nav navbar-nav me-auto">
 
-          <li th:replace="~{::menuItem ('/my/appointments','myAppointments','my appointments','calendar',#{myAppointments})}">
-            <span class="fa fa-calendar" aria-hidden="true"></span>
-            <span th:text="#{myAppointments}">My Appointments</span>
-          </li>
-
-          <li th:replace="~{::menuItem ('/scheduling/new','scheduleAppointment','schedule appointment','plus-circle',#{scheduleAppointment})}">
-            <span class="fa fa-plus-circle" aria-hidden="true"></span>
-            <span th:text="#{scheduleAppointment}">Schedule Appointment</span>
-          </li>
-
-          <li th:replace="~{::menuItem ('/my/pets','myPets','my pets','paw',#{myPets})}">
+          <li th:replace="~{::menuItem ('/my/pets','myPets',#{myPets},'paw',#{myPets})}">
             <span class="fa fa-paw" aria-hidden="true"></span>
             <span th:text="#{myPets}">My Pets</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/my/appointments','myAppointments',#{myAppointments},'calendar',#{myAppointments})}">
+            <span class="fa fa-calendar" aria-hidden="true"></span>
+            <span th:text="#{myAppointments}">My Appointments</span>
           </li>
 
         </ul>
@@ -61,29 +56,29 @@
         <!-- Staff navigation links -->
         <ul sec:authorize="hasRole('STAFF')" class="nav navbar-nav me-auto">
 
-          <li th:replace="~{::menuItem ('/staff/queue','queue','queue','inbox',#{queue})}">
-            <span class="fa fa-inbox" aria-hidden="true"></span>
-            <span th:text="#{queue}">Queue</span>
-          </li>
-
-          <li th:replace="~{::menuItem ('/owners/find','owners','find owners','search',#{findOwners})}">
+          <li th:replace="~{::menuItem ('/owners/find','owners',#{findOwners},'search',#{findOwners})}">
             <span class="fa fa-search" aria-hidden="true"></span>
             <span th:text="#{findOwners}">Find owners</span>
           </li>
 
-          <li th:replace="~{::menuItem ('/vets.html','vets','veterinarians','th-list',#{vets})}">
+          <li th:replace="~{::menuItem ('/vets.html','vets',#{vets},'th-list',#{vets})}">
             <span class="fa fa-th-list" aria-hidden="true"></span>
             <span th:text="#{vets}">Veterinarians</span>
           </li>
 
-          <li th:replace="~{::menuItem ('/staff/config','clinicConfig','clinic config','cogs',#{clinicConfig})}">
-            <span class="fa fa-cogs" aria-hidden="true"></span>
-            <span th:text="#{clinicConfig}">Clinic Config</span>
+          <li th:replace="~{::menuItem ('/staff/queue','queue',#{schedulingQueue},'inbox',#{schedulingQueue})}">
+            <span class="fa fa-inbox" aria-hidden="true"></span>
+            <span th:text="#{schedulingQueue}">Scheduling queue</span>
           </li>
 
-          <li th:replace="~{::menuItem ('/staff/scheduling/new','staffSchedule','schedule appointment','calendar-plus-o',#{scheduleAppointment})}">
-            <span class="fa fa-calendar-plus-o" aria-hidden="true"></span>
-            <span th:text="#{scheduleAppointment}">Schedule Appointment</span>
+          <li th:replace="~{::menuItem ('/staff/calendar','calendar',#{calendar},'calendar',#{calendar})}">
+            <span class="fa fa-calendar" aria-hidden="true"></span>
+            <span th:text="#{calendar}">Calendar</span>
+          </li>
+
+          <li th:replace="~{::menuItem ('/staff/settings','clinicSettings',#{clinicSettings},'cogs',#{clinicSettings})}">
+            <span class="fa fa-cogs" aria-hidden="true"></span>
+            <span th:text="#{clinicSettings}">Clinic settings</span>
           </li>
 
         </ul>
@@ -97,16 +92,16 @@
               <span class="fa fa-globe"></span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langDropdown">
-              <li><a class="dropdown-item" th:href="@{''(lang='en')}" th:text="'English'">English</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='de')}" th:text="'Deutsch'">Deutsch</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='es')}" th:text="'Español'">Español</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='fa')}" th:text="'فارسی'">فارسی</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='hi')}" th:text="'हिन्दी'">हिन्दी</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='ja')}" th:text="'日本語'">日本語</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='ko')}" th:text="'한국어'">한국어</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='pt')}" th:text="'Português'">Português</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='ru')}" th:text="'Русский'">Русский</a></li>
-              <li><a class="dropdown-item" th:href="@{''(lang='tr')}" th:text="'Türkçe'">Türkçe</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='en')}" th:text="#{language.english}">English</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='de')}" th:text="#{language.german}">German</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='es')}" th:text="#{language.spanish}">Spanish</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='fa')}" th:text="#{language.persian}">Persian</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='hi')}" th:text="#{language.hindi}">Hindi</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ja')}" th:text="#{language.japanese}">Japanese</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ko')}" th:text="#{language.korean}">Korean</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='pt')}" th:text="#{language.portuguese}">Portuguese</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='ru')}" th:text="#{language.russian}">Russian</a></li>
+              <li><a class="dropdown-item" th:href="@{''(lang='tr')}" th:text="#{language.turkish}">Turkish</a></li>
             </ul>
           </li>
 
@@ -150,7 +145,7 @@
         <div class="row">
           <div class="col-12 text-center">
             <img src="../static/images/spring-logo.svg" th:src="@{/resources/images/spring-logo.svg}"
-              alt="VMware Tanzu Logo" class="logo">
+              alt="" th:alt="#{springLogo}" class="logo">
           </div>
         </div>
       </div>

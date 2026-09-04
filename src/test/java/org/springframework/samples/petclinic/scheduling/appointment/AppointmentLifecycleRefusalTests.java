@@ -90,6 +90,7 @@ class AppointmentLifecycleRefusalTests {
 		ZonedDateTime futureStart = ZonedDateTime.now(this.clock).plusHours(2);
 		Appointment app = createPersistedAppointment(AppointmentStatus.CONFIRMED, futureStart);
 		int initialChanges = this.changeRepository.findByAppointmentIdOrderByTimestampAsc(app.getId()).size();
+		int initialVisits = this.testPet.getVisits().size();
 
 		assertThatThrownBy(() -> this.lifecycleService.markCompleted(app, "staff_1"))
 			.isInstanceOf(IllegalAppointmentTransitionException.class);
@@ -100,6 +101,7 @@ class AppointmentLifecycleRefusalTests {
 		assertThat(current.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
 		List<AppointmentChange> changes = this.changeRepository.findByAppointmentIdOrderByTimestampAsc(app.getId());
 		assertThat(changes).hasSize(initialChanges);
+		assertThat(this.testPet.getVisits()).hasSize(initialVisits);
 	}
 
 	@Test

@@ -16,35 +16,61 @@
 
 package org.springframework.samples.petclinic;
 
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Random-port smoke test proving application wiring and container startup (AC-139).
+ * Random-port smoke test proving public and authenticated application wiring (AC-139).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SmokeTests {
 
+	private static final Pattern CSRF_VALUE = Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"");
+
 	@LocalServerPort
 	private int port;
 
-	@Autowired
-	private RestTemplateBuilder builder;
-
 	@Test
-	void contextLoadsAndLoginPageIsAccessible() {
-		RestTemplate template = this.builder.baseUri("http://localhost:" + this.port).build();
-		ResponseEntity<String> response = template.exchange(RequestEntity.get("/login").build(), String.class);
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void seededOwnerCanLoadLoginAndAuthenticatedPage() throws Exception {
+		HttpClient client = HttpClient.newBuilder()
+			.cookieHandler(new CookieManager())
+			.followRedirects(HttpClient.Redirect.NORMAL)
+			.build();
+		URI loginUri = URI.create("http://localhost:" + this.port + "/login");
+		HttpResponse<String> loginPage = client.send(HttpRequest.newBuilder(loginUri).GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(loginPage.statusCode()).isEqualTo(200);
+		Matcher csrf = CSRF_VALUE.matcher(loginPage.body());
+		assertThat(csrf.find()).isTrue();
+
+		String form = "username=george&password=george123&_csrf="
+				+ URLEncoder.encode(csrf.group(1), StandardCharsets.UTF_8);
+		HttpResponse<String> authenticated = client.send(HttpRequest.newBuilder(loginUri)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+			.POST(HttpRequest.BodyPublishers.ofString(form))
+			.build(), HttpResponse.BodyHandlers.ofString());
+		assertThat(authenticated.statusCode()).isEqualTo(200);
+		assertThat(authenticated.uri().getPath()).isEqualTo("/my/appointments");
+		assertThat(authenticated.body()).contains("My Appointments", "george");
+
+		HttpResponse<String> ownerPage = client.send(
+				HttpRequest.newBuilder(URI.create("http://localhost:" + this.port + "/my/appointments")).GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(ownerPage.statusCode()).isEqualTo(200);
+		assertThat(ownerPage.body()).contains("My Appointments");
 	}
 
 }

@@ -30,12 +30,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ClockConfig {
 
-	public static final String CLINIC_TIME_ZONE = "Europe/Amsterdam";
+	public static final String DEFAULT_CLINIC_TIME_ZONE = "Europe/Amsterdam";
 
 	@Bean
 	@ConditionalOnMissingBean
-	public Clock clock() {
-		return Clock.system(ZoneId.of(CLINIC_TIME_ZONE));
+	public Clock clock(ClinicConfigRepository clinicConfigRepository) {
+		String configuredZone = clinicConfigRepository.findById(1)
+			.map(ClinicConfig::getTimeZone)
+			.orElse(DEFAULT_CLINIC_TIME_ZONE);
+		return Clock.system(ZoneId.of(configuredZone));
 	}
 
 }

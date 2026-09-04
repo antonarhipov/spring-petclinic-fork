@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.security;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -39,7 +40,8 @@ public class User extends BaseEntity {
 	private String password;
 
 	@Column(name = "role", nullable = false, length = 20)
-	private String role;
+	@Convert(converter = UserRoleConverter.class)
+	private UserRole role;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "owner_id")
@@ -61,11 +63,11 @@ public class User extends BaseEntity {
 		this.password = password;
 	}
 
-	public String getRole() {
+	public UserRole getRole() {
 		return this.role;
 	}
 
-	public void setRole(String role) {
+	public void setRole(UserRole role) {
 		this.role = role;
 	}
 

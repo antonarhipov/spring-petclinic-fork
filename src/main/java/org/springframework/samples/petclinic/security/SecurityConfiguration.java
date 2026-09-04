@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -58,17 +59,18 @@ public class SecurityConfiguration {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) {
 		http.csrf(Customizer.withDefaults())
-			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/login", "/error", "/403", "/resources/**", "/css/**", "/images/**", "/webjars/**",
-						"/favicon.ico", "/*.css")
+			.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.GET, "/login")
 				.permitAll()
-				.requestMatchers("/oups", "/owners/**", "/vets", "/vets.html", "/vets/**", "/staff/**", "/actuator/**",
-						"/admin/**")
-				.hasRole("STAFF")
-				.requestMatchers("/scheduling/**", "/my/**")
-				.hasRole("OWNER")
-				.requestMatchers("/", "/logout")
+				.requestMatchers(HttpMethod.POST, "/login")
+				.permitAll()
+				.requestMatchers("/error", "/resources/**", "/webjars/**", "/favicon.ico", "/*.css")
+				.permitAll()
+				.requestMatchers("/403", "/logout", "/")
 				.authenticated()
+				.requestMatchers("/oups", "/owners/**", "/vets", "/vets.html", "/vets/**", "/staff/**", "/actuator/**")
+				.hasRole("STAFF")
+				.requestMatchers("/my/**")
+				.hasRole("OWNER")
 				.anyRequest()
 				.authenticated())
 			.formLogin(form -> form.loginPage("/login")
@@ -76,11 +78,7 @@ public class SecurityConfiguration {
 				.successHandler(this.authenticationSuccessHandler)
 				.failureUrl("/login?error")
 				.permitAll())
-			.logout(logout -> logout.logoutUrl("/logout")
-				.logoutSuccessUrl("/login?logout")
-				.invalidateHttpSession(true)
-				.deleteCookies("JSESSIONID")
-				.permitAll())
+			.logout(logout -> logout.disable())
 			.exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
 				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 				request.getRequestDispatcher("/403").forward(request, response);

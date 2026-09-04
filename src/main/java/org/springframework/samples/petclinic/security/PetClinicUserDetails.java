@@ -34,7 +34,7 @@ public class PetClinicUserDetails implements UserDetails {
 
 	private final String password;
 
-	private final String role;
+	private final UserRole role;
 
 	private final Integer ownerId;
 
@@ -46,14 +46,14 @@ public class PetClinicUserDetails implements UserDetails {
 		this.password = user.getPassword();
 		this.role = user.getRole();
 		this.ownerId = (user.getOwner() != null) ? user.getOwner().getId() : null;
-		this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase()));
+		this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 	}
 
 	public Integer getUserId() {
 		return this.userId;
 	}
 
-	public String getRole() {
+	public UserRole getRole() {
 		return this.role;
 	}
 

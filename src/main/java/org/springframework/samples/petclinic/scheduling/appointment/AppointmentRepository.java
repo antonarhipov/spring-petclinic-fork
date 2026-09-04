@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.scheduling.appointment;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +29,15 @@ import org.springframework.transaction.annotation.Transactional;
  * Spring Data JPA repository for {@link Appointment}.
  */
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
+
+	@Transactional(readOnly = true)
+	@Query("SELECT a FROM Owner o JOIN o.pets p, Appointment a WHERE o.id = :ownerId AND p = a.pet AND a.id = :appointmentId")
+	Optional<Appointment> findOwnedById(@Param("ownerId") Integer ownerId,
+			@Param("appointmentId") Integer appointmentId);
+
+	@Transactional(readOnly = true)
+	@Query("SELECT a FROM Owner o JOIN o.pets p, Appointment a WHERE o.id = :ownerId AND p = a.pet ORDER BY a.startTime")
+	List<Appointment> findAllOwnedBy(@Param("ownerId") Integer ownerId);
 
 	@Transactional(readOnly = true)
 	List<Appointment> findByPetId(Integer petId);

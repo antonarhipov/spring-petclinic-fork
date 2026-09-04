@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.owner;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Objects;
@@ -54,9 +55,12 @@ class PetController {
 
 	private final PetTypeRepository types;
 
-	public PetController(OwnerRepository owners, PetTypeRepository types) {
+	private final Clock clock;
+
+	public PetController(OwnerRepository owners, PetTypeRepository types, Clock clock) {
 		this.owners = owners;
 		this.types = types;
+		this.clock = clock;
 	}
 
 	@ModelAttribute("types")
@@ -112,7 +116,7 @@ class PetController {
 			result.rejectValue("name", "duplicate", "already exists");
 		}
 
-		LocalDate currentDate = LocalDate.now();
+		LocalDate currentDate = LocalDate.now(this.clock);
 		if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(currentDate)) {
 			result.rejectValue("birthDate", "typeMismatch.birthDate");
 		}
@@ -155,7 +159,7 @@ class PetController {
 			}
 		}
 
-		LocalDate currentDate = LocalDate.now();
+		LocalDate currentDate = LocalDate.now(this.clock);
 		if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(currentDate)) {
 			result.rejectValue("birthDate", "typeMismatch.birthDate");
 		}

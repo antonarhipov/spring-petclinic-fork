@@ -33,6 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.Optional;
 
 /**
@@ -56,8 +57,13 @@ class VisitControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	@MockitoBean
+	private Clock clock;
+
 	@BeforeEach
 	void init() {
+		given(this.clock.instant()).willReturn(java.time.Instant.parse("2026-09-07T07:00:00Z"));
+		given(this.clock.getZone()).willReturn(java.time.ZoneId.of("Europe/Amsterdam"));
 		Owner owner = new Owner();
 		Pet pet = new Pet();
 		owner.addPet(pet);
@@ -77,7 +83,7 @@ class VisitControllerTests {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
 				.param("name", "George")
-				.param("date", LocalDate.now().plusDays(1).toString())
+				.param("date", LocalDate.now(this.clock).plusDays(1).toString())
 				.param("description", "Visit Description"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
@@ -98,7 +104,7 @@ class VisitControllerTests {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
 				.param("name", "George")
-				.param("date", LocalDate.now().toString())
+				.param("date", LocalDate.now(this.clock).toString())
 				.param("description", "Visit Description"))
 			.andExpect(model().attributeHasFieldErrors("visit", "date"))
 			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))

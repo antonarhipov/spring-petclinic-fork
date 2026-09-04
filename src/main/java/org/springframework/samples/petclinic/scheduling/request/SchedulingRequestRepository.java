@@ -33,6 +33,9 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 	List<SchedulingRequest> findByOwnerId(Integer ownerId);
 
 	@Transactional(readOnly = true)
+	Optional<SchedulingRequest> findByIdAndOwnerId(Integer id, Integer ownerId);
+
+	@Transactional(readOnly = true)
 	Optional<SchedulingRequest> findByActivePetId(Integer petId);
 
 	@Transactional(readOnly = true)

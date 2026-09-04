@@ -39,13 +39,13 @@ public class ScheduleSolution {
 	@PlanningScore
 	private HardMediumSoftScore score;
 
-	@ProblemFactCollectionProperty
-	@ValueRangeProvider
 	private List<Vet> vetList = new ArrayList<>();
+
+	private List<ZonedDateTime> timeslotList = new ArrayList<>();
 
 	@ProblemFactCollectionProperty
 	@ValueRangeProvider
-	private List<ZonedDateTime> timeslotList = new ArrayList<>();
+	private List<AppointmentSlot> slotList = new ArrayList<>();
 
 	@PlanningEntityCollectionProperty
 	private List<AppointmentAssignment> assignmentList = new ArrayList<>();
@@ -64,6 +64,11 @@ public class ScheduleSolution {
 			List<SchedulingRequest> activeHolds) {
 		this.vetList = vetList != null ? vetList : new ArrayList<>();
 		this.timeslotList = timeslotList != null ? timeslotList : new ArrayList<>();
+		for (Vet vet : this.vetList) {
+			for (ZonedDateTime timeslot : this.timeslotList) {
+				this.slotList.add(new AppointmentSlot(vet, timeslot));
+			}
+		}
 		this.assignmentList = assignmentList != null ? assignmentList : new ArrayList<>();
 		this.existingAppointments = existingAppointments != null ? existingAppointments : new ArrayList<>();
 		this.activeHolds = activeHolds != null ? activeHolds : new ArrayList<>();
@@ -91,6 +96,14 @@ public class ScheduleSolution {
 
 	public void setTimeslotList(List<ZonedDateTime> timeslotList) {
 		this.timeslotList = timeslotList;
+	}
+
+	public List<AppointmentSlot> getSlotList() {
+		return this.slotList;
+	}
+
+	public void setSlotList(List<AppointmentSlot> slotList) {
+		this.slotList = slotList;
 	}
 
 	public List<AppointmentAssignment> getAssignmentList() {

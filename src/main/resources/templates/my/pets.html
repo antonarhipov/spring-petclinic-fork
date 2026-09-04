@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'myPets')}">
+<body>
+  <h2 th:text="#{myPets}">My Pets</h2>
+  <section>
+    <h3 th:text="#{ownerInformation}">Owner Information</h3>
+    <p><span th:text="${owner.firstName}"></span> <span th:text="${owner.lastName}"></span></p>
+    <p th:text="${owner.address}"></p>
+    <p><span th:text="${owner.city}"></span> <span th:text="${owner.telephone}"></span></p>
+  </section>
+  <table class="table table-striped">
+    <thead><tr><th th:text="#{name}">Name</th><th th:text="#{birthDate}">Birth Date</th><th th:text="#{type}">Type</th></tr></thead>
+    <tbody><tr th:each="pet : ${owner.pets}"><td th:text="${pet.name}"></td><td th:text="${pet.birthDate}"></td><td th:text="${pet.type.name}"></td></tr></tbody>
+  </table>
+</body>
+</html>

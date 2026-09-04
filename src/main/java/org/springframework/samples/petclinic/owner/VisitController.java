@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.owner;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
@@ -44,8 +45,11 @@ class VisitController {
 
 	private final OwnerRepository owners;
 
-	public VisitController(OwnerRepository owners) {
+	private final Clock clock;
+
+	public VisitController(OwnerRepository owners, Clock clock) {
 		this.owners = owners;
+		this.clock = clock;
 	}
 
 	@InitBinder
@@ -76,13 +80,14 @@ class VisitController {
 		model.put("owner", owner);
 
 		Visit visit = new Visit();
+		visit.setDate(LocalDate.now(this.clock).plusDays(1));
 		pet.addVisit(visit);
 		return visit;
 	}
 
 	@ModelAttribute("minVisitDate")
 	public LocalDate minVisitDate() {
-		return LocalDate.now().plusDays(1);
+		return LocalDate.now(this.clock).plusDays(1);
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before initNewVisitForm is
@@ -97,7 +102,7 @@ class VisitController {
 	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
 			BindingResult result, RedirectAttributes redirectAttributes) {
-		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now())) {
+		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now(this.clock))) {
 			result.rejectValue("date", "typeMismatch.visitDate");
 		}
 

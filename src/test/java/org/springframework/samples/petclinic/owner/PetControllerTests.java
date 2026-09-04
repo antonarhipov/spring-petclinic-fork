@@ -28,7 +28,10 @@ import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -67,8 +70,13 @@ class PetControllerTests {
 	@MockitoBean
 	private PetTypeRepository types;
 
+	@MockitoBean
+	private Clock clock;
+
 	@BeforeEach
 	void setup() {
+		given(this.clock.instant()).willReturn(Instant.parse("2026-09-07T07:00:00Z"));
+		given(this.clock.getZone()).willReturn(ZoneId.of("Europe/Amsterdam"));
 		PetType cat = new PetType();
 		cat.setId(3);
 		cat.setName("hamster");
@@ -148,7 +156,7 @@ class PetControllerTests {
 
 		@Test
 		void processCreationFormWithInvalidBirthDate() throws Exception {
-			LocalDate currentDate = LocalDate.now();
+			LocalDate currentDate = LocalDate.now(PetControllerTests.this.clock);
 			String futureBirthDate = currentDate.plusMonths(1).toString();
 
 			mockMvc

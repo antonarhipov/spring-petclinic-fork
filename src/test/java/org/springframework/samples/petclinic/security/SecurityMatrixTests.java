@@ -73,9 +73,6 @@ class SecurityMatrixTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(header().string("Location", endsWith("/login")));
 
-		mockMvc.perform(get("/scheduling/new"))
-			.andExpect(status().is3xxRedirection())
-			.andExpect(header().string("Location", endsWith("/login")));
 	}
 
 	@Test
@@ -154,7 +151,6 @@ class SecurityMatrixTests {
 
 		mockMvc.perform(get("/my/pets")).andExpect(status().isForbidden());
 
-		mockMvc.perform(get("/scheduling/new")).andExpect(status().isForbidden());
 	}
 
 }

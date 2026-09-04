@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'requestDetails')}">
+<body>
+  <div class="alert alert-warning"><strong th:text="#{urgentCare}">Need urgent care?</strong> <span th:text="#{urgentCareMessage(${emergencyPhone})}">Call the clinic.</span></div>
+  <h2 th:text="#{requestDetails}">Request details</h2>
+  <dl><dt th:text="#{pet}">Pet</dt><dd th:text="${request.pet.name}"></dd><dt th:text="#{reason}">Reason</dt><dd th:text="${request.reasonText}"></dd><dt th:text="#{availability}">Availability</dt><dd th:text="${request.availabilityText}"></dd><dt th:text="#{status}">Status</dt><dd th:text="${request.state}"></dd></dl>
+  <div th:if="${request.state.name() == 'AWAITING_CONSENT'}">
+    <form th:action="@{/my/requests/{id}/consent(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{grantConsent}">Grant consent</button></form>
+    <form th:action="@{/my/requests/{id}/decline(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{declineConsent}">Decline consent</button></form>
+  </div>
+  <section th:if="${interpretation}">
+    <h3 th:text="#{interpretation}">Interpretation</h3>
+    <p th:text="${interpretation.reasonSummary}"></p>
+    <dl><dt th:text="#{estimatedMinutes}">Estimated minutes</dt><dd th:text="${interpretation.estimatedMinutes}"></dd><dt th:text="#{careType}">Care type</dt><dd th:text="${interpretation.careType}"></dd><dt th:text="#{specialties}">Specialty</dt><dd th:text="${interpretation.specialty}"></dd><dt th:text="#{preferredVet}">Preferred veterinarian</dt><dd th:text="${interpretation.preferredVet == null ? '-' : interpretation.preferredVet.firstName + ' ' + interpretation.preferredVet.lastName}"></dd></dl>
+    <form th:if="${request.state.name() == 'INTERPRETED'}" th:action="@{/my/requests/{id}/confirm(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{confirmInterpretation}">Confirm interpretation</button></form>
+  </section>
+  <section th:if="${request.state.name() == 'SUGGESTION_OFFERED'}">
+    <h3 th:text="#{suggestion}">Suggested appointment</h3><p><span th:text="${request.heldVet.firstName + ' ' + request.heldVet.lastName}"></span> <span th:text="${request.heldStart}"></span></p>
+    <form th:action="@{/my/requests/{id}/accept(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{acceptSuggestion}">Accept suggestion</button></form>
+  </section>
+</body>
+</html>

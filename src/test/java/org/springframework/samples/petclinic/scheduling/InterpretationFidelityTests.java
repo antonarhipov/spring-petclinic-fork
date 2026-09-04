@@ -40,6 +40,7 @@ import org.springframework.samples.petclinic.scheduling.interpretation.Interpret
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationResult;
 import org.springframework.samples.petclinic.scheduling.interpretation.Provenance;
+import org.springframework.samples.petclinic.scheduling.interpretation.RequestInterpretationService;
 import org.springframework.samples.petclinic.scheduling.interpretation.StubRequestInterpreter;
 import org.springframework.samples.petclinic.scheduling.interpretation.WindowKind;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
@@ -50,6 +51,7 @@ import org.springframework.samples.petclinic.scheduling.request.SuggestionServic
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,6 +90,15 @@ class InterpretationFidelityTests {
 	@Autowired
 	private Clock clock;
 
+	@Autowired
+	private StubRequestInterpreter interpreter;
+
+	@Autowired
+	private RequestInterpretationService interpretationService;
+
+	@Autowired
+	private EntityManager entityManager;
+
 	private Owner testOwner;
 
 	private Pet testPet1;
@@ -98,6 +109,7 @@ class InterpretationFidelityTests {
 
 	@BeforeEach
 	void setUp() {
+		this.interpreter.clear();
 		this.testOwner = this.ownerRepository.findById(1).orElseThrow();
 		this.testPet1 = this.testOwner.getPet(1);
 		this.testVet = this.vetRepository.findAll().iterator().next();
@@ -107,50 +119,39 @@ class InterpretationFidelityTests {
 	void interpretationFidelityRoundTrip() {
 		SchedulingRequest request = this.requestLifecycleService.createRequest(this.testOwner, this.testPet1,
 				"Dental cleaning and x-ray", "Mondays between 9 and 12", "owner_1");
-
-		StubRequestInterpreter interpreter = new StubRequestInterpreter();
-		InterpretationResult result = interpreter.interpret(request.getReasonText(), request.getAvailabilityText());
-
-		ZonedDateTime now = ZonedDateTime.now(this.clock);
-		Interpretation interpretation = new Interpretation();
-		interpretation.setRequest(request);
-		interpretation.setVersion(1);
-		interpretation.setProvenance(Provenance.AI);
-		interpretation.setReasonSummary(result.reasonSummary());
-		interpretation.setEstimatedMinutes(result.estimatedMinutes());
-		interpretation.setCareType(result.careType());
-		interpretation.setSpecialty(result.specialty());
-		interpretation.setCannotInterpret(result.cannotInterpret());
-		interpretation.setRawResponse(result.rawResponse());
-		interpretation.setModelTag(result.modelTag());
-		interpretation.setPromptVersion(result.promptVersion());
-		interpretation.setCreatedAt(now);
-
-		for (AvailabilityWindow aw : result.windows()) {
-			org.springframework.samples.petclinic.scheduling.interpretation.InterpretationWindow iw = new org.springframework.samples.petclinic.scheduling.interpretation.InterpretationWindow();
-			iw.setKind(aw.kind());
-			iw.setDateVal(aw.dateVal());
-			iw.setStartDate(aw.startDate());
-			iw.setEndDate(aw.endDate());
-			iw.setDayOfWeek(aw.dayOfWeek());
-			iw.setStartTime(aw.startTime());
-			iw.setEndTime(aw.endTime());
-			iw.setTokens(aw.tokens());
-			interpretation.addWindow(iw);
-		}
-
-		Interpretation saved = this.interpretationRepository.saveAndFlush(interpretation);
+		this.requestLifecycleService.consent(request, "owner_1");
+		List<AvailabilityWindow> windows = List.of(
+				AvailabilityWindow.preferred(LocalDate.of(2026, 9, 8), LocalTime.of(9, 15), LocalTime.of(10, 45),
+						"Tuesday morning"),
+				AvailabilityWindow.allowed(LocalDate.of(2026, 9, 9), LocalDate.of(2026, 9, 11), LocalTime.of(12, 0),
+						LocalTime.of(16, 30), "Wednesday through Friday"),
+				AvailabilityWindow.excluded(LocalDate.of(2026, 9, 10), LocalTime.of(13, 15), LocalTime.of(14, 0),
+						"not Thursday lunch"));
+		InterpretationResult result = new InterpretationResult("Dental care and x-ray", 45, CareType.SPECIALTY,
+				"dentistry", this.testVet.getId(), false, windows, "{\"complete\":true}", "stub-model", "1.0");
+		this.interpreter.setNextResult(result);
+		Interpretation saved = this.interpretationService.interpret(request, "stub");
+		this.interpretationRepository.flush();
+		this.entityManager.clear();
 
 		Interpretation readBack = this.interpretationRepository.findById(saved.getId()).orElseThrow();
+		assertThat(readBack.getVersion()).isEqualTo(1);
+		assertThat(readBack.getProvenance()).isEqualTo(Provenance.AI);
 		assertThat(readBack.getReasonSummary()).isEqualTo(result.reasonSummary());
 		assertThat(readBack.getEstimatedMinutes()).isEqualTo(result.estimatedMinutes());
 		assertThat(readBack.getCareType()).isEqualTo(result.careType());
 		assertThat(readBack.getSpecialty()).isEqualTo(result.specialty());
+		assertThat(readBack.getPreferredVet().getId()).isEqualTo(result.preferredVetId());
 		assertThat(readBack.isCannotInterpret()).isEqualTo(result.cannotInterpret());
 		assertThat(readBack.getRawResponse()).isEqualTo(result.rawResponse());
 		assertThat(readBack.getModelTag()).isEqualTo(result.modelTag());
 		assertThat(readBack.getPromptVersion()).isEqualTo(result.promptVersion());
-		assertThat(readBack.getWindows()).hasSize(result.windows().size());
+		assertThat(readBack.getWindows()
+			.stream()
+			.map(window -> new AvailabilityWindow(window.getKind(), window.getDateVal(), window.getStartDate(),
+					window.getEndDate(), window.getDayOfWeek(), window.getStartTime(), window.getEndTime(),
+					window.getTokens()))
+			.toList()).containsExactlyElementsOf(result.windows());
 	}
 
 	@Test

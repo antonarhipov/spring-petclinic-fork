@@ -16,47 +16,51 @@
 
 package org.springframework.samples.petclinic.scheduling;
 
-import java.time.Clock;
-import java.time.ZonedDateTime;
-import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentStatus;
-import org.springframework.samples.petclinic.scheduling.interpretation.CareType;
 import org.springframework.samples.petclinic.scheduling.interpretation.Interpretation;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
-import org.springframework.samples.petclinic.scheduling.interpretation.Provenance;
-import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
-import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
-import org.springframework.samples.petclinic.vet.Vet;
-import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * End-to-end lifecycle test for primary use case UC-1 (RULE-44, AC-138). Executes all 8
- * steps of the main success scenario.
- */
+/** HTTP-level primary UC-1 lifecycle through the real filter chain (RULE-44, AC-138). */
 @SpringBootTest
 @Import(TestClockConfig.class)
 @Transactional
 class SchedulingLifecycleE2eTests {
 
 	@Autowired
-	private RequestLifecycleService requestLifecycleService;
+	private WebApplicationContext context;
+
+	@Autowired
+	private OwnerRepository ownerRepository;
 
 	@Autowired
 	private SchedulingRequestRepository requestRepository;
@@ -65,88 +69,102 @@ class SchedulingLifecycleE2eTests {
 	private InterpretationRepository interpretationRepository;
 
 	@Autowired
-	private SuggestionService suggestionService;
-
-	@Autowired
 	private AppointmentRepository appointmentRepository;
 
-	@Autowired
-	private OwnerRepository ownerRepository;
-
-	@Autowired
-	private VetRepository vetRepository;
-
-	@Autowired
-	private Clock clock;
-
-	private Owner owner;
+	private MockMvc mockMvc;
 
 	private Pet pet;
 
-	private Vet vet;
-
 	@BeforeEach
 	void setUp() {
-		this.owner = this.ownerRepository.findById(1).orElseThrow();
-		this.pet = this.owner.getPet(1);
-		this.vet = this.vetRepository.findAll().iterator().next();
+		this.mockMvc = MockMvcBuilders.webAppContextSetup(this.context).apply(springSecurity()).build();
+		Owner owner = this.ownerRepository.findById(1).orElseThrow();
+		this.pet = owner.getPets()
+			.stream()
+			.filter(candidate -> this.requestRepository.findByActivePetId(candidate.getId()).isEmpty())
+			.findFirst()
+			.orElseThrow();
 	}
 
 	@Test
-	void ownerGuidedFlowMainScenario() {
-		// Step 1: Owner starts request entering reason and availability text
-		SchedulingRequest request = this.requestLifecycleService.createRequest(this.owner, this.pet,
-				"Annual wellness checkup and vaccinations", "Monday morning preferred", "owner_1");
+	void ownerGuidedFlowMainScenario() throws Exception {
+		MvcResult login = this.mockMvc.perform(formLogin().user("george").password("george123"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/my/appointments"))
+			.andReturn();
+		MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
+		assertThat(session).isNotNull();
+
+		this.mockMvc.perform(get("/my/requests/new").session(session))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString(this.pet.getName())))
+			.andExpect(content().string(containsString("Call 555-0199.")));
+
+		MvcResult created = this.mockMvc
+			.perform(post("/my/requests").session(session)
+				.with(csrf())
+				.param("petId", this.pet.getId().toString())
+				.param("reasonText", "Annual wellness checkup and vaccinations")
+				.param("availabilityText", "Monday morning preferred"))
+			.andExpect(status().is3xxRedirection())
+			.andReturn();
+		String requestLocation = created.getResponse().getRedirectedUrl();
+		assertThat(requestLocation).startsWith("/my/requests/");
+		Integer requestId = Integer.valueOf(requestLocation.substring(requestLocation.lastIndexOf('/') + 1));
+		SchedulingRequest request = this.requestRepository.findById(requestId).orElseThrow();
 		assertThat(request.getState()).isEqualTo(RequestState.AWAITING_CONSENT);
 		assertThat(request.getActivePetId()).isEqualTo(this.pet.getId());
 
-		// Step 2: Owner grants explicit consent
-		SchedulingRequest interpretingReq = this.requestLifecycleService.consent(request, "owner_1");
-		assertThat(interpretingReq.getState()).isEqualTo(RequestState.INTERPRETING);
+		this.mockMvc.perform(get(requestLocation).session(session))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Annual wellness checkup")))
+			.andExpect(content().string(containsString("Grant consent")));
 
-		// Step 3: System interprets
-		Interpretation interpretation = new Interpretation();
-		interpretation.setRequest(interpretingReq);
-		interpretation.setVersion(1);
-		interpretation.setProvenance(Provenance.AI);
-		interpretation.setReasonSummary("Annual wellness checkup");
-		interpretation.setEstimatedMinutes(30);
-		interpretation.setCareType(CareType.GENERAL);
-		interpretation.setCreatedAt(ZonedDateTime.now(this.clock));
-		this.interpretationRepository.saveAndFlush(interpretation);
-
-		SchedulingRequest interpretedReq = this.requestLifecycleService.interpretationUsable(interpretingReq, "system");
-		assertThat(interpretedReq.getState()).isEqualTo(RequestState.INTERPRETED);
-
-		// Step 4: System presents persisted interpretation for read-only review
-		Interpretation persistedInterp = this.interpretationRepository
-			.findTopByRequestIdOrderByVersionDesc(interpretedReq.getId())
+		this.mockMvc.perform(post(requestLocation + "/consent").session(session).with(csrf()))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl(requestLocation));
+		request = this.requestRepository.findById(requestId).orElseThrow();
+		assertThat(request.getState()).isEqualTo(RequestState.INTERPRETED);
+		Interpretation interpretation = this.interpretationRepository.findTopByRequestIdOrderByVersionDesc(requestId)
 			.orElseThrow();
-		assertThat(persistedInterp.getReasonSummary()).isEqualTo("Annual wellness checkup");
+		assertThat(interpretation.getReasonSummary()).isEqualTo("Annual wellness checkup and vaccinations");
 
-		// Step 5: Owner confirms
-		// Step 6: System holds and offers exactly one ranked slot
-		SchedulingRequest offeredReq = this.suggestionService.confirm(interpretedReq, "owner_1");
-		assertThat(offeredReq.getState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
-		assertThat(offeredReq.hasHold()).isTrue();
-		assertThat(offeredReq.getHeldVet()).isNotNull();
-		assertThat(offeredReq.getHeldStart()).isNotNull();
+		this.mockMvc.perform(get(requestLocation).session(session))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Interpretation")))
+			.andExpect(content().string(containsString("Confirm interpretation")));
 
-		// Step 7: Owner accepts
-		// Step 8: System confirms appointment and records it under My appointments
-		Appointment appointment = this.suggestionService.accept(offeredReq, "owner_1");
-		assertThat(appointment).isNotNull();
-		assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
-		assertThat(appointment.getPet().getId()).isEqualTo(this.pet.getId());
+		this.mockMvc.perform(post(requestLocation + "/confirm").session(session).with(csrf()))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl(requestLocation));
+		request = this.requestRepository.findById(requestId).orElseThrow();
+		assertThat(request.getState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
+		assertThat(request.hasHold()).isTrue();
+		assertThat(request.getHeldVet()).isNotNull();
+		assertThat(request.getHeldStart()).isNotNull();
 
-		List<Appointment> upcoming = this.appointmentRepository.findUpcomingByPetId(this.pet.getId(),
-				ZonedDateTime.now(this.clock).minusDays(1));
-		assertThat(upcoming).hasSize(1);
-		assertThat(upcoming.get(0).getId()).isEqualTo(appointment.getId());
+		this.mockMvc.perform(get(requestLocation).session(session))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Suggested appointment")))
+			.andExpect(content().string(containsString("Accept suggestion")));
 
-		SchedulingRequest finalRequest = this.requestRepository.findById(request.getId()).orElseThrow();
-		assertThat(finalRequest.getState()).isEqualTo(RequestState.ACCEPTED);
-		assertThat(finalRequest.getActivePetId()).isNull();
+		this.mockMvc.perform(post(requestLocation + "/accept").session(session).with(csrf()))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/my/appointments"));
+
+		request = this.requestRepository.findById(requestId).orElseThrow();
+		assertThat(request.getState()).isEqualTo(RequestState.ACCEPTED);
+		assertThat(request.getActivePetId()).isNull();
+		Appointment appointment = this.appointmentRepository.findByPetId(this.pet.getId())
+			.stream()
+			.filter(candidate -> candidate.getStatus() == AppointmentStatus.CONFIRMED)
+			.findFirst()
+			.orElseThrow();
+		this.mockMvc.perform(get("/my/appointments").session(session))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString(this.pet.getName())))
+			.andExpect(content().string(containsString(appointment.getVet().getLastName())))
+			.andExpect(content().string(containsString("CONFIRMED")));
 	}
 
 }

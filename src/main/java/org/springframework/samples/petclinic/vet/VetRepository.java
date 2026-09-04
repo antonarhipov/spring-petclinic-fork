@@ -20,9 +20,15 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * Repository class for <code>Vet</code> domain objects All method names are compliant
@@ -36,6 +42,13 @@ import java.util.Collection;
  * @author Michael Isvy
  */
 public interface VetRepository extends Repository<Vet, Integer> {
+
+	@Transactional(readOnly = true)
+	Optional<Vet> findById(Integer id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT v FROM Vet v WHERE v.id = :id")
+	Optional<Vet> findByIdForUpdate(@Param("id") Integer id);
 
 	/**
 	 * Retrieve all <code>Vet</code>s from the data store.

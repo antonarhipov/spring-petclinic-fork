@@ -24,6 +24,7 @@ import java.util.Set;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.vet.Vet;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +54,7 @@ public class RequestLifecycleService {
 		Objects.requireNonNull(pet, "pet must not be null");
 
 		if (this.requestRepository.findByActivePetId(pet.getId()).isPresent()) {
-			throw new IllegalStateException("An active scheduling request already exists for pet ID " + pet.getId());
+			throw new ActiveRequestExistsException();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(this.clock);
@@ -68,7 +69,13 @@ public class RequestLifecycleService {
 		request.setCreatedAt(now);
 		request.setUpdatedAt(now);
 
-		SchedulingRequest saved = this.requestRepository.save(request);
+		SchedulingRequest saved;
+		try {
+			saved = this.requestRepository.saveAndFlush(request);
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new ActiveRequestExistsException();
+		}
 
 		SchedulingRequestEvent event = new SchedulingRequestEvent();
 		event.setRequest(saved);
