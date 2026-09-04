@@ -11,9 +11,15 @@
 package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
@@ -36,16 +42,20 @@ public class RequestInterpretationService {
 
 	private final SchedulingRequestRepository requestRepository;
 
+	private final ClinicConfigRepository configRepository;
+
 	private final Clock clock;
 
 	public RequestInterpretationService(RequestInterpreter interpreter,
 			InterpretationRepository interpretationRepository, VetRepository vetRepository,
-			RequestLifecycleService lifecycleService, SchedulingRequestRepository requestRepository, Clock clock) {
+			RequestLifecycleService lifecycleService, SchedulingRequestRepository requestRepository,
+			ClinicConfigRepository configRepository, Clock clock) {
 		this.interpreter = interpreter;
 		this.interpretationRepository = interpretationRepository;
 		this.vetRepository = vetRepository;
 		this.lifecycleService = lifecycleService;
 		this.requestRepository = requestRepository;
+		this.configRepository = configRepository;
 		this.clock = clock;
 	}
 
@@ -105,13 +115,95 @@ public class RequestInterpretationService {
 			interpretation.addWindow(persisted);
 		}
 		Interpretation saved = this.interpretationRepository.save(interpretation);
-		if (result.cannotInterpret()) {
-			this.lifecycleService.interpretationFailed(request, actor, "cannotInterpret");
+		if (result.cannotInterpret() || isContradictory(result.windows())) {
+			String reason = result.cannotInterpret() ? "cannotInterpret" : "contradictory windows";
+			this.lifecycleService.interpretationFailed(request, actor, reason);
 		}
 		else {
 			this.lifecycleService.interpretationUsable(request, actor);
 		}
 		return saved;
+	}
+
+	/**
+	 * Base outcome check for RULE-19. Window normalization and ranking remain separate
+	 * concerns; this check only proves that at least one minute survives the positive
+	 * window union and exclusions inside the configured horizon.
+	 */
+	private boolean isContradictory(List<AvailabilityWindow> windows) {
+		List<AvailabilityWindow> positives = windows.stream()
+			.filter(window -> window.kind() != WindowKind.EXCLUDED)
+			.toList();
+		List<AvailabilityWindow> exclusions = windows.stream()
+			.filter(window -> window.kind() == WindowKind.EXCLUDED)
+			.toList();
+		LocalDate firstDate = LocalDate.now(this.clock);
+		LocalDate lastDate = firstDate
+			.plusDays(this.configRepository.findById(1).orElseThrow().getBookingHorizonDays());
+
+		for (LocalDate date = firstDate; !date.isAfter(lastDate); date = date.plusDays(1)) {
+			List<MinuteRange> allowed = positives.isEmpty() ? List.of(new MinuteRange(0, 1440))
+					: rangesFor(positives, date);
+			if (hasUnexcludedMinute(allowed, rangesFor(exclusions, date))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static List<MinuteRange> rangesFor(List<AvailabilityWindow> windows, LocalDate date) {
+		return windows.stream()
+			.filter(window -> appliesOn(window, date))
+			.map(window -> new MinuteRange(toStartMinute(window.startTime()), toEndMinute(window.endTime())))
+			.filter(range -> range.start() < range.end())
+			.toList();
+	}
+
+	private static boolean appliesOn(AvailabilityWindow window, LocalDate date) {
+		if (window.dateVal() != null) {
+			return window.dateVal().equals(date);
+		}
+		if (window.startDate() != null || window.endDate() != null) {
+			boolean afterStart = window.startDate() == null || !date.isBefore(window.startDate());
+			boolean beforeEnd = window.endDate() == null || !date.isAfter(window.endDate());
+			return afterStart && beforeEnd;
+		}
+		return window.dayOfWeek() == null || window.dayOfWeek() == date.getDayOfWeek();
+	}
+
+	private static int toStartMinute(LocalTime time) {
+		return time == null ? 0 : time.getHour() * 60 + time.getMinute();
+	}
+
+	private static int toEndMinute(LocalTime time) {
+		return time == null || time.equals(LocalTime.MAX) ? 1440 : time.getHour() * 60 + time.getMinute();
+	}
+
+	private static boolean hasUnexcludedMinute(List<MinuteRange> allowed, List<MinuteRange> exclusions) {
+		List<MinuteRange> orderedExclusions = new ArrayList<>(exclusions);
+		orderedExclusions.sort(Comparator.comparingInt(MinuteRange::start));
+		for (MinuteRange candidate : allowed) {
+			int cursor = candidate.start();
+			for (MinuteRange exclusion : orderedExclusions) {
+				if (exclusion.end() <= cursor || exclusion.start() >= candidate.end()) {
+					continue;
+				}
+				if (exclusion.start() > cursor) {
+					return true;
+				}
+				cursor = Math.max(cursor, exclusion.end());
+				if (cursor >= candidate.end()) {
+					break;
+				}
+			}
+			if (cursor < candidate.end()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private record MinuteRange(int start, int end) {
 	}
 
 	@Transactional(readOnly = true)
