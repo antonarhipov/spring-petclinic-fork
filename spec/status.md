@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.5 (cp-3/C-4,G-5 revision)
-- Status: COMPLETE (cp-3/C-4,G-5 revision)
+- Task: task-3.1 (cp-3/C-2 revision)
+- Status: COMPLETE (cp-3/C-2,C-3,P-2 revision)
 
 ## Completed
 
@@ -69,6 +69,20 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.1 cp-3/C-2,C-3,P-2 revision: base commit `b53bc0f`. Gate 1: all six declared artifacts remain at their
+  exact paths; supporting `StaffOperationsQueryService.java` exists. Gate 2 scope: the two declared controllers, the
+  read-only query service, all 11 task-owned bundles, and `status.md`. Gate 3: task covers no direct ACs; supporting
+  AC-84/AC-9 remain tagged in `StaffRouteSurfaceTests.java:92-151`. Gate 4: `StaffRouteSurfaceTests.java:94-146`
+  resolves every staff route and its single queue handler through the real filter chain; `:151-186` asserts anonymous
+  redirect, owner 403, protected-body absence, and an unchanged database. Gate 5 RULE-2:
+  `StaffBookingController.java:36-64` and `StaffRequestController.java:46-132` depend only on services, repository
+  reads are behind `StaffOperationsQueryService.java:34-74`, and `ArchitectureBoundaryTests.java:79-103` enforces the
+  boundary. RULE-12/13: `SecurityConfiguration.java:60-89` and `StaffRouteSurfaceTests.java:129-186`. Gate 6/7:
+  all phase routes plus RouteInventory, ArtifactInventory, and AcTagCoverage pass. The task-owned bundles now contain
+  `openRequests` and the four keys needed to replace task-3.3 literals (`messages.properties:190-194` mirrored in all
+  11 bundles); property sync and default-key lookup pass. Focused Java 21 validation: 16/0/0/0. Full localization and
+  suite validation remain pending the immediately following task-3.3 literal replacement and later cp-3 directives.
 
 - task-3.5 cp-3/C-4,G-5 revision: base commit `4758b8e`. Gate 1 artifacts remain at exact declared paths. Gate 2 scope:
   only `StaffBookingService.java`, `StaffDirectBookingTests.java`, and `status.md`. Gate 3 AC citations remain AC-92/93/94.

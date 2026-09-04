@@ -16,11 +16,8 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
-import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.StaffBookingService;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
-import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
-import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -38,30 +35,17 @@ public class StaffBookingController {
 
 	private final StaffBookingService staffBookingService;
 
-	private final OwnerRepository ownerRepository;
+	private final StaffOperationsQueryService queryService;
 
-	private final VetRepository vetRepository;
-
-	private final SchedulingRequestRepository requestRepository;
-
-	public StaffBookingController(StaffBookingService staffBookingService, OwnerRepository ownerRepository,
-			VetRepository vetRepository, SchedulingRequestRepository requestRepository) {
+	public StaffBookingController(StaffBookingService staffBookingService, StaffOperationsQueryService queryService) {
 		this.staffBookingService = staffBookingService;
-		this.ownerRepository = ownerRepository;
-		this.vetRepository = vetRepository;
-		this.requestRepository = requestRepository;
+		this.queryService = queryService;
 	}
 
 	@GetMapping("/staff/appointments/new")
 	public String showBookingForm(@RequestParam(name = "requestId", required = false) Integer requestId,
 			@RequestParam(name = "petId", required = false) Integer petId, Model model) {
-		SchedulingRequest request = null;
-		if (requestId != null) {
-			request = this.requestRepository.findById(requestId).orElse(null);
-		}
-		else if (petId != null) {
-			request = this.requestRepository.findByActivePetId(petId).orElse(null);
-		}
+		SchedulingRequest request = this.queryService.findRequestForBooking(requestId, petId);
 
 		StaffBookingForm form = new StaffBookingForm();
 		if (request != null) {
@@ -76,8 +60,8 @@ public class StaffBookingController {
 
 		model.addAttribute("form", form);
 		model.addAttribute("request", request);
-		model.addAttribute("vets", this.vetRepository.findAll());
-		model.addAttribute("pets", this.ownerRepository.findAll().stream().flatMap(o -> o.getPets().stream()).toList());
+		model.addAttribute("vets", this.queryService.findVets());
+		model.addAttribute("pets", this.queryService.findPets());
 
 		return "staff/bookingForm";
 	}

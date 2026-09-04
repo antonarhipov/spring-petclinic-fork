@@ -24,10 +24,8 @@ import org.springframework.samples.petclinic.scheduling.interpretation.StaffInte
 import org.springframework.samples.petclinic.scheduling.interpretation.WindowKind;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEvent;
-import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.StaffQueueService;
 import org.springframework.samples.petclinic.scheduling.request.StaffSuggestionService;
-import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -51,24 +49,20 @@ public class StaffRequestController {
 
 	private final StaffQueueService staffQueueService;
 
-	private final SchedulingRequestRepository requestRepository;
-
-	private final VetRepository vetRepository;
+	private final StaffOperationsQueryService queryService;
 
 	public StaffRequestController(StaffInterpretationService staffInterpretationService,
 			StaffSuggestionService staffSuggestionService, StaffQueueService staffQueueService,
-			SchedulingRequestRepository requestRepository, VetRepository vetRepository) {
+			StaffOperationsQueryService queryService) {
 		this.staffInterpretationService = staffInterpretationService;
 		this.staffSuggestionService = staffSuggestionService;
 		this.staffQueueService = staffQueueService;
-		this.requestRepository = requestRepository;
-		this.vetRepository = vetRepository;
+		this.queryService = queryService;
 	}
 
 	@GetMapping("/staff/requests/{requestId}")
 	public String showRequestDetail(@PathVariable("requestId") Integer requestId, Model model) {
-		SchedulingRequest request = this.requestRepository.findById(requestId)
-			.orElseThrow(() -> new IllegalArgumentException("SchedulingRequest not found: " + requestId));
+		SchedulingRequest request = this.queryService.getRequest(requestId);
 		Interpretation interpretation = this.staffInterpretationService.getLatestInterpretation(requestId);
 		List<SchedulingRequestEvent> timeline = this.staffInterpretationService.getTimeline(requestId);
 
@@ -81,8 +75,7 @@ public class StaffRequestController {
 
 	@GetMapping("/staff/requests/{requestId}/interpretation")
 	public String showInterpretationForm(@PathVariable("requestId") Integer requestId, Model model) {
-		SchedulingRequest request = this.requestRepository.findById(requestId)
-			.orElseThrow(() -> new IllegalArgumentException("SchedulingRequest not found: " + requestId));
+		SchedulingRequest request = this.queryService.getRequest(requestId);
 		Interpretation interpretation = this.staffInterpretationService.getLatestInterpretation(requestId);
 
 		StaffInterpretationForm form = new StaffInterpretationForm();
@@ -136,7 +129,7 @@ public class StaffRequestController {
 
 		model.addAttribute("request", request);
 		model.addAttribute("form", form);
-		model.addAttribute("vets", this.vetRepository.findAll());
+		model.addAttribute("vets", this.queryService.findVets());
 
 		return "staff/interpretationForm";
 	}
