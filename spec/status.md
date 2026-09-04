@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.12 (Timefold hard constraints B and ranking priority)
+- Task: task-2.13 (Solver budget and owner horizon boundary)
 - Status: NOT_STARTED
 
 ## Completed
@@ -25,6 +25,7 @@
 - task-2.9
 - task-2.10
 - task-2.11
+- task-2.12
 
 ## Phase Approvals
 
@@ -51,6 +52,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.12: base commit 89a81c0. Gate 1 artifact: `TimefoldHardConstraintBTests.java` exists at the exact declared path with all five methods; both declared solver files are modified. Gate 2 scope: diff from 89a81c0 plus untracked files contains only the declared test, `AppointmentConstraintProvider`, `DefaultSlotRanker`, and `status.md`. Gate 3 AC citations: AC-78/79/80/81/82 are tagged at `TimefoldHardConstraintBTests.java:53-135`. Gate 4 validation: an excluded-window candidate fails enumeration and its score-layer hard constraint at `:55-63`; an outside-union candidate fails both layers at `:68-76`; a still-open Monday candidate five weeks out fails the owner horizon at `:81-84`; overlapping appointment and hold for the same owner on another pet each fail enumeration and score-layer hard constraints at `:89-120`; four `HardMediumSoftScore` values prove preferred window > preferred vet > earlier time at `:125-135`. Gate 5 RULE-26: the complete candidate set is assembled and solved as one Timefold problem at `DefaultSlotRanker.java:99-136`; window, horizon and cross-pet checks are applied during enumeration at `:196-241`; corresponding Timefold window/cross-pet constraints and the medium/high-soft/per-minute ordering are at `AppointmentConstraintProvider.java:102-220`. Gate 6 routes: none. Gate 7 plan guards: PASS before completion. Gate 8 suite: Java 21 with Byte Buddy agent, 210/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Corrective attempt: the first focused run removed three pre-existing individually verified soft constraints from `defineConstraints`, so ConstraintVerifier could not locate them; they were restored without affecting the new hierarchy (specialty is uniform after hard filtering, previous-vet is unset in this flow, and single-entity load penalty is constant), after which all focused tests and the suite passed. Non-obvious: owner appointment overlap uses the appointment's source request to identify its owner because the stock `Pet` mapping is unidirectional; owner holds carry owner and pet directly.
 
 - task-2.11: base commit 7982359. Gate 1 artifact: `TimefoldHardConstraintATests.java` exists at the exact declared path with all five methods; every declared production modification is present. Gate 2 scope: diff from 7982359 plus untracked files contains only the test artifact, the four declared solver modifications, and `status.md`. Gate 3 AC citations: AC-73/74/75/76/77 are tagged at `TimefoldHardConstraintATests.java:56-132`. Gate 4 validation: the model has one annotated entity, exactly one `slot` planning variable, one assignment and the exact enumerated slot, with the same outside-hours candidate rejected by enumeration and scoring at `:58-73`; outside opening is rejected at both layers at `:78-83`; a 30-minute slot spanning the 12:00-13:00 split gap is rejected at both layers at `:88-97`; appointment and hold overlap each fail enumeration and their matching hard constraint at `:102-123`; missing specialty fails enumeration and hard scoring at `:128-132`. Gate 5 rules: RULE-26 exact feasible-slot construction and one assignment are at `ScheduleSolution.java:76-84`, dual enumeration checks at `DefaultSlotRanker.java:146-210`, migrated hours/continuous blocks on the planning entity at `AppointmentAssignment.java:239-267`, and all score-layer hard constraints at `AppointmentConstraintProvider.java:35-92`; RULE-27 ranker constructs and solves one assignment per request/vet over enumerated slots at `DefaultSlotRanker.java:101-139`. Gate 6 routes: none. Gate 7 plan guards: PASS before and after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 205/0/0/0 outside the socket-restricted sandbox; working tree contains only task-attributable files. Non-obvious: production always supplies migrated opening/block data to the assignment; the legacy-hours fallback remains only for the pre-existing isolated constraint unit tests that construct assignments without problem facts.
 
