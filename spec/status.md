@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.2 (cp-3/G-2,G-3,P-1 revision)
-- Status: COMPLETE (cp-3/G-2,G-3,P-1 revision)
+- Task: task-3.3 (cp-3/G-1,G-6 revision)
+- Status: COMPLETE (cp-3/G-1,G-6 revision)
 
 ## Completed
 
@@ -69,6 +69,21 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.3 cp-3/G-1,G-6 revision: base commit `812d0e0`. Gate 1: all four declared artifacts remain at their exact
+  paths. Gate 2 scope: declared `StaffInterpretationTests.java`, `staff/requestDetail.html`, and `status.md`. Gate 3:
+  AC-55/56/89/121 remain tagged in the declared class. Gate 4 AC-55: `StaffInterpretationTests.java:125-171` seeds
+  non-default values for every persisted AI scalar and two complete windows, takes an ID-inclusive pre-edit snapshot,
+  and compares the entire post-edit AI graph unchanged; the STAFF row remains version 2 at `:173-183`. AC-121:
+  `:354-401` compares every persisted event's exact from/to state, actor, action, reason, payload, and timestamp for the
+  six covered actions and proves chronological timestamps; `:403-438` compares all seven rendered cells in every row,
+  their chronological row order, and owner non-disclosure. The template renders null state cells explicitly at
+  `staff/requestDetail.html:143-146`. Existing AC-56/89 assertions remain green. Gate 5 RULE-25/31/43 are pinned by
+  those complete snapshots, the declined-consent suggest guard, and full timeline matrix. Gate 6 route detail and
+  interpretation endpoints are exercised through the real filter chain. Gate 7 plan guards and both localization
+  classes pass. Focused Java 21 validation: 16/0/0/0. Corrective runs replaced an invalid fixed-clock assumption with
+  exact persisted timestamps plus bounded chronological assertions, and decoded HTML entities before cell comparison.
+  Full suite remains pending task-3.4 and final cp-3 validation.
 
 - task-3.2 cp-3/G-2,G-3,P-1 revision: base commit `e4c72ce`. Gate 1: both declared artifacts remain at their exact
   paths. Gate 2 revision scope: `StaffQueueTests.java` and `status.md`. The task's original supporting

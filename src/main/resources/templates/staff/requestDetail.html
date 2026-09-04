@@ -126,8 +126,8 @@
           <td th:text="${ev.timestamp}">2026-09-04 12:00</td>
           <td th:text="${ev.actor}">staff</td>
           <td th:text="${ev.action}">action</td>
-          <td th:text="${ev.fromState}">from</td>
-          <td th:text="${ev.toState}">to</td>
+          <td th:text="${ev.fromState != null ? ev.fromState : '-'}">from</td>
+          <td th:text="${ev.toState != null ? ev.toState : '-'}">to</td>
           <td th:text="${ev.reason != null ? ev.reason : '-'}">-</td>
           <td th:text="${ev.payload != null ? ev.payload : '-'}">-</td>
         </tr>

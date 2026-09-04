@@ -18,10 +18,15 @@ package org.springframework.samples.petclinic.scheduling;
 
 import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -123,14 +128,24 @@ public class StaffInterpretationTests {
 		aiInterp.setVersion(1);
 		aiInterp.setProvenance(Provenance.AI);
 		aiInterp.setReasonSummary("AI guess");
-		aiInterp.setEstimatedMinutes(30);
-		aiInterp.setCareType(CareType.GENERAL);
-		aiInterp.setCannotInterpret(false);
+		aiInterp.setEstimatedMinutes(35);
+		aiInterp.setCareType(CareType.SPECIALTY);
+		aiInterp.setSpecialty("dermatology");
+		aiInterp.setPreferredVet(vet);
+		aiInterp.setCannotInterpret(true);
 		aiInterp.setRawResponse("{\"ai_response\": true}");
 		aiInterp.setModelTag("ministral-3:14b");
 		aiInterp.setPromptVersion("v1.0");
 		aiInterp.setCreatedAt(now.minusMinutes(20));
+		aiInterp.addWindow(window(WindowKind.PREFERRED, LocalDate.of(2026, 9, 15), LocalDate.of(2026, 9, 14),
+				LocalDate.of(2026, 9, 16), DayOfWeek.TUESDAY, LocalTime.of(9, 15), LocalTime.of(10, 45),
+				"AI preferred window"));
+		aiInterp.addWindow(window(WindowKind.EXCLUDED, LocalDate.of(2026, 9, 18), LocalDate.of(2026, 9, 17),
+				LocalDate.of(2026, 9, 19), DayOfWeek.FRIDAY, LocalTime.of(13, 0), LocalTime.of(15, 30),
+				"AI excluded window"));
 		this.interpretationRepository.saveAndFlush(aiInterp);
+		InterpretationSnapshot aiBefore = snapshot(
+				this.interpretationRepository.findTopByRequestIdOrderByVersionDesc(request.getId()).orElseThrow());
 
 		// 2. Staff edits interpretation
 		StaffInterpretationForm form = new StaffInterpretationForm();
@@ -141,7 +156,7 @@ public class StaffInterpretationTests {
 		form.setPreferredVetId(vet.getId());
 		form.setCannotInterpret(false);
 
-		Interpretation staffInterp = this.staffInterpretationService.saveInterpretation(request.getId(), form, "staff");
+		this.staffInterpretationService.saveInterpretation(request.getId(), form, "staff");
 
 		// Assertions: 2 rows exist, AI row is completely untouched, STAFF row has
 		// incremented version and new fields
@@ -152,15 +167,8 @@ public class StaffInterpretationTests {
 		Interpretation v2 = versions.get(0);
 		Interpretation v1 = versions.get(1);
 
-		// Field-by-field check for V1 (AI)
-		assertThat(v1.getVersion()).isEqualTo(1);
-		assertThat(v1.getProvenance()).isEqualTo(Provenance.AI);
-		assertThat(v1.getReasonSummary()).isEqualTo("AI guess");
-		assertThat(v1.getEstimatedMinutes()).isEqualTo(30);
-		assertThat(v1.getCareType()).isEqualTo(CareType.GENERAL);
-		assertThat(v1.getRawResponse()).isEqualTo("{\"ai_response\": true}");
-		assertThat(v1.getModelTag()).isEqualTo("ministral-3:14b");
-		assertThat(v1.getPromptVersion()).isEqualTo("v1.0");
+		// Complete persisted snapshot for V1 (AI), including every child-window field.
+		assertThat(snapshot(v1)).isEqualTo(aiBefore);
 
 		// Field-by-field check for V2 (STAFF)
 		assertThat(v2.getVersion()).isEqualTo(2);
@@ -346,6 +354,12 @@ public class StaffInterpretationTests {
 		// 1. Create request
 		SchedulingRequest request = createRequestWithTimestamp(owner, pet, "Annual checkup", "Mondays",
 				now.minusMinutes(50));
+		SchedulingRequestEvent created = this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId())
+			.get(0);
+		created.setReason("owner submitted request");
+		created.setPayload("{\"source\":\"owner-form\"}");
+		this.eventRepository.saveAndFlush(created);
+		Instant transitionsStarted = Instant.now();
 
 		// 2. Consent
 		request = this.lifecycleService.consent(request, "george");
@@ -362,45 +376,33 @@ public class StaffInterpretationTests {
 
 		// 6. Staff edit interpretation
 		request = this.lifecycleService.staffEditInterpretation(request, "staff");
+		Instant transitionsFinished = Instant.now();
 
 		// Verify timeline service
 		List<SchedulingRequestEvent> timeline = this.staffInterpretationService.getTimeline(request.getId());
-		assertThat(timeline).hasSize(6);
-
-		assertThat(timeline.get(0).getFromState()).isNull();
-		assertThat(timeline.get(0).getToState()).isEqualTo(RequestState.AWAITING_CONSENT);
-		assertThat(timeline.get(0).getAction()).isEqualTo("CREATE_REQUEST");
-
-		assertThat(timeline.get(1).getFromState()).isEqualTo(RequestState.AWAITING_CONSENT);
-		assertThat(timeline.get(1).getToState()).isEqualTo(RequestState.INTERPRETING);
-		assertThat(timeline.get(1).getAction()).isEqualTo("CONSENT_GRANTED");
-
-		assertThat(timeline.get(2).getFromState()).isEqualTo(RequestState.INTERPRETING);
-		assertThat(timeline.get(2).getToState()).isEqualTo(RequestState.INTERPRETED);
-		assertThat(timeline.get(2).getAction()).isEqualTo("INTERPRETATION_APPLIED");
-
-		assertThat(timeline.get(3).getFromState()).isEqualTo(RequestState.INTERPRETED);
-		assertThat(timeline.get(3).getToState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
-		assertThat(timeline.get(3).getAction()).isEqualTo("confirm feasible");
-
-		assertThat(timeline.get(4).getFromState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
-		assertThat(timeline.get(4).getToState()).isEqualTo(RequestState.WITH_STAFF);
-		assertThat(timeline.get(4).getAction()).isEqualTo("staff release hold");
-		assertThat(timeline.get(4).getReason()).isEqualTo("schedule conflict with surgery");
-		assertThat(timeline.get(4).getActor()).isEqualTo("staff");
-
-		assertThat(timeline.get(5).getFromState()).isEqualTo(RequestState.WITH_STAFF);
-		assertThat(timeline.get(5).getToState()).isEqualTo(RequestState.WITH_STAFF);
-		assertThat(timeline.get(5).getAction()).isEqualTo("staff edit interpretation");
-		assertThat(timeline.get(5).getActor()).isEqualTo("staff");
-
-		for (SchedulingRequestEvent event : timeline) {
-			assertThat(event.getTimestamp()).isNotNull();
-		}
+		List<EventSnapshot> expected = List.of(
+				new EventSnapshot(null, RequestState.AWAITING_CONSENT, "george", "CREATE_REQUEST",
+						"owner submitted request", "{\"source\":\"owner-form\"}", now.minusMinutes(50).toInstant()),
+				new EventSnapshot(RequestState.AWAITING_CONSENT, RequestState.INTERPRETING, "george", "CONSENT_GRANTED",
+						null, null, timeline.get(1).getTimestamp().toInstant()),
+				new EventSnapshot(RequestState.INTERPRETING, RequestState.INTERPRETED, "system",
+						"INTERPRETATION_APPLIED", null, null, timeline.get(2).getTimestamp().toInstant()),
+				new EventSnapshot(RequestState.INTERPRETED, RequestState.SUGGESTION_OFFERED, "george",
+						"confirm feasible", null, null, timeline.get(3).getTimestamp().toInstant()),
+				new EventSnapshot(RequestState.SUGGESTION_OFFERED, RequestState.WITH_STAFF, "staff",
+						"staff release hold", "schedule conflict with surgery", null,
+						timeline.get(4).getTimestamp().toInstant()),
+				new EventSnapshot(RequestState.WITH_STAFF, RequestState.WITH_STAFF, "staff",
+						"staff edit interpretation", null, null, timeline.get(5).getTimestamp().toInstant()));
+		assertThat(timeline.stream().map(StaffInterpretationTests::snapshot).toList())
+			.containsExactlyElementsOf(expected);
+		assertThat(timeline).extracting(event -> event.getTimestamp().toInstant()).isSorted();
+		assertThat(timeline.subList(1, timeline.size())).extracting(event -> event.getTimestamp().toInstant())
+			.allSatisfy(timestamp -> assertThat(timestamp).isBetween(transitionsStarted, transitionsFinished));
 
 		// Verify HTTP rendering
 		MockHttpSession staffSession = login("staff", "staff123");
-		this.mockMvc.perform(get("/staff/requests/" + request.getId()).session(staffSession))
+		MvcResult staffPage = this.mockMvc.perform(get("/staff/requests/" + request.getId()).session(staffSession))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("CREATE_REQUEST")))
 			.andExpect(content().string(containsString("CONSENT_GRANTED")))
@@ -408,7 +410,32 @@ public class StaffInterpretationTests {
 			.andExpect(content().string(containsString("confirm feasible")))
 			.andExpect(content().string(containsString("staff release hold")))
 			.andExpect(content().string(containsString("schedule conflict with surgery")))
-			.andExpect(content().string(containsString("staff edit interpretation")));
+			.andExpect(content().string(containsString("staff edit interpretation")))
+			.andReturn();
+
+		String staffHtml = staffPage.getResponse().getContentAsString();
+		int previousRow = -1;
+		for (int index = 0; index < timeline.size(); index++) {
+			SchedulingRequestEvent event = timeline.get(index);
+			assertThat(timelineCells(staffHtml, event.getAction())).containsExactly(event.getTimestamp().toString(),
+					event.getActor(), event.getAction(), display(event.getFromState()), display(event.getToState()),
+					display(event.getReason()), display(event.getPayload()));
+			int rowPosition = staffHtml.indexOf(event.getAction());
+			assertThat(rowPosition).as("chronological rendered row %s", event.getAction()).isGreaterThan(previousRow);
+			previousRow = rowPosition;
+		}
+
+		MockHttpSession ownerSession = login("george", "george123");
+		String ownerHtml = this.mockMvc.perform(get("/my/requests/" + request.getId()).session(ownerSession))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getContentAsString();
+		for (SchedulingRequestEvent event : timeline) {
+			assertThat(ownerHtml).doesNotContain(event.getAction());
+		}
+		assertThat(ownerHtml).doesNotContain("owner submitted request", "{\"source\":\"owner-form\"}",
+				"schedule conflict with surgery");
 	}
 
 	private SchedulingRequest createRequestWithTimestamp(Owner owner, Pet pet, String reason, String availability,
@@ -442,6 +469,88 @@ public class StaffInterpretationTests {
 			.andExpect(status().is3xxRedirection())
 			.andReturn();
 		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private static InterpretationWindow window(WindowKind kind, LocalDate dateVal, LocalDate startDate,
+			LocalDate endDate, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, String tokens) {
+		InterpretationWindow window = new InterpretationWindow();
+		window.setKind(kind);
+		window.setDateVal(dateVal);
+		window.setStartDate(startDate);
+		window.setEndDate(endDate);
+		window.setDayOfWeek(dayOfWeek);
+		window.setStartTime(startTime);
+		window.setEndTime(endTime);
+		window.setTokens(tokens);
+		return window;
+	}
+
+	private static InterpretationSnapshot snapshot(Interpretation interpretation) {
+		List<WindowSnapshot> windows = interpretation.getWindows()
+			.stream()
+			.sorted(Comparator.comparing(InterpretationWindow::getId))
+			.map(WindowSnapshot::from)
+			.toList();
+		return new InterpretationSnapshot(interpretation.getId(), interpretation.getRequest().getId(),
+				interpretation.getVersion(), interpretation.getProvenance(), interpretation.getReasonSummary(),
+				interpretation.getEstimatedMinutes(), interpretation.getCareType(), interpretation.getSpecialty(),
+				interpretation.getPreferredVet() != null ? interpretation.getPreferredVet().getId() : null,
+				interpretation.isCannotInterpret(), interpretation.getRawResponse(), interpretation.getModelTag(),
+				interpretation.getPromptVersion(), interpretation.getCreatedAt().toInstant(), windows);
+	}
+
+	private static EventSnapshot snapshot(SchedulingRequestEvent event) {
+		return new EventSnapshot(event.getFromState(), event.getToState(), event.getActor(), event.getAction(),
+				event.getReason(), event.getPayload(), event.getTimestamp().toInstant());
+	}
+
+	private static List<String> timelineCells(String html, String action) {
+		int actionPosition = html.indexOf(action);
+		assertThat(actionPosition).as("rendered timeline action %s", action).isNotNegative();
+		int rowStart = html.lastIndexOf("<tr", actionPosition);
+		int rowEnd = html.indexOf("</tr>", actionPosition);
+		assertThat(rowStart).isNotNegative();
+		assertThat(rowEnd).isGreaterThan(actionPosition);
+		Matcher matcher = Pattern.compile("<td[^>]*>(.*?)</td>", Pattern.DOTALL)
+			.matcher(html.substring(rowStart, rowEnd));
+		List<String> cells = new ArrayList<>();
+		while (matcher.find()) {
+			cells.add(decodeHtml(matcher.group(1).replaceAll("<[^>]+>", "").trim()));
+		}
+		return cells;
+	}
+
+	private static String decodeHtml(String value) {
+		return value.replace("&quot;", "\"")
+			.replace("&#39;", "'")
+			.replace("&lt;", "<")
+			.replace("&gt;", ">")
+			.replace("&amp;", "&");
+	}
+
+	private static String display(Object value) {
+		return value != null ? value.toString() : "-";
+	}
+
+	private record InterpretationSnapshot(Integer id, Integer requestId, int version, Provenance provenance,
+			String reasonSummary, Integer estimatedMinutes, CareType careType, String specialty, Integer preferredVetId,
+			boolean cannotInterpret, String rawResponse, String modelTag, String promptVersion,
+			java.time.Instant createdAt, List<WindowSnapshot> windows) {
+	}
+
+	private record WindowSnapshot(Integer id, WindowKind kind, LocalDate dateVal, LocalDate startDate,
+			LocalDate endDate, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, String tokens) {
+
+		private static WindowSnapshot from(InterpretationWindow window) {
+			return new WindowSnapshot(window.getId(), window.getKind(), window.getDateVal(), window.getStartDate(),
+					window.getEndDate(), window.getDayOfWeek(), window.getStartTime(), window.getEndTime(),
+					window.getTokens());
+		}
+
+	}
+
+	private record EventSnapshot(RequestState fromState, RequestState toState, String actor, String action,
+			String reason, String payload, java.time.Instant timestamp) {
 	}
 
 }
