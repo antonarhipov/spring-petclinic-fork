@@ -153,14 +153,26 @@ public class StaffQueueTests {
 
 		// Validate HTTP rendering
 		MockHttpSession staffSession = login("staff", "staff123");
-		this.mockMvc.perform(get("/staff/queue").session(staffSession))
+		MvcResult queuePage = this.mockMvc.perform(get("/staff/queue").session(staffSession))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("Declined consent")))
 			.andExpect(content().string(containsString("Owner routed to staff")))
 			.andExpect(content().string(containsString("Model unavailable")))
 			.andExpect(content().string(containsString("No slots available")))
 			.andExpect(content().string(containsString("Checkup 1")))
-			.andExpect(content().string(containsString("Checkup 2")));
+			.andExpect(content().string(containsString("Checkup 2")))
+			.andReturn();
+
+		String html = queuePage.getResponse().getContentAsString();
+		int previousRowPosition = -1;
+		for (StaffQueueItem item : queue) {
+			String reason = item.getRequest().getReasonText();
+			int rowPosition = html.indexOf(reason);
+			assertThat(rowPosition).as("rendered position for %s", reason).isGreaterThan(previousRowPosition);
+			assertThat(renderedRow(html, reason)).as("rendered request/trigger pair for %s", reason)
+				.contains(item.getTrigger());
+			previousRowPosition = rowPosition;
+		}
 	}
 
 	@Test
@@ -234,14 +246,33 @@ public class StaffQueueTests {
 
 		// Validate HTTP rendering for All Open tab
 		MockHttpSession staffSession = login("staff", "staff123");
-		this.mockMvc.perform(get("/staff/queue").param("tab", "all-open").session(staffSession))
+		MvcResult allOpenPage = this.mockMvc.perform(get("/staff/queue").param("tab", "all-open").session(staffSession))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("AWAITING_CONSENT")))
 			.andExpect(content().string(containsString("INTERPRETING")))
 			.andExpect(content().string(containsString("INTERPRETATION_FAILED")))
 			.andExpect(content().string(containsString("INTERPRETED")))
 			.andExpect(content().string(containsString("SUGGESTION_OFFERED")))
-			.andExpect(content().string(containsString("WITH_STAFF")));
+			.andExpect(content().string(containsString("WITH_STAFF")))
+			.andReturn();
+
+		String html = allOpenPage.getResponse().getContentAsString();
+		for (SchedulingRequest request : List.of(r1, r2, r3, r4, r5, r6)) {
+			String row = renderedRow(html, request.getReasonText());
+			assertThat(row).as("all-open row for %s", request.getReasonText())
+				.contains(request.getState().name())
+				.contains(formattedAge(Duration.between(request.getCreatedAt(), now)));
+			if (request.getId().equals(r5.getId())) {
+				assertThat(row).contains(heldItem.getHeldSlot())
+					.contains("/staff/requests/" + request.getId() + "/release-hold")
+					.contains("Release hold");
+			}
+			else {
+				assertThat(row).contains(">-</td>").doesNotContain("release-hold");
+			}
+		}
+		assertThat(html).doesNotContain("Terminal R7", "Terminal R8");
+		assertThat(countOccurrences(html, "/release-hold")).isEqualTo(1);
 	}
 
 	@Test
@@ -321,6 +352,27 @@ public class StaffQueueTests {
 			.andExpect(status().is3xxRedirection())
 			.andReturn();
 		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private static String renderedRow(String html, String uniqueText) {
+		int textPosition = html.indexOf(uniqueText);
+		assertThat(textPosition).as("rendered text %s", uniqueText).isNotNegative();
+		int rowStart = html.lastIndexOf("<tr", textPosition);
+		int rowEnd = html.indexOf("</tr>", textPosition);
+		assertThat(rowStart).as("row start for %s", uniqueText).isNotNegative();
+		assertThat(rowEnd).as("row end for %s", uniqueText).isGreaterThan(textPosition);
+		return html.substring(rowStart, rowEnd + "</tr>".length());
+	}
+
+	private static String formattedAge(Duration age) {
+		long totalMinutes = Math.max(0, age.toMinutes());
+		long hours = totalMinutes / 60;
+		long minutes = totalMinutes % 60;
+		return hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
+	}
+
+	private static int countOccurrences(String text, String needle) {
+		return (text.length() - text.replace(needle, "").length()) / needle.length();
 	}
 
 }

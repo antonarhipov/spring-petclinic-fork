@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.3 (cp-3/C-3 localization revision)
-- Status: COMPLETE (cp-3/C-3 localization revision)
+- Task: task-3.2 (cp-3/G-2,G-3,P-1 revision)
+- Status: COMPLETE (cp-3/G-2,G-3,P-1 revision)
 
 ## Completed
 
@@ -69,6 +69,18 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.2 cp-3/G-2,G-3,P-1 revision: base commit `e4c72ce`. Gate 1: both declared artifacts remain at their exact
+  paths. Gate 2 revision scope: `StaffQueueTests.java` and `status.md`. The task's original supporting
+  `SchedulingRequestRepository` entity graphs are explicitly retained: with open-in-view disabled, the queue view
+  dereferences pet, owner, and held-vet associations, so the fetch plan is necessary to render this task's declared
+  queue behavior and belongs to its validation scope. Gate 3: AC-84/85/86 remain tagged at
+  `StaffQueueTests.java:92,178,279`. Gate 4 AC-84: `:133-175` pins service order and exact triggers, then asserts the
+  rendered row order and each request/trigger pairing. AC-85: `:225-276` pins all six non-terminal states and, within
+  each rendered request row, state, exact clock-derived age, held-slot representation, the sole release action, and
+  terminal absence. AC-86 remains at `:287-326`. Gate 5 RULE-29 is proven by those complete rendered assertions.
+  Gate 6 route `/staff/queue` is exercised through the real filter chain. Gate 7 plan guards pass. Focused Java 21
+  validation: 9/0/0/0. Full suite remains pending the remaining cp-3 evidence-strength revisions.
 
 - task-3.3 cp-3/C-3 localization revision: base commit `50aa90e`. Gate 1: the declared
   `staff/interpretationForm.html` artifact remains at its exact path. Gate 2 scope: only that template and `status.md`;
