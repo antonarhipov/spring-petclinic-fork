@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.6
-- Status: NOT_STARTED
+- Task: cp-3 (Phase 3 checkpoint)
+- Status: IN_PROGRESS
 
 ## Completed
 
@@ -40,6 +40,7 @@
 - task-3.3
 - task-3.4
 - task-3.5
+- task-3.6
 
 ## Phase Approvals
 

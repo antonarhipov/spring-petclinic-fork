@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.samples.petclinic.owner.Owner;
+import org.springframework.samples.petclinic.owner.OwnerRepository;
+import org.springframework.samples.petclinic.owner.Pet;
+import org.springframework.samples.petclinic.scheduling.request.RequestState;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -56,12 +63,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class StaffRouteSurfaceTests {
 
-	private static final List<String> STAFF_PHASE3_GET_ROUTES = List.of("/staff/queue", "/staff/requests/1",
-			"/staff/requests/1/interpretation", "/staff/appointments/new");
-
-	private static final List<String> STAFF_PHASE3_POST_ROUTES = List.of("/staff/requests/1/interpretation",
-			"/staff/requests/1/suggest", "/staff/requests/1/release-hold", "/staff/appointments");
-
 	private static final List<String> MUTABLE_TABLES = List.of("scheduling_request", "scheduling_request_event",
 			"interpretation", "interpretation_window", "appointment", "appointment_change");
 
@@ -71,6 +72,12 @@ class StaffRouteSurfaceTests {
 	@Autowired
 	@Qualifier("requestMappingHandlerMapping")
 	private RequestMappingHandlerMapping handlerMapping;
+
+	@Autowired
+	private SchedulingRequestRepository requestRepository;
+
+	@Autowired
+	private OwnerRepository ownerRepository;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -102,20 +109,37 @@ class StaffRouteSurfaceTests {
 			.as("GET /staff/queue must be handled by StaffQueueController and no mapping left in StaffPageController")
 			.isEqualTo(StaffQueueController.class);
 
-		// 2. Perform all Phase 3 GET and POST routes as authenticated staff
+		// 2. Create backing request for parameterized routes
+		Owner owner = this.ownerRepository.findById(1).orElseThrow();
+		Pet pet = owner.getPets().get(0);
+		SchedulingRequest req = new SchedulingRequest();
+		req.setOwner(owner);
+		req.setPet(pet);
+		req.setState(RequestState.WITH_STAFF);
+		req.setReasonText("Surface test request");
+		req.setAvailabilityText("anytime");
+		req.setCreatedAt(ZonedDateTime.now());
+		req.setUpdatedAt(ZonedDateTime.now());
+		req = this.requestRepository.saveAndFlush(req);
+		int reqId = req.getId();
+
+		List<String> getRoutes = List.of("/staff/queue", "/staff/requests/" + reqId,
+				"/staff/requests/" + reqId + "/interpretation", "/staff/appointments/new");
+
+		// Perform all Phase 3 GET and POST routes as authenticated staff
 		MockHttpSession staff = login("staff", "staff123");
 
-		for (String route : STAFF_PHASE3_GET_ROUTES) {
+		for (String route : getRoutes) {
 			this.mockMvc.perform(get(route).session(staff)).andExpect(status().isOk());
 		}
 
-		this.mockMvc.perform(post("/staff/requests/1/interpretation").session(staff).with(csrf()))
+		this.mockMvc.perform(post("/staff/requests/" + reqId + "/interpretation").session(staff).with(csrf()))
 			.andExpect(status().is3xxRedirection());
 
-		this.mockMvc.perform(post("/staff/requests/1/suggest").session(staff).with(csrf()))
+		this.mockMvc.perform(post("/staff/requests/" + reqId + "/suggest").session(staff).with(csrf()))
 			.andExpect(status().is3xxRedirection());
 
-		this.mockMvc.perform(post("/staff/requests/1/release-hold").session(staff).with(csrf()))
+		this.mockMvc.perform(post("/staff/requests/" + reqId + "/release-hold").session(staff).with(csrf()))
 			.andExpect(status().is3xxRedirection());
 
 		this.mockMvc.perform(post("/staff/appointments").session(staff).with(csrf()))
@@ -127,13 +151,19 @@ class StaffRouteSurfaceTests {
 	void ownerAndAnonymousDeniedWithoutDisclosureOrMutation() throws Exception {
 		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
 
+		List<String> getRoutes = List.of("/staff/queue", "/staff/requests/1", "/staff/requests/1/interpretation",
+				"/staff/appointments/new");
+
+		List<String> postRoutes = List.of("/staff/requests/1/interpretation", "/staff/requests/1/suggest",
+				"/staff/requests/1/release-hold", "/staff/appointments");
+
 		// Anonymous checks
-		for (String route : STAFF_PHASE3_GET_ROUTES) {
+		for (String route : getRoutes) {
 			this.mockMvc.perform(get(route))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(header().string("Location", endsWith("/login")));
 		}
-		for (String route : STAFF_PHASE3_POST_ROUTES) {
+		for (String route : postRoutes) {
 			this.mockMvc.perform(post(route).with(csrf()))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(header().string("Location", endsWith("/login")));
@@ -141,12 +171,12 @@ class StaffRouteSurfaceTests {
 
 		// Owner checks
 		MockHttpSession owner = login("george", "george123");
-		for (String route : STAFF_PHASE3_GET_ROUTES) {
+		for (String route : getRoutes) {
 			this.mockMvc.perform(get(route).session(owner))
 				.andExpect(status().isForbidden())
 				.andExpect(content().string(noStaffProtectedData()));
 		}
-		for (String route : STAFF_PHASE3_POST_ROUTES) {
+		for (String route : postRoutes) {
 			this.mockMvc.perform(post(route).session(owner).with(csrf()))
 				.andExpect(status().isForbidden())
 				.andExpect(content().string(noStaffProtectedData()));
