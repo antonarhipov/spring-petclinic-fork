@@ -201,6 +201,15 @@ public class SuggestionService {
 		return confirm(request, actor);
 	}
 
+	@Transactional(readOnly = true)
+	public List<SuggestionRejection> currentRejections(SchedulingRequest request) {
+		int version = this.interpretationRepository.findTopByRequestIdOrderByVersionDesc(request.getId())
+			.map(Interpretation::getVersion)
+			.orElse(0);
+		return SuggestionRejection.activeFor(this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()),
+				version);
+	}
+
 	private boolean isCurrentHoldValid(SchedulingRequest request) {
 		Vet vet = request.getHeldVet();
 		ZonedDateTime start = request.getHeldStart();

@@ -85,6 +85,7 @@ public class OwnerRequestController {
 			model.addAttribute("holdUnavailable", true);
 		}
 		model.addAttribute("request", request);
+		model.addAttribute("rejections", this.suggestionService.currentRejections(request));
 		this.interpretationService.latest(requestId).ifPresent(value -> model.addAttribute("interpretation", value));
 		addEmergencyPhone(model);
 		return "my/requestDetail";

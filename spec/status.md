@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.17 (Ruled-out presentation and rejection audit)
+- Task: task-2.18 (Concurrent active-request guarantee)
 - Status: NOT_STARTED
 
 ## Completed
@@ -30,6 +30,7 @@
 - task-2.14
 - task-2.15
 - task-2.16
+- task-2.17
 
 ## Phase Approvals
 
@@ -56,6 +57,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.17: base commit 1f09c2b. Gate 1 artifact: `RuledOutPresentationTests.java` exists at the exact declared path with both declared methods. Gate 2 scope: diff from 1f09c2b plus the untracked artifact contains only the declared test/template/service modifications, the supporting controller model attribute, and `status.md`. Gate 3 AC citations: AC-71/72 are tagged at `RuledOutPresentationTests.java:79-100`. Gate 4 validation: authenticated request detail renders both applied exclusions and the localized compact heading while asserting no Undo text/control at `:80-95`; the single rejection event compares from/to state, actor, action selection, reason, and the parsed interpretation-version/vet/start/scope payload by value at `:100-118`. Gate 5 RULE-28: current-version rejection selection is at `SuggestionService.java:204-210`, controller exposure at `OwnerRequestController.java:81-90`, and compact no-undo rendering at `requestDetail.html:43-46`; RULE-43 complete event fields are written at `SuggestionService.java:187-198` and compared by value at `RuledOutPresentationTests.java:103-118`. Gate 6 routes: no new route; existing GET `/my/requests/{requestId}` exposes the list through `OwnerRequestController.detail`. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 230/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Approved blocker resolution: render the localized heading plus colon as one `th:text` value and restore the direct rendered-content assertion (`PROCEED WITH`, user, 2026-09-04). Corrective attempts before approval: a separate colon text node was visually correct but not contiguous in raw HTML; XPath could not parse the stock non-XHTML layout.
 
 - task-2.16: base commit ad2c605. Gate 1 artifacts: `SuggestionRejection.java`, `RejectionScope.java`, and `AskAnotherOptionTests.java` exist at the exact declared paths with all five methods. Gate 2 scope: diff from ad2c605 plus untracked files contains only the three declared artifacts, declared `SuggestionService` modification, the required production `DefaultSlotRanker` rejection filter, constructor-aligned focused tests, and `status.md`. Gate 3 AC citations: AC-66/67/68/69/70 are tagged at `AskAnotherOptionTests.java:40-115`. Gate 4 validation: twelve successive rejections each persist an event, release the old tuple, and offer a distinct next tuple with no cap at `:42-58`; exact-time scope matches only same vet/start/current version at `:63-69`; day scope matches every vet/time on only the same date/current version at `:74-80`; vet scope matches that vet across the horizon/current version at `:85-91`; edit clears the hold while the version-1 event remains parseable and is ignored for version 2 with no deletion at `:96-114`. Gate 5 RULE-28: scope semantics and interpretation-version guard are at `SuggestionRejection.java:15-23`; durable payload encoding/parsing and active-version selection are at `:26-56`; `SuggestionService.java:176-201` writes the rejection event, releases the hold and reranks without a cap; `DefaultSlotRanker.java:105-129` removes matching rejection candidates before the single Timefold solve. Gate 6 routes: existing POST `/my/requests/{requestId}/another` continues to map through `OwnerRequestActionController.another`. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 228/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Non-obvious: scope application reads rejection payloads from the existing append-only event table rather than adding a second persistence model; a new interpretation version makes old exclusions inactive while retaining their audit events. Supporting delta: `DefaultSlotRanker` must consume the rejection set because day-wide and vet-wide hard exclusions cannot be enforced after its single winning slot is returned; the one-problem-per-request solve remains unchanged.
 

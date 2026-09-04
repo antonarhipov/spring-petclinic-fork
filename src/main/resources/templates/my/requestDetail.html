@@ -40,6 +40,10 @@
       <button name="scope" value="NOT_THIS_VET" class="btn btn-secondary" type="submit" th:text="#{notThisVet}">Not this veterinarian</button>
     </form>
   </section>
+  <section th:if="${rejections != null and !rejections.isEmpty()}" id="ruled-out">
+    <h3 th:text="#{ruledOut} + ':'">You have ruled out:</h3>
+    <ul><li th:each="rejection : ${rejections}" th:text="${rejection.scope + ': vet ' + rejection.vetId + ' at ' + rejection.start}"></li></ul>
+  </section>
   <p><a th:if="${request.state.name() == 'AWAITING_CONSENT' or request.state.name() == 'INTERPRETATION_FAILED' or request.state.name() == 'INTERPRETED' or request.state.name() == 'SUGGESTION_OFFERED'}" th:href="@{/my/requests/{id}/edit(id=${request.id})}" th:text="#{editRequest}">Edit request</a></p>
   <form th:if="${request.state.name() == 'INTERPRETATION_FAILED' or request.state.name() == 'INTERPRETED' or request.state.name() == 'SUGGESTION_OFFERED'}" th:action="@{/my/requests/{id}/route-to-staff(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{routeToStaff}">Route to staff</button></form>
   <form th:if="${request.state.name() != 'ACCEPTED' and request.state.name() != 'ABANDONED'}" th:action="@{/my/requests/{id}/abandon(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{abandonRequest}">Abandon request</button></form>
