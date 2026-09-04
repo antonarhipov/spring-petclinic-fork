@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-2.21 (UC-3 rephrase HTTP end to end)
-- Status: NOT_STARTED
+- Task: cp-2 (Phase 2 checkpoint)
+- Status: IN_PROGRESS
 
 ## Completed
 
@@ -34,6 +34,7 @@
 - task-2.18
 - task-2.19
 - task-2.20
+- task-2.21
 
 ## Phase Approvals
 
@@ -62,6 +63,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.21: base commit 28ca1f4. Gate 1 artifact: `OwnerRephrasesE2eTests.java` exists at the exact declared path with all four declared methods at `:89,140,172,189`. Gate 2 scope: diff from 28ca1f4 plus untracked files contains only the declared test artifact and `status.md`. Gate 3 AC citations: task declares no `covers.acs`; the required AC-138 citation is tagged at `OwnerRephrasesE2eTests.java:87-89` (supporting failure-recovery and hand-off citations AC-37/38/122 are at `:169-189`). Gate 4 validation: authenticated HTTP drives the offered request through edit, fresh consent and the new version-2 review, asserting request, rejection, interpretation and rendered state after every step at `:90-137`; model-unavailable and unusable outcomes persist their exact distinct states and render them at `:139-167`; the third-attempt recommendation appears and persists through a fourth failure at `:169-185,218-244`; owner route-to-staff records the exact transition/event, clears any hold and renders WITH_STAFF at `:187-216`. Gate 5 RULE-44: synchronous execution, pinned clock, isolated Flyway H2 and real filter chain are configured at `:53-56,81-85`; authenticated CSRF is used by every state-changing request at `:92-99,110-113,194-197,218-227,246-269`; the deterministic double implements the production `RequestInterpreter` contract at `:311-355` and returns only production-representable results/failures. Gate 6 routes: no new routes; existing GET/POST edit, consent, confirm, another, route-to-staff and detail routes are exercised throughout. Gate 7 plan guards: PASS after COMPLETE status (recorded by the guard run before commit). Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 246/0/0/0; focused class 4/0/0/0; formatter and `git diff --check` pass, and the run changed no tracked file outside task scope.
 
 - task-2.20: base commit a4efc36. Gate 1 artifact: `OwnerAsksAnotherE2eTests.java` exists at the exact declared path with all three declared methods. Gate 2 scope: diff from a4efc36 plus untracked files contains only the declared test artifact and `status.md`. Gate 3 AC citations: task declares no `covers.acs`; the required AC-138 citation is tagged at `OwnerAsksAnotherE2eTests.java:85-87` (the invalid-reopen extension cites AC-62 at `:131-133`). Gate 4 validation: authenticated CSRF requests reject each of NOT_THIS_TIME, NOT_THIS_DAY and NOT_THIS_VET, compare the rejected event tuple/scope, persist a new hold, and render the resulting state after every step at `OwnerAsksAnotherE2eTests.java:87-99,159-183`; a single-day universe exhausts through HTTP into WITH_STAFF with no hold and renders the ruled-out state at `:102-129`; reopening a deliberately conflicted hold renders the keyed notice and either a different complete `(vet, start)` tuple or staff hand-off at `:133-157`. Gate 5 RULE-44: isolated Flyway H2, pinned clock, synchronous stub interpreter and real filter chain are configured at `:50-53,79-83`; every state-changing request uses the authenticated session and CSRF at `:110-115,143-145,162-167,189-208`. Gate 6 routes: no new routes; existing POST `/my/requests/{id}/another` and GET detail are exercised throughout. Gate 7 plan guards: PASS after COMPLETE status (recorded by the guard run before commit). Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 242/0/0/0; formatter and `git diff --check` pass, and the run changed no tracked file outside task scope. Corrective attempt: the first focused run hit `LazyInitializationException` when the test read a detached vet name; the rendered assertion now checks the held start while the persisted assertions compare vet IDs and complete tuples, and the rerun passed 3/0/0/0.
 
