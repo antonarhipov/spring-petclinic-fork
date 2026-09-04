@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-4.1
+- Task: task-4.2
 - Status: IN_PROGRESS
 
 ## Completed
@@ -42,6 +42,7 @@
 - task-3.5
 - task-3.6
 - task-4.1
+- task-4.2
 
 ## Phase Approvals
 
@@ -70,6 +71,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-4.2: base commit `bbd218f`. Gate 1: all 3 declared artifacts exist at exact paths (`CalendarDayService.java`, `CalendarDayView.java`, `CalendarRenderingTests.java`). Gate 2 scope: declared artifacts, modified `StaffCalendarController.java` and `templates/staff/calendar.html`, and `status.md`. Gate 3: AC-96 and AC-98 tagged in `CalendarRenderingTests.java:92,142`. Gate 4: `CalendarRenderingTests.dayGridHasVetColumnsRowsFiveCellStatesAndNavigation_AC96` (`CalendarRenderingTests.java:93-139`) proves exact columns for all veterinarians, 15-minute grid rows, all five cell state classes (`closed`, `off-shift`, `free`, `booked`, `held`), previous/next/today navigation links, and bounded date picker; `CalendarRenderingTests.eachVetDayShowsAllFiveCapacityLayers_AC98` (`CalendarRenderingTests.java:143-186`) proves all five capacity layers (opening hours/closure, effective working blocks, booked appointments, holds, and remaining free capacity) compared per veterinarian. Gate 5: RULE-33 satisfied. Gate 6: `GET /staff/calendar` mapped and tested. Gate 7: `RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest` PASS. Gate 8: suite green.
 
 - task-4.1: base commit `e58c0a2`. Gate 1: all 9 declared artifacts exist at exact paths (`StaffCalendarController.java`, `ClinicSettingsController.java`, `VetAvailabilityController.java`, `StaffAppointmentController.java`, `StaffVisitController.java`, `ClinicSettingsForm.java`, `VetAvailabilityForm.java`, `AppointmentActionForm.java`, `StaffManagementRouteTests.java`). Gate 2 scope: declared artifacts, supporting localization files with phase 4 keys, deleted `StaffPageController.java`, and `status.md`. Gate 3: AC-96 and AC-9 tagged in `StaffManagementRouteTests.java:95,133`. Gate 4: `StaffManagementRouteTests.allManagementRoutesResolveForStaff` (`StaffManagementRouteTests.java:97-130`) proves single-handler mapping for GET /staff/calendar and GET /staff/settings, absence of `StaffPageController.java`, and all 12 management routes resolving for staff; `StaffManagementRouteTests.ownerAndAnonymousDeniedWithoutDisclosureOrMutation` (`StaffManagementRouteTests.java:134-162`) proves 302 redirect for anonymous, 403 forbidden for owner, no disclosure, and zero mutation across all database tables. Gate 5: RULE-9 satisfied. Gate 6: all 12 phase routes mapped to handlers. Gate 7: `RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest` PASS. Gate 8: full suite green.
 

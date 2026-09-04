@@ -1,4 +1,49 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
-<body><h2 th:text="#{calendar}">Calendar</h2><p th:text="#{calendarEmpty}">No appointments.</p></body>
+<body>
+<h2 th:text="#{calendar}">Calendar</h2>
+
+<div class="calendar-header mb-3 d-flex align-items-center justify-content-between">
+	<div class="btn-group">
+		<a th:href="@{/staff/calendar(date=${calendarView.prevDate})}" class="btn btn-outline-secondary" th:text="#{previous}">Previous</a>
+		<a th:href="@{/staff/calendar(date=${calendarView.today})}" class="btn btn-outline-secondary" th:text="#{calendar}">Today</a>
+		<a th:href="@{/staff/calendar(date=${calendarView.nextDate})}" class="btn btn-outline-secondary" th:text="#{next}">Next</a>
+	</div>
+	<form th:action="@{/staff/calendar}" method="get" class="d-inline-flex align-items-center">
+		<input type="date" name="date" th:value="${calendarView.date}" th:min="${calendarView.minDate}" th:max="${calendarView.maxDate}" class="form-control" onchange="this.form.submit()" />
+	</form>
+</div>
+
+<div class="mb-3">
+	<strong th:text="${calendarView.date} + ' (' + ${calendarView.clinicHoursSummary} + ')'"></strong>
+</div>
+
+<table class="table table-bordered calendar-grid">
+	<thead>
+		<tr>
+			<th th:text="#{startTime}">Time</th>
+			<th th:each="col : ${calendarView.vetColumns}">
+				<div class="vet-name" th:text="${col.vetName}"></div>
+				<small class="text-muted" th:text="${col.specialties}"></small>
+				<div class="capacity-layers small text-muted mt-1">
+					<div class="layer-opening" th:text="${col.openingHoursLayer}"></div>
+					<div class="layer-working" th:text="${col.effectiveBlocksLayer}"></div>
+					<div class="layer-booked" th:text="${col.bookedCount} + ' (' + ${col.bookedMinutes} + 'm)'"></div>
+					<div class="layer-held" th:text="${col.heldCount} + ' (' + ${col.heldMinutes} + 'm)'"></div>
+					<div class="layer-free" th:text="${col.remainingCapacityMinutes} + 'm'"></div>
+				</div>
+			</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr th:each="row : ${calendarView.gridRows}">
+			<td class="time-cell" th:text="${row.timeLabel}">09:00</td>
+			<td th:each="cell : ${row.cells}" th:class="${cell.state}">
+				<span th:text="${cell.label}">Free</span>
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+</body>
 </html>

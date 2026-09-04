@@ -16,6 +16,11 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
+import org.springframework.samples.petclinic.scheduling.calendar.CalendarDayService;
+import org.springframework.samples.petclinic.scheduling.calendar.CalendarDayView;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,8 +32,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class StaffCalendarController {
 
+	private final CalendarDayService calendarDayService;
+
+	public StaffCalendarController(CalendarDayService calendarDayService) {
+		this.calendarDayService = calendarDayService;
+	}
+
 	@GetMapping("/staff/calendar")
-	public String calendar(@RequestParam(name = "date", required = false) String date, Model model) {
+	public String calendar(@RequestParam(name = "date", required = false) String dateStr, Model model) {
+		LocalDate targetDate = null;
+		if (dateStr != null && !dateStr.isBlank()) {
+			try {
+				targetDate = LocalDate.parse(dateStr);
+			}
+			catch (DateTimeParseException ignored) {
+			}
+		}
+
+		CalendarDayView dayView = this.calendarDayService.getDayView(targetDate);
+		model.addAttribute("calendarView", dayView);
 		return "staff/calendar";
 	}
 
