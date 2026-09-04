@@ -329,9 +329,11 @@ Rules for re-plan mode:
    as-built"`) naming the completed phases, the waiver or approval they close under, the ACs moved out of them, and the
    plan-guard relocation. Set top-level `replanned_after: cp-N`.
 
-Everything else in this skill applies unchanged to the regenerated phases. The verification pass before writing adds:
-every completed task's `artifact` path exists in the working tree (`ls`), and no new task's `artifact` names a path a
-completed task already owns.
+Everything else in this skill applies unchanged to the regenerated phases, with one addition: a new task that changes a
+file an as-built task owns lists that path under `modifies` (exact paths, same rules as `artifact`), not under
+`artifact`; `artifact` names only the files the task creates. The verification pass before writing adds: every
+completed task's `artifact` path exists in the working tree (`ls`), and no new task's `artifact` names a path a
+completed task already owns (it belongs in `modifies`).
 
 # Dependency Rules
 
@@ -476,7 +478,7 @@ on the task they follow.
 
 **Optional**: `assumptions`, further `decisions`, `coverage_deferrals`, `entry_criteria`, `complexity`, `risk`, `source`, `skeleton_test` (required when rung 3 fired), task-level `checkpoint`.
 
-**Re-plan mode only**: top-level `replanned_after: cp-N`; phase `status: as_built` on completed phases; task `status: COMPLETE` and `commit: <hash>` on their tasks; `dec-2` recording the re-plan.
+**Re-plan mode only**: top-level `replanned_after: cp-N`; phase `status: as_built` on completed phases; task `status: COMPLETE` and `commit: <hash>` on their tasks; `dec-2` recording the re-plan; task `modifies` (exact paths of as-built files the task changes) on new tasks.
 
 # Success Criteria
 
