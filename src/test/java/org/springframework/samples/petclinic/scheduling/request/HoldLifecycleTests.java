@@ -31,6 +31,9 @@ import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHourRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetExceptionRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlockRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.solver.SlotRanker;
 import org.springframework.samples.petclinic.vet.Vet;
@@ -64,7 +67,8 @@ class HoldLifecycleTests {
 		AppointmentLifecycleService appointments = mock(AppointmentLifecycleService.class);
 		VetRepository vets = mock(VetRepository.class);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
-				Clock.fixed(NOW.toInstant(), ZONE));
+				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
+				mock(VetExceptionRepository.class), Clock.fixed(NOW.toInstant(), ZONE));
 		SchedulingRequest request = request(1, RequestState.AWAITING_CONSENT);
 
 		assertThatThrownBy(() -> service.confirm(request, "owner"))
@@ -200,7 +204,8 @@ class HoldLifecycleTests {
 				Clock.fixed(NOW.toInstant(), ZONE));
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
-				Clock.fixed(NOW.toInstant(), ZONE));
+				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
+				mock(VetExceptionRepository.class), Clock.fixed(NOW.toInstant(), ZONE));
 		return new Fixture(requests, events, ranker, appointments, vets, service);
 	}
 

@@ -24,6 +24,11 @@ import java.util.Objects;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHour;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHourRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetExceptionRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlock;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlockRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.Interpretation;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.solver.SlotRanker;
@@ -52,17 +57,28 @@ public class SuggestionService {
 
 	private final VetRepository vetRepository;
 
+	private final ClinicOpeningHourRepository openingHourRepository;
+
+	private final VetWeeklyBlockRepository weeklyBlockRepository;
+
+	private final VetExceptionRepository exceptionRepository;
+
 	private final Clock clock;
 
 	public SuggestionService(RequestLifecycleService requestLifecycleService, HoldService holdService,
 			InterpretationRepository interpretationRepository, SlotRanker slotRanker,
-			AppointmentLifecycleService appointmentLifecycleService, VetRepository vetRepository, Clock clock) {
+			AppointmentLifecycleService appointmentLifecycleService, VetRepository vetRepository,
+			ClinicOpeningHourRepository openingHourRepository, VetWeeklyBlockRepository weeklyBlockRepository,
+			VetExceptionRepository exceptionRepository, Clock clock) {
 		this.requestLifecycleService = requestLifecycleService;
 		this.holdService = holdService;
 		this.interpretationRepository = interpretationRepository;
 		this.slotRanker = slotRanker;
 		this.appointmentLifecycleService = appointmentLifecycleService;
 		this.vetRepository = vetRepository;
+		this.openingHourRepository = openingHourRepository;
+		this.weeklyBlockRepository = weeklyBlockRepository;
+		this.exceptionRepository = exceptionRepository;
 		this.clock = clock;
 	}
 
@@ -123,32 +139,10 @@ public class SuggestionService {
 		// Acquire pessimistic write lock on held vet (RULE-10)
 		heldVet = this.vetRepository.findByIdForUpdate(heldVet.getId()).orElseThrow();
 
-		// Re-validate hold under lock (RULE-11)
-		if (!this.holdService.isAvailable(heldVet.getId(), heldStart, heldDuration, request.getId())) {
-			Interpretation interpretation = this.interpretationRepository
-				.findTopByRequestIdOrderByVersionDesc(request.getId())
-				.orElse(null);
-			List<SlotRanker.RankedSlot> nextSlots = this.slotRanker.rankSlots(request, interpretation);
-
-			SlotRanker.RankedSlot availableNext = null;
-			for (SlotRanker.RankedSlot candidate : nextSlots) {
-				if (candidate.vet() != null && this.holdService.isAvailable(candidate.vet().getId(),
-						candidate.startTime(), candidate.duration(), request.getId())) {
-					availableNext = candidate;
-					break;
-				}
-			}
-
-			if (availableNext != null) {
-				this.requestLifecycleService.acceptSlotLostNextExists(request, actor, availableNext.vet(),
-						availableNext.startTime(), availableNext.duration());
-				throw new IllegalStateException("Hold expired/conflicted; next alternative slot offered");
-			}
-			else {
-				this.requestLifecycleService.acceptSlotLostNoneLeft(request, actor,
-						"Hold lost and no alternatives remain");
-				throw new IllegalStateException("Hold expired/conflicted; request routed to staff");
-			}
+		// Re-validate hold under lock (RULE-10)
+		if (!isCurrentHoldValid(request)) {
+			recoverLostHold(request, actor, false);
+			return null;
 		}
 
 		// Hold is valid: book appointment and mark request accepted
@@ -157,6 +151,23 @@ public class SuggestionService {
 
 		this.requestLifecycleService.acceptSuggestion(request, actor);
 		return appointment;
+	}
+
+	/**
+	 * Revalidates an offered hold when its detail page is opened. Returns {@code true}
+	 * when the stale hold was replaced or the request was handed to staff.
+	 */
+	public boolean revalidateOnView(SchedulingRequest request, String actor) {
+		Objects.requireNonNull(request, "request must not be null");
+		if (request.getState() != RequestState.SUGGESTION_OFFERED || !request.hasHold()) {
+			return false;
+		}
+		this.vetRepository.findByIdForUpdate(request.getHeldVet().getId()).orElseThrow();
+		if (isCurrentHoldValid(request)) {
+			return false;
+		}
+		recoverLostHold(request, actor, true);
+		return true;
 	}
 
 	/**
@@ -172,6 +183,71 @@ public class SuggestionService {
 			throw new IllegalRequestTransitionException(request.getState(), "ask for another option");
 		}
 		return request;
+	}
+
+	private boolean isCurrentHoldValid(SchedulingRequest request) {
+		Vet vet = request.getHeldVet();
+		ZonedDateTime start = request.getHeldStart();
+		int duration = request.getHeldDuration();
+		ZonedDateTime end = start.plusMinutes(duration);
+		if (start.isBefore(ZonedDateTime.now(this.clock))) {
+			return false;
+		}
+		boolean overlapFree = this.holdService.isAvailable(vet.getId(), start, duration, request.getId());
+		boolean withinOpening = this.openingHourRepository.findAll()
+			.stream()
+			.filter(hours -> hours.getDayOfWeek() == start.getDayOfWeek())
+			.filter(hours -> !hours.isClosed())
+			.anyMatch(hours -> contains(hours, start, end));
+		boolean withinBlock = this.weeklyBlockRepository.findByVetId(vet.getId())
+			.stream()
+			.filter(block -> block.getDayOfWeek() == start.getDayOfWeek())
+			.anyMatch(block -> contains(block, start, end));
+		boolean unavailable = this.exceptionRepository.findByVetId(vet.getId())
+			.stream()
+			.anyMatch(
+					exception -> exception.isUnavailable() && exception.getExceptionDate().equals(start.toLocalDate()));
+		return overlapFree && withinOpening && withinBlock && !unavailable;
+	}
+
+	private void recoverLostHold(SchedulingRequest request, String actor, boolean viewing) {
+		Interpretation interpretation = this.interpretationRepository
+			.findTopByRequestIdOrderByVersionDesc(request.getId())
+			.orElse(null);
+		List<SlotRanker.RankedSlot> nextSlots = this.slotRanker.rankSlots(request, interpretation);
+		for (SlotRanker.RankedSlot candidate : nextSlots) {
+			if (candidate.vet() == null || candidate.vet().getId() == null) {
+				continue;
+			}
+			Vet lockedVet = this.vetRepository.findByIdForUpdate(candidate.vet().getId()).orElseThrow();
+			if (this.holdService.isAvailable(lockedVet.getId(), candidate.startTime(), candidate.duration(),
+					request.getId())) {
+				if (viewing) {
+					this.requestLifecycleService.viewRevalidateNextExists(request, actor, lockedVet,
+							candidate.startTime(), candidate.duration());
+				}
+				else {
+					this.requestLifecycleService.acceptSlotLostNextExists(request, actor, lockedVet,
+							candidate.startTime(), candidate.duration());
+				}
+				return;
+			}
+		}
+		if (viewing) {
+			this.requestLifecycleService.viewRevalidateNoneLeft(request, actor, "Held slot became unavailable");
+		}
+		else {
+			this.requestLifecycleService.acceptSlotLostNoneLeft(request, actor, "Hold lost and no alternatives remain");
+		}
+	}
+
+	private static boolean contains(ClinicOpeningHour opening, ZonedDateTime start, ZonedDateTime end) {
+		return !start.toLocalTime().isBefore(opening.getOpenTime())
+				&& !end.toLocalTime().isAfter(opening.getCloseTime());
+	}
+
+	private static boolean contains(VetWeeklyBlock block, ZonedDateTime start, ZonedDateTime end) {
+		return !start.toLocalTime().isBefore(block.getStartTime()) && !end.toLocalTime().isAfter(block.getEndTime());
 	}
 
 }

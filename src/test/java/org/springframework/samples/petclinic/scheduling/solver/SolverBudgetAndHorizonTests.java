@@ -27,7 +27,10 @@ import org.springframework.samples.petclinic.scheduling.appointment.AppointmentL
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigRepository;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHour;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHourRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetExceptionRepository;
 import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlock;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlockRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
@@ -118,7 +121,8 @@ class SolverBudgetAndHorizonTests {
 		when(requests.findActiveHoldsByVetId(anyInt())).thenReturn(List.of());
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, recordingDouble,
-				appointments, this.vetRepository, this.clock);
+				appointments, this.vetRepository, mock(ClinicOpeningHourRepository.class),
+				mock(VetWeeklyBlockRepository.class), mock(VetExceptionRepository.class), this.clock);
 		Owner owner = this.ownerRepository.findById(1).orElseThrow();
 		SchedulingRequest request = request(owner, owner.getPet(1));
 

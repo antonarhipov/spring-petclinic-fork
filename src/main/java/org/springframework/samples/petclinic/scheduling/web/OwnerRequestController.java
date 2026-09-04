@@ -81,6 +81,9 @@ public class OwnerRequestController {
 	@GetMapping("/my/requests/{requestId}")
 	public String detail(@PathVariable Integer requestId, Model model) {
 		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
+		if (this.suggestionService.revalidateOnView(request, SecurityUtils.getCurrentUsername().orElseThrow())) {
+			model.addAttribute("holdUnavailable", true);
+		}
 		model.addAttribute("request", request);
 		this.interpretationService.latest(requestId).ifPresent(value -> model.addAttribute("interpretation", value));
 		addEmergencyPhone(model);
@@ -129,7 +132,10 @@ public class OwnerRequestController {
 	public String accept(@PathVariable Integer requestId, RedirectAttributes redirectAttributes) {
 		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
 		try {
-			this.suggestionService.accept(request, SecurityUtils.getCurrentUsername().orElseThrow());
+			if (this.suggestionService.accept(request, SecurityUtils.getCurrentUsername().orElseThrow()) == null) {
+				redirectAttributes.addFlashAttribute("holdUnavailable", true);
+				return "redirect:/my/requests/" + requestId;
+			}
 		}
 		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);

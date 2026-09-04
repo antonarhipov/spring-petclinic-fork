@@ -7,6 +7,7 @@
   <div th:if="${requestEdited}" class="alert alert-info" th:text="#{requestEdited}"></div>
   <div th:if="${requestAbandoned}" class="alert alert-info" th:text="#{requestAbandoned}"></div>
   <div th:if="${requestRoutedToStaff}" class="alert alert-info" th:text="#{requestRoutedToStaff}"></div>
+  <div th:if="${holdUnavailable}" class="alert alert-info" th:text="#{holdUnavailable}"></div>
   <form th:if="${editing}" th:action="@{/my/requests/{id}/edit(id=${request.id})}" th:object="${editForm}" method="post" class="form-horizontal">
     <h3 th:text="#{editRequest}">Edit request</h3>
     <div class="form-group mb-3"><label for="reasonText" th:text="#{reason}">Reason</label><textarea id="reasonText" th:field="*{reasonText}" class="form-control" required></textarea></div>

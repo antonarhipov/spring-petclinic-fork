@@ -18,12 +18,15 @@ import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHourRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetExceptionRepository;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlockRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.solver.SlotRanker;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -46,7 +49,8 @@ class SuggestionServiceOrderingTests {
 		Clock clock = Clock.fixed(Instant.parse("2026-09-07T07:00:00Z"), ZoneId.of("Europe/Amsterdam"));
 		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
 		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
-				clock);
+				mock(ClinicOpeningHourRepository.class), mock(VetWeeklyBlockRepository.class),
+				mock(VetExceptionRepository.class), clock);
 
 		Vet vet = new Vet();
 		vet.setId(1);
@@ -68,7 +72,7 @@ class SuggestionServiceOrderingTests {
 		when(interpretations.findTopByRequestIdOrderByVersionDesc(41)).thenReturn(Optional.empty());
 		when(ranker.rankSlots(request, null)).thenReturn(List.of());
 
-		assertThatThrownBy(() -> service.accept(request, "owner")).isInstanceOf(IllegalStateException.class);
+		assertThat(service.accept(request, "owner")).isNull();
 
 		InOrder order = inOrder(vets, appointmentRepository);
 		order.verify(vets).findByIdForUpdate(1);
