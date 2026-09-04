@@ -26,6 +26,7 @@ import org.springframework.samples.petclinic.scheduling.request.SchedulingReques
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEvent;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.StaffQueueService;
+import org.springframework.samples.petclinic.scheduling.request.StaffSuggestionService;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -46,6 +47,8 @@ public class StaffRequestController {
 
 	private final StaffInterpretationService staffInterpretationService;
 
+	private final StaffSuggestionService staffSuggestionService;
+
 	private final StaffQueueService staffQueueService;
 
 	private final SchedulingRequestRepository requestRepository;
@@ -53,9 +56,10 @@ public class StaffRequestController {
 	private final VetRepository vetRepository;
 
 	public StaffRequestController(StaffInterpretationService staffInterpretationService,
-			StaffQueueService staffQueueService, SchedulingRequestRepository requestRepository,
-			VetRepository vetRepository) {
+			StaffSuggestionService staffSuggestionService, StaffQueueService staffQueueService,
+			SchedulingRequestRepository requestRepository, VetRepository vetRepository) {
 		this.staffInterpretationService = staffInterpretationService;
+		this.staffSuggestionService = staffSuggestionService;
 		this.staffQueueService = staffQueueService;
 		this.requestRepository = requestRepository;
 		this.vetRepository = vetRepository;
@@ -150,7 +154,7 @@ public class StaffRequestController {
 	public String runSolverSuggestion(@PathVariable("requestId") Integer requestId,
 			RedirectAttributes redirectAttributes) {
 		try {
-			this.staffInterpretationService.suggest(requestId, "staff");
+			this.staffSuggestionService.suggest(requestId, "staff");
 			redirectAttributes.addFlashAttribute("message", "suggestionOffered");
 		}
 		catch (IllegalStateException ex) {

@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-3.4
+- Task: task-3.5
 - Status: NOT_STARTED
 
 ## Completed
@@ -38,6 +38,7 @@
 - task-3.1
 - task-3.2
 - task-3.3
+- task-3.4
 
 ## Phase Approvals
 
@@ -66,6 +67,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.4: base commit 0b56548. Gate 1 artifact: `StaffSuggestTests.java` exists at the exact declared path. Gate 2 scope: diff from 0b56548 plus untracked files contains only the declared test artifact and `status.md`. Gate 3 AC citations: AC-90 and AC-91 tagged at `StaffSuggestTests.java:105,149,181`. Gate 4 validation: `StaffSuggestTests.java:106-147` asserts POST `/staff/requests/{id}/suggest` runs the solver, places the hold, and moves the request to SUGGESTION_OFFERED; `:150-179` asserts manual calendar picking sets hold (vet, start, duration) and transitions from WITH_STAFF to SUGGESTION_OFFERED; `:182-244` asserts owner accept transitions to ACCEPTED with appointment created and reject clears hold and records rejection event with scope. Gate 5 rules: RULE-31/8/10/11 hold semantics for staff suggestion and calendar picking. Gate 6 routes: POST `/staff/requests/{id}/suggest`, POST `/my/requests/{id}/accept`, POST `/my/requests/{id}/another`. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
 - task-3.3: base commit df4a516. Gate 1 artifacts: `StaffInterpretationService.java`, `requestDetail.html`, `interpretationForm.html`, and `StaffInterpretationTests.java` exist at exact declared paths. Gate 2 scope: diff from df4a516 plus untracked files contains only declared artifacts, modifications to `StaffRequestController.java`, 11 message bundle properties files, and `status.md`. Gate 3 AC citations: AC-55, AC-56, AC-89, AC-121 tagged at `StaffInterpretationTests.java:109,176,218,299,331`. Gate 4 validation: `StaffInterpretationTests.java:110-173` asserts AI version row is retained unmodified and incremented STAFF version row is compared field by field; `:177-215` asserts raw model response, model tag, and prompt version are rendered on staff detail but omitted on owner detail; `:219-296` asserts POST interpretation creates a STAFF version whose structured fields are read back by value and second save increments version while keeping earlier row; `:300-328` asserts suggest is refused on uninterpreted declined-consent request until complete staff interpretation exists; `:332-403` asserts ordered timeline displays from/to state, actor, action, reason, payload, and timestamp. Gate 5 rules: RULE-25/31/43 versioning provenance, staff suggest workflow, and event timeline. Gate 6 routes: all phase-3 staff request routes resolve and render. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
