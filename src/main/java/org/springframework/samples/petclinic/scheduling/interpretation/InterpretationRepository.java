@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.scheduling.interpretation;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,9 @@ public interface InterpretationRepository extends JpaRepository<Interpretation, 
 	@Transactional(readOnly = true)
 	Optional<Interpretation> findByRequestIdAndVersion(Integer requestId, int version);
 
+	/** Read model for the owner request page: the preferred vet is rendered detached. */
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = "preferredVet", type = EntityGraph.EntityGraphType.LOAD)
 	Optional<Interpretation> findTopByRequestIdOrderByVersionDesc(Integer requestId);
 
 }

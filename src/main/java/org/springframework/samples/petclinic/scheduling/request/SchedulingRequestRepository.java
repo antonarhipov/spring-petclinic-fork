@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.scheduling.request;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,7 +33,12 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 	@Transactional(readOnly = true)
 	List<SchedulingRequest> findByOwnerId(Integer ownerId);
 
+	/**
+	 * Owner-scoped read model: loads every association the owner pages render so the
+	 * detached entity can be rendered with {@code spring.jpa.open-in-view=false}.
+	 */
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "pet", "owner", "heldVet" }, type = EntityGraph.EntityGraphType.LOAD)
 	Optional<SchedulingRequest> findByIdAndOwnerId(Integer id, Integer ownerId);
 
 	@Transactional(readOnly = true)
