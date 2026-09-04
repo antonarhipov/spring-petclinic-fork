@@ -31,12 +31,14 @@ import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.scheduling.interpretation.CareType;
 import org.springframework.samples.petclinic.scheduling.interpretation.Interpretation;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.Provenance;
 import org.springframework.samples.petclinic.scheduling.interpretation.StaffInterpretationService;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
+import org.springframework.samples.petclinic.scheduling.request.RejectionScope;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestEvent;
@@ -44,6 +46,7 @@ import org.springframework.samples.petclinic.scheduling.request.SchedulingReques
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.StaffSuggestionService;
 import org.springframework.samples.petclinic.scheduling.request.SuggestionRejection;
+import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
 import org.springframework.samples.petclinic.scheduling.web.StaffInterpretationForm;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
@@ -70,6 +73,9 @@ public class StaffSuggestionTests {
 
 	@Autowired
 	private StaffSuggestionService staffSuggestionService;
+
+	@Autowired
+	private SuggestionService suggestionService;
 
 	@Autowired
 	private StaffInterpretationService staffInterpretationService;
@@ -158,57 +164,119 @@ public class StaffSuggestionTests {
 
 		MockHttpSession ownerSession = login("george", "george123");
 
-		// --- Scenario 1: Owner accepts staff-placed suggestion ---
 		SchedulingRequest req1 = createRequestWithTimestamp(owner, pet, "Accept test", "anytime", now.minusMinutes(30));
 		req1 = this.lifecycleService.declineConsent(req1, "george");
-
-		// Staff places suggestion on next Monday (valid opening hours & weekly block)
+		Integer acceptedRequestId = req1.getId();
 		ZonedDateTime start1 = now.plusDays(3).withHour(11).withMinute(0);
 		this.staffSuggestionService.placeHold(req1, vet, start1, 30, "staff");
 
-		// Owner accepts via HTTP
+		ZonedDateTime acceptStarted = ZonedDateTime.now(this.clock);
 		this.mockMvc.perform(post("/my/requests/" + req1.getId() + "/accept").session(ownerSession).with(csrf()))
-			.andExpect(status().is3xxRedirection());
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/my/appointments"));
+		ZonedDateTime acceptFinished = ZonedDateTime.now(this.clock);
 
-		// Verify request is ACCEPTED, hold cleared, and appointment created
 		SchedulingRequest reloaded1 = this.requestRepository.findById(req1.getId()).orElseThrow();
 		assertThat(reloaded1.getState()).isEqualTo(RequestState.ACCEPTED);
-		assertThat(reloaded1.hasHold()).isFalse();
+		assertThat(reloaded1.getHeldVet()).isNull();
+		assertThat(reloaded1.getHeldStart()).isNull();
+		assertThat(reloaded1.getHeldDuration()).isNull();
 
-		List<Appointment> appts = this.appointmentRepository.findByPetId(pet.getId());
-		assertThat(appts).anyMatch(a -> a.getVet().getId().equals(vet.getId()) && a.getStartTime().isEqual(start1)
-				&& a.getDuration() == 30);
+		assertThat(this.appointmentRepository.findAll())
+			.filteredOn(appointment -> appointment.getRequest() != null
+					&& appointment.getRequest().getId().equals(acceptedRequestId))
+			.singleElement()
+			.satisfies(appointment -> {
+				assertThat(appointment.getPet().getId()).isEqualTo(pet.getId());
+				assertThat(appointment.getVet().getId()).isEqualTo(vet.getId());
+				assertThat(appointment.getStartTime()).isEqualTo(start1);
+				assertThat(appointment.getDuration()).isEqualTo(30);
+				assertThat(appointment.getReason()).isEqualTo("Accept test");
+				assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+			});
+		assertThat(eventsWithAction(req1.getId(), "accept")).singleElement().satisfies(event -> {
+			assertThat(event.getFromState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
+			assertThat(event.getToState()).isEqualTo(RequestState.ACCEPTED);
+			assertThat(event.getActor()).isEqualTo("george");
+			assertThat(event.getReason()).isNull();
+			assertThat(event.getPayload()).isNull();
+			assertThat(event.getTimestamp()).isBetween(acceptStarted, acceptFinished);
+		});
 
-		// --- Scenario 2: Owner rejects staff-placed suggestion ---
-		SchedulingRequest req2 = createRequestWithTimestamp(owner, pet, "Reject test", "anytime", now.minusMinutes(20));
-		req2 = this.lifecycleService.declineConsent(req2, "george");
+		for (RejectionScope scope : RejectionScope.values()) {
+			SchedulingRequest request = createRequestWithTimestamp(owner, pet, "Reject " + scope, "anytime",
+					now.minusMinutes(20));
+			request = this.lifecycleService.declineConsent(request, "george");
+			createStaffInterpretation(request, now);
 
-		// Create complete interpretation for solver re-evaluation
-		Interpretation staffInterp = new Interpretation();
-		staffInterp.setRequest(req2);
-		staffInterp.setVersion(1);
-		staffInterp.setProvenance(Provenance.STAFF);
-		staffInterp.setReasonSummary("Wellness");
-		staffInterp.setEstimatedMinutes(30);
-		staffInterp.setCareType(CareType.GENERAL);
-		staffInterp.setCannotInterpret(false);
-		staffInterp.setCreatedAt(now.minusMinutes(10));
-		this.interpretationRepository.saveAndFlush(staffInterp);
+			ZonedDateTime originalStart = now.plusDays(3).withHour(14).withMinute(0);
+			this.staffSuggestionService.placeHold(request, vet, originalStart, 30, "staff");
+			SchedulingRequest offered = this.requestRepository.findById(request.getId()).orElseThrow();
+			HoldTuple originalHold = new HoldTuple(offered.getHeldVet().getId(), offered.getHeldStart(),
+					offered.getHeldDuration());
+			long appointmentsBefore = this.appointmentRepository.count();
+			ZonedDateTime rejectionStarted = ZonedDateTime.now(this.clock);
 
-		ZonedDateTime start2 = now.plusDays(3).withHour(14).withMinute(0);
-		this.staffSuggestionService.placeHold(req2, vet, start2, 30, "staff");
+			this.mockMvc
+				.perform(post("/my/requests/" + request.getId() + "/another").session(ownerSession)
+					.with(csrf())
+					.param("scope", scope.name()))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/my/requests/" + request.getId()));
+			ZonedDateTime rejectionFinished = ZonedDateTime.now(this.clock);
 
-		// Owner rejects with NOT_THIS_TIME
-		this.mockMvc
-			.perform(post("/my/requests/" + req2.getId() + "/another").session(ownerSession)
-				.with(csrf())
-				.param("scope", "NOT_THIS_TIME"))
-			.andExpect(status().is3xxRedirection());
+			SchedulingRequest after = this.requestRepository.findById(request.getId()).orElseThrow();
+			SuggestionRejection expected = new SuggestionRejection(1, originalHold.vetId(), originalHold.start(),
+					scope);
+			assertThat(eventsWithAction(request.getId(), SuggestionRejection.EVENT_ACTION)).singleElement()
+				.satisfies(event -> {
+					assertThat(event.getFromState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
+					assertThat(event.getToState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
+					assertThat(event.getActor()).isEqualTo("george");
+					assertThat(event.getReason()).isEqualTo(scope.name());
+					assertThat(event.getPayload()).isEqualTo(expected.payload());
+					assertThat(event.getTimestamp()).isBetween(rejectionStarted, rejectionFinished);
+					assertThat(SuggestionRejection.fromEvent(event)).contains(expected);
+				});
+			assertThat(this.suggestionService.currentRejections(after)).containsExactly(expected);
+			assertThat(this.appointmentRepository.count()).isEqualTo(appointmentsBefore);
 
-		// Verify rejection event recorded with scope
-		List<SchedulingRequestEvent> events = this.eventRepository.findByRequestIdOrderByTimestampAsc(req2.getId());
-		assertThat(events).anyMatch(
-				e -> SuggestionRejection.EVENT_ACTION.equals(e.getAction()) && "NOT_THIS_TIME".equals(e.getReason()));
+			if (after.getState() == RequestState.SUGGESTION_OFFERED) {
+				assertThat(after.getHeldVet()).isNotNull();
+				assertThat(after.getHeldStart()).isNotNull();
+				assertThat(after.getHeldDuration()).isNotNull();
+				HoldTuple replacement = new HoldTuple(after.getHeldVet().getId(), after.getHeldStart(),
+						after.getHeldDuration());
+				assertThat(replacement).isNotEqualTo(originalHold);
+				assertThat(expected.excludes(replacement.vetId(), replacement.start(), 1)).isFalse();
+			}
+			else {
+				assertThat(after.getState()).isEqualTo(RequestState.WITH_STAFF);
+				assertThat(after.getHeldVet()).isNull();
+				assertThat(after.getHeldStart()).isNull();
+				assertThat(after.getHeldDuration()).isNull();
+			}
+		}
+	}
+
+	private void createStaffInterpretation(SchedulingRequest request, ZonedDateTime now) {
+		Interpretation staffInterpretation = new Interpretation();
+		staffInterpretation.setRequest(request);
+		staffInterpretation.setVersion(1);
+		staffInterpretation.setProvenance(Provenance.STAFF);
+		staffInterpretation.setReasonSummary("Wellness");
+		staffInterpretation.setEstimatedMinutes(30);
+		staffInterpretation.setCareType(CareType.GENERAL);
+		staffInterpretation.setCannotInterpret(false);
+		staffInterpretation.setCreatedAt(now.minusMinutes(10));
+		this.interpretationRepository.saveAndFlush(staffInterpretation);
+	}
+
+	private List<SchedulingRequestEvent> eventsWithAction(Integer requestId, String action) {
+		return this.eventRepository.findByRequestIdOrderByTimestampAsc(requestId)
+			.stream()
+			.filter(event -> action.equals(event.getAction()))
+			.toList();
 	}
 
 	private SchedulingRequest createRequestWithTimestamp(Owner owner, Pet pet, String reason, String availability,
@@ -242,6 +310,9 @@ public class StaffSuggestionTests {
 			.andExpect(status().is3xxRedirection())
 			.andReturn();
 		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private record HoldTuple(Integer vetId, ZonedDateTime start, int duration) {
 	}
 
 }

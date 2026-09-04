@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-3.3 (cp-3/G-1,G-6 revision)
-- Status: COMPLETE (cp-3/G-1,G-6 revision)
+- Task: task-3.4 (cp-3/G-4 revision)
+- Status: COMPLETE (cp-3/G-4 revision)
 
 ## Completed
 
@@ -69,6 +69,20 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.4 cp-3/G-4 revision: base commit `be08f17`. Gate 1: both declared artifacts remain at their exact paths.
+  Gate 2 revision scope: only the declared `StaffSuggestionTests.java` and `status.md`; the formatter's unrelated
+  `StaffDirectBookingTests.java` change was reversed. Gate 3: AC-91 remains tagged at `StaffSuggestionTests.java:158`.
+  Gate 4: `suggestButtonCreatesOneStaffHold` retains the supporting AC-90 solver/hold assertions at `:117-154`;
+  `ownerAcceptRejectUsesSameRules_AC91` proves the STAFF-provenance accept path at `:167-204` by exact request, all
+  three cleared hold fields, one linked appointment with every persisted field, and one exact accept event. The
+  `RejectionScope.values()` matrix at `:206-259` proves all three rejection scopes by exact old hold, event tuple and
+  parsed payload, current exclusion, no appointment, and either a populated non-excluded replacement hold or
+  WITH_STAFF with all hold fields null. Gate 5 RULE-31: the complete normal-suggestion parity matrix is pinned by those
+  assertions. Gate 6: owner accept/another and staff suggest routes are exercised through the real filter chain. Gate
+  7 plan guards: PASS. Focused Java 21 validation: 8/0/0/0. Corrective runs aligned the accept redirect with the
+  controller contract and compared rejection payloads to the database-reloaded hold because JDBC preserves its offset
+  but not the named zone ID. Full suite remains pending final cp-3 validation.
 
 - task-3.3 cp-3/G-1,G-6 revision: base commit `812d0e0`. Gate 1: all four declared artifacts remain at their exact
   paths. Gate 2 scope: declared `StaffInterpretationTests.java`, `staff/requestDetail.html`, and `status.md`. Gate 3:
