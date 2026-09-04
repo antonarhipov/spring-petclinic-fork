@@ -3,6 +3,7 @@
 <body>
   <div class="alert alert-warning"><strong th:text="#{urgentCare}">Need urgent care?</strong> <span th:text="#{urgentCareMessage(${emergencyPhone})}">Call the clinic.</span></div>
   <h2 th:text="#{requestDetails}">Request details</h2>
+  <div th:if="${actionNotAllowed}" class="alert alert-danger" th:text="#{requestActionNotAllowed}"></div>
   <dl><dt th:text="#{pet}">Pet</dt><dd th:text="${request.pet.name}"></dd><dt th:text="#{reason}">Reason</dt><dd th:text="${request.reasonText}"></dd><dt th:text="#{availability}">Availability</dt><dd th:text="${request.availabilityText}"></dd><dt th:text="#{status}">Status</dt><dd th:text="${request.state}"></dd></dl>
   <div th:if="${request.state.name() == 'AWAITING_CONSENT'}">
     <form th:action="@{/my/requests/{id}/consent(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{grantConsent}">Grant consent</button></form>

@@ -8,6 +8,7 @@ package org.springframework.samples.petclinic.scheduling.web;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigService;
 import org.springframework.samples.petclinic.scheduling.interpretation.RequestInterpretationService;
 import org.springframework.samples.petclinic.scheduling.request.ActiveRequestExistsException;
+import org.springframework.samples.petclinic.scheduling.request.IllegalRequestTransitionException;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
@@ -22,6 +23,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class OwnerRequestController {
+
+	/**
+	 * Flash flag rendered by {@code my/requestDetail.html} via
+	 * {@code #{requestActionNotAllowed}}.
+	 */
+	static final String ACTION_NOT_ALLOWED = "actionNotAllowed";
 
 	private final OwnerSchedulingAccessService accessService;
 
@@ -77,33 +84,62 @@ public class OwnerRequestController {
 	}
 
 	@PostMapping("/my/requests/{requestId}/consent")
-	public String consent(@PathVariable Integer requestId) {
+	public String consent(@PathVariable Integer requestId, RedirectAttributes redirectAttributes) {
 		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
 		String actor = SecurityUtils.getCurrentUsername().orElseThrow();
-		this.lifecycleService.consent(request, actor);
-		this.interpretationService.interpret(request, actor);
+		try {
+			this.lifecycleService.consent(request, actor);
+			this.interpretationService.interpret(request, actor);
+		}
+		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+			return refused(requestId, redirectAttributes);
+		}
 		return "redirect:/my/requests/" + requestId;
 	}
 
 	@PostMapping("/my/requests/{requestId}/decline")
-	public String decline(@PathVariable Integer requestId) {
-		this.lifecycleService.declineConsent(this.accessService.requireRequest(ownerId(), requestId),
-				SecurityUtils.getCurrentUsername().orElseThrow());
+	public String decline(@PathVariable Integer requestId, RedirectAttributes redirectAttributes) {
+		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
+		try {
+			this.lifecycleService.declineConsent(request, SecurityUtils.getCurrentUsername().orElseThrow());
+		}
+		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+			return refused(requestId, redirectAttributes);
+		}
 		return "redirect:/my/requests/" + requestId;
 	}
 
 	@PostMapping("/my/requests/{requestId}/confirm")
-	public String confirm(@PathVariable Integer requestId) {
-		this.suggestionService.confirm(this.accessService.requireRequest(ownerId(), requestId),
-				SecurityUtils.getCurrentUsername().orElseThrow());
+	public String confirm(@PathVariable Integer requestId, RedirectAttributes redirectAttributes) {
+		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
+		try {
+			this.suggestionService.confirm(request, SecurityUtils.getCurrentUsername().orElseThrow());
+		}
+		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+			return refused(requestId, redirectAttributes);
+		}
 		return "redirect:/my/requests/" + requestId;
 	}
 
 	@PostMapping("/my/requests/{requestId}/accept")
-	public String accept(@PathVariable Integer requestId) {
-		this.suggestionService.accept(this.accessService.requireRequest(ownerId(), requestId),
-				SecurityUtils.getCurrentUsername().orElseThrow());
+	public String accept(@PathVariable Integer requestId, RedirectAttributes redirectAttributes) {
+		SchedulingRequest request = this.accessService.requireRequest(ownerId(), requestId);
+		try {
+			this.suggestionService.accept(request, SecurityUtils.getCurrentUsername().orElseThrow());
+		}
+		catch (IllegalRequestTransitionException | IllegalStateException ex) {
+			return refused(requestId, redirectAttributes);
+		}
 		return "redirect:/my/appointments";
+	}
+
+	/**
+	 * A refused lifecycle transition (RULE-15, AC-123) is never an error page: the owner
+	 * is sent back to the request with a keyed notice; the service left no side effect.
+	 */
+	private static String refused(Integer requestId, RedirectAttributes redirectAttributes) {
+		redirectAttributes.addFlashAttribute(ACTION_NOT_ALLOWED, true);
+		return "redirect:/my/requests/" + requestId;
 	}
 
 	private void addEmergencyPhone(Model model) {
