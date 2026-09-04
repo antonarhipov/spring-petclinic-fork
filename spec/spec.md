@@ -822,31 +822,50 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 
 ## As-built convergence (cp-1)
 
-Checkpoint cp-1 was independently verified on 2026-09-04 and rejected. The following findings are not accepted as
-as-built behavior and remain open:
+Checkpoint cp-1 was independently verified on 2026-09-04 (REJECT), revised by commit 7a5be39, and re-verified on
+2026-09-04 (REJECT again; see `convergence/cp-1.md`). Findings F-1..F-13 of the first verification are closed by
+7a5be39 as verified in the report, except that F-7 continues as F-18.
 
-- **F-1 (cp-1/C-1):** The ArchUnit rule uses name-based Timefold exemptions and does not enforce RULE-2 as written.
-- **F-2 (cp-1/C-2):** The exact security surface, closed role model, and service ownership guard are absent or violated.
-- **F-3 (cp-1/C-3):** Required owner/staff pages are absent; navigation, urgent-banner, and localization behavior do not conform.
-- **F-4 (cp-1/C-4):** Time is not sourced from one configured clinic time zone.
-- **F-5 (cp-1/C-5):** Owner request initiation and selectable Ollama/stub interpretation wiring are absent.
-- **F-6 (cp-1/C-6):** The production suggestion path does not rank with Timefold or normative clinic/vet availability.
-- **F-7 (cp-1/C-7):** The claimed UC-1 lifecycle does not traverse HTTP and cannot be walked through the application.
-- **F-8 (cp-1/G-1):** Normative seed tests are not fully by-value or closed-set, although a fresh migrated snapshot matched.
-- **F-9 (cp-1/G-2):** Authentication and negative authorization assertions do not prove session, disclosure, or mutation outcomes.
-- **F-10 (cp-1/G-3):** Lifecycle refusal evidence does not cover the complete request matrix or every appointment side effect.
-- **F-11 (cp-1/G-4):** Interpretation round-trip evidence omits individual window fields and preferred veterinarian.
-- **F-12 (cp-1/G-5):** Accept-success evidence does not prove lock-first overlap re-validation.
-- **F-13 (cp-1/G-6):** The random-port smoke test loads no authenticated page.
+### Δ accepted as built (cp-1)
+
+- **Δ D-1 — RULE-11:** Timefold termination budget is configured as `timefold.solver.termination.spent-limit=1s`
+  (the planned key `timefold.solver.solve.duration` does not exist in Timefold Solver 2.5). Same observable behavior.
+- **Δ D-3 — RULE-2 / RULE-26:** the Timefold/Spring-AI import boundary is an exact class set
+  (`FRAMEWORK_ADAPTER_BOUNDARY` in `ArchitectureBoundaryTests`): the ranker/interpreter adapters plus the Timefold
+  planning entity, solution and constraint-provider support types; no substring exemptions.
+
+### F-n open (not accepted as as-built behavior)
+
+- **F-14 (cp-1/C-1):** `GET /my/requests/{id}` returns 500 (`LazyInitializationException` on `request.pet`) — UC-1 steps 2–7 cannot be walked.
+- **F-15 (cp-1/C-2):** `GET /my/appointments` returns 500 once an appointment exists (`LazyInitializationException` on `appointment.vet`) — UC-1 step 8 / owner landing page.
+- **F-16 (cp-1/C-3):** a refused lifecycle transition on an owner action route surfaces as an unhandled 500 instead of a refusal notice.
+- **F-17 (cp-1/C-4):** the suite contains three random-port test classes; AC-139 requires exactly one smoke test (waiver candidate).
+- **F-18 (cp-1/G-1, ex F-7):** AC-138 is delivered as the thin owner-only UC-1 1–8; the interleaved owner/staff scenario is absent (plan double-claims AC-138; waiver candidate for cp-1).
+- **F-19 (cp-1/G-2):** AC-21 pet-selector exclusion is not asserted on the rendered form.
+- **F-20 (cp-1/G-3):** AC-137 — tests do not pin `scheduling.ai.provider=stub` nor assert that the live model is never called.
+- **F-21 (cp-1/G-4):** AC-118 has no owner appointment view/cancel route in phase-1; only service-level evidence exists.
+- **F-22 (cp-1/G-5):** 29 of 43 phase-1 ACs are not cited by any test; two citations are mis-scoped.
+- **F-23 (cp-1/G-6):** AC-58 — Timefold ranking and "top slot offered" are not asserted.
+- **F-24 (cp-1/G-7):** AC-7/16/17/18/19/140 rendered-page evidence covers two pages only; session invalidation, banner on every owner page, read-only My pets, layout reuse and Java literals are unproven.
+- **F-25 (cp-1/G-8):** no HTTP-level legal-URL/illegal-state refusal test for the owner action routes.
+- **Open decision (cp-1/D-2, P-5):** RULE-17 default provider is `ollama` in the spec but `stub` as built; not accepted as Δ until the user decides (record in `status.md` → Deviations).
 
 ### Spec weaknesses exposed by cp-1
 
-- **RULE-2/RULE-26 contradiction (upstream: rules):** RULE-2 literally permits Timefold imports only in the `SlotRanker`
-  adapter classes, while RULE-26 requires Timefold-annotated planning entity, solution, and constraint-provider support
-  types. Recommended resolution: define an exact private adapter-support boundary; do not use substring/name wildcards.
-- **Unlisted `/403` surface (upstream: rules):** the Security Surface claims every route is listed but omits the explicit
-  `/403` controller used by the access-denied forward, while `permitAll` is limited to login/error/static.
-- **AC-138 phase placement (upstream: tasks/criteria):** phase-1 claims full AC-138 coverage while task-1.7 explicitly
-  delivers only thin UC-1 and defers the mandatory interleaved scenario to phase-5.
-- **Missing web-controller ownership (upstream: tasks/review):** phase-1's artifact map assigns no controller artifact for
-  its required owner/staff HTTP skeleton; it also calls `/oups` pre-existing after that controller was removed.
+- **Unlisted `/403` and stale `/oups` (upstream: rules):** the Security Surface omits the explicit `/403` controller used
+  by the access-denied forward and lists `/oups` as pre-existing although its stock controller was removed; the
+  matcher now guards a route that does not exist.
+- **RULE-17 default vs runnable checkout (upstream: rules):** the default `ollama` cannot run on a fresh checkout
+  without a local model (`tasks.yaml` assumptions admit this); the rule should either choose a runnable default or
+  prescribe a test profile that pins `stub`.
+- **AC-118 flow placement (upstream: criteria/spec):** AC-118 (owner cannot view/cancel another owner's appointment)
+  is unverifiable until the owner appointment view/cancel route of UC-6 exists; tie it to that use case's phase.
+- **AC-139 vs stock tests (upstream: criteria/rules):** "exactly one random-port smoke test" conflicts with the stock
+  `PetClinicIntegrationTests`/`PetClinicConcurrencyTests`, which the spec never told the executor to remove or fold.
+- **No rendering/persistence-context rule (upstream: rules):** with `open-in-view=false` (RULE-4) and lazy
+  associations, nothing forbids lazy access from templates; a rule requiring fetch-joined read models (or DTOs) for
+  every view would have caught F-14/F-15 at plan review.
+- **AC-138 phase placement (upstream: tasks/criteria):** phase-1 claims AC-138 while task-1.7 delivers only the thin
+  UC-1; the mandatory interleaved scenario belongs to the phase that completes it.
+- **Missing web-controller ownership (upstream: tasks/review):** phase-1's artifact map assigns no controller artifact
+  for its required owner/staff HTTP skeleton.

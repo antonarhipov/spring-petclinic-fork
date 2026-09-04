@@ -17,7 +17,7 @@
 
 ## Phase Approvals
 
-- phase-1: PENDING
+- phase-1: PENDING (cp-1 re-converged 2026-09-04: REJECT — 4 critical, 8 gaps, 2 protocol; see `convergence/cp-1.md`)
 - phase-2: PENDING
 - phase-3: PENDING
 - phase-4: PENDING

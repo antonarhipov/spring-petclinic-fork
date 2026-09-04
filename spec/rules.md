@@ -132,6 +132,9 @@ stock layout over the bundled skill's DDD layout (see External Dependencies / ar
 `jakarta.servlet..` or `org.springframework.web..`.
 **Reason:** Preserves the skill's boundary intent (framework isolation, service-mediated access) without adopting its
 package layout, and gives the double-enforcement of AC-13 an automated structural check.
+*As built (cp-1, Δ D-3):* the "adapter classes" of (a) are an exact class set `FRAMEWORK_ADAPTER_BOUNDARY` in
+`ArchitectureBoundaryTests` (the `SlotRanker`/`RequestInterpreter` implementations plus the Timefold planning
+entity/solution/constraint-provider support types RULE-26 requires); no substring or name-pattern exemptions.
 
 ### RULE-3
 **Covers:** project-wide
@@ -206,6 +209,8 @@ only be validated in-transaction (RA-6, RA-33).
 **MUST** run the Timefold solve **synchronously** inside the locked transaction of RULE-10 with a 1-second termination
 budget (`timefold.solver.solve.duration=1s`), placing all start times on the 15-minute grid; only the LLM call is
 asynchronous.
+*As built (cp-1, Δ D-1):* Timefold Solver 2.5 has no `timefold.solver.solve.duration` key; the equivalent
+`timefold.solver.termination.spent-limit=1s` is used (same 1-second total termination budget).
 **Reason:** The suggestion must be consistent with the slot just locked; the solve is fast enough to stay inline
 (RA-32, RA-33).
 

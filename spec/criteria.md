@@ -1,6 +1,6 @@
 # Acceptance Criteria: Smart Appointment Scheduling
 
-> Converged at cp-1 on 2026-09-04: REJECT. Verification-placement notes: phase-1's AC-138 evidence is service-level rather than HTTP/MockMvc; negative authorization evidence is status-only; normative seed evidence is not fully by-value; AC-53 does not compare every persisted field. See `convergence/cp-1.md`.
+> Converged at cp-1 on 2026-09-04 (re-run after 7a5be39): REJECT. Verification-placement notes: AC-138 is verified only as the thin owner-only UC-1 1–8 (MockMvc, real filter chain) — the interleaved owner/staff scenario is deferred and must be claimed by one phase only; AC-118 cannot be verified at HTTP level until the owner appointment view/cancel route exists (service-level evidence only); AC-139 is contradicted by the stock random-port tests; AC-21, AC-58, AC-137 and the presentation ACs (AC-7/16/17/18/19/140) have service-level or two-page evidence only; AC-123 is proven at the service layer but surfaces as a 500 over HTTP. Seed (AC-125..AC-135), security (AC-1..AC-15), AC-53, AC-63, AC-108, AC-124, AC-136 are STRONG. See `convergence/cp-1.md`.
 
 ## Functional
 
