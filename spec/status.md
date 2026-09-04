@@ -30,6 +30,7 @@
 ## Deviations
 
 - task-1.6: Timefold Solver 2.5.0 rejects the planned `timefold.solver.solve.duration` key; the equivalent supported key `timefold.solver.termination.spent-limit=1s` is used.
+- Legacy waiver cp-1: items 2,3,5 of the converge Protocol Gate waived — phase executed before the protocol (commits 056ab3b, 7cb2696, 7a5be39); approved by the user on 2026-09-04. Phase-1 was built as two batched commits (tasks 1.1–1.4, tasks 1.5–1.7) plus one cp-1 resolution commit; history is not rewritten. `spec/checkpoints/cp-1.md` is written retroactively from the committed state (item 1 not waived); items 4, 6 and 7 are audited in full. The waiver covers cp-1 only; cp-2 onward is audited under the full gate.
 
 ## Notes
 
