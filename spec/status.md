@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.3 (Checkpoint 1 selector, ranking, and refusal remediation)
+- Task: task-2.4 (Owner request action HTTP surface)
 - Status: NOT_STARTED
 
 ## Completed
@@ -16,6 +16,7 @@
 - task-1.7
 - task-2.1
 - task-2.2
+- task-2.3
 
 ## Phase Approvals
 
@@ -42,6 +43,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.3: base commit 8d03027. Gate 1 artifact: `OwnerRequestContractTests.java` exists at the exact declared path with all three declared methods. Gate 2 scope: diff from 8d03027 contains only the declared test artifact and `status.md`; the planned existing tests required no assertion changes. Gate 3 AC citations: AC-21 at `OwnerRequestContractTests.java:108-118`; AC-58 at `:120-146`. Gate 4 validation: rendered eligible/active selector values at `:109-117`; production `SlotRanker` invocation and first tuple held by vet/start/duration at `:121-145`; all four refusal POSTs plus unchanged state/event/appointment/request snapshots at `:149-169`. Gate 5 rules: RULE-8 first ranked hold at `:127-145`; RULE-15 illegal-state refusal matrix at `:149-169`; RULE-44 real filter chain, CSRF, isolated H2 and conforming `SlotRanker` interface double at `:66-69,98-99,132-145`. Gate 6 routes: no new routes owned by this task. Gate 7 plan guards: all pass after completion. Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 168/0/0/0; working tree contains only task-attributable files.
 
 - task-2.2: base commit 811bc57. Gate 1 artifacts: `CrashController.java`, `OwnerPresentationContractTests.java`, and `SchedulingErrorHandlingTests.java` exist at exact declared paths. Gate 2 scope: `git diff --name-only 811bc57` plus untracked files contains only declared artifacts, listed production/template modifications, supporting Phase-1 assertion alignment, and `status.md`. Gate 3 AC citations: AC-7/16/17/18/19 are carried by the exact `OwnerPresentationContractTests` methods at lines 84-151. Gate 4 validation: every-page identity/logout/banner at `OwnerPresentationContractTests.java:84-96`; stock layout/read-only pets at `:108-129`; request-only vet exposure at `:131-151`; `/oups` staff 500 stock page and owner 403 forward at `SchedulingErrorHandlingTests.java:90-101`; domain refusal redirect/no mutation at `:103-127`; unexpected `IllegalStateException` propagation at `:129-141`. Gate 5 rules: RULE-38 shared configured-phone banner at `layout.html:140-145`; RULE-39 role navigation/session widget and single stock layout at `layout.html:20-134` plus request-only vet presentation at `requestDetail.html:12-15`; RULE-41 banner keys at `layout.html:142-143` and `LocalizationKeyTests` all-11-bundle checks; RULE-44 isolated H2/rollback presentation tests at `OwnerPresentationContractTests.java:57-60` and full suite. Gate 6 route: GET `/oups` maps at `CrashController.java:28-35`, is staff-only at `SecurityConfiguration.java:72-74`, and `RouteInventoryTest` passes. Gate 7 plan guards: all pass after task completion. Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 165/0/0/0; working tree contains only task-attributable files. Non-obvious: the old Phase-1 appointment-page vet assertion was removed because task-2.2 explicitly remediates exposure so veterinarian details render only on request pages; the stock schema constraint test can pollute a shared context with deliberately invalid enum rows, so the new contract starts with a fresh isolated context.
 
