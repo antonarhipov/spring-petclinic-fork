@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-3.5
+- Task: task-3.6
 - Status: NOT_STARTED
 
 ## Completed
@@ -39,6 +39,7 @@
 - task-3.2
 - task-3.3
 - task-3.4
+- task-3.5
 
 ## Phase Approvals
 
@@ -67,6 +68,10 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.6: base commit 411e63e. Gate 1 artifact: `StaffResolveRequestE2eTests.java` exists at the exact declared path with all three declared methods (`staffResolveQueuedRequestSteps1Through4`, `directBookAttachExtension`, `directBookLeaveOpenExtension`). Gate 2 scope: diff from 411e63e plus untracked files contains declared test artifact, modification to `bookingForm.html`, `StaffRouteSurfaceTests.java`, `StaffBookingController.java`, and `status.md`. Gate 3 AC citations: AC-138 tagged at `StaffResolveRequestE2eTests.java:104` (supporting direct booking attach/leave-open citations at `:216,284`). Gate 4 validation: `StaffResolveRequestE2eTests.java:105-213` drives UC-4 steps 1..4 through authenticated staff and owner HTTP sessions with CSRF, asserting request queue status, timeline events, staff interpretation save, solver suggestion hold placement, owner accept transition to ACCEPTED and confirmed appointment creation; `:217-281` drives direct-book attach closing the open request; `:285-345` drives direct-book leave-open keeping the open request in WITH_STAFF. Gate 5 RULE-44: real filter chain, isolated H2, and CSRF verification across every state-changing POST. Gate 6 routes: all Phase 3 staff routes exercised end to end. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
+
+- task-3.5: base commit 6c9d78e. Gate 1 artifacts: `StaffBookingService.java`, `bookingForm.html`, and `StaffDirectBookingTests.java` exist at exact declared paths (and synced `StaffSuggestionService.java`/`StaffSuggestionTests.java`). Gate 2 scope: diff from 6c9d78e plus untracked files contains declared artifacts, modifications to `StaffBookingController.java`, `StaffRequestController.java`, and `status.md`. Gate 3 AC citations: AC-92, AC-93, AC-94, AC-95 tagged at `StaffDirectBookingTests.java:106,140,204,274`. Gate 4 validation: `StaffDirectBookingTests.java:107-137` asserts directly booked appointment created with requested vet, time, duration without interpretation and visible to owner; `:141-201` asserts attach across full non-terminal matrix (AWAITING_CONSENT, INTERPRETING, INTERPRETATION_FAILED, INTERPRETED, SUGGESTION_OFFERED, WITH_STAFF) transitions request to ACCEPTED, clears hold, and creates appointment; `:205-272` asserts leave-open across full non-terminal matrix leaves request state and hold untouched and creates independent appointment; `:275-312` asserts owner cancel sets CANCELLED_BY_OWNER and keeps item in owner appointments. Gate 5 rules: RULE-15/16/32 direct booking and open request decision handling. Gate 6 routes: GET `/staff/appointments/new`, POST `/staff/appointments`. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
 - task-3.4: base commit 0b56548. Gate 1 artifact: `StaffSuggestTests.java` exists at the exact declared path. Gate 2 scope: diff from 0b56548 plus untracked files contains only the declared test artifact and `status.md`. Gate 3 AC citations: AC-90 and AC-91 tagged at `StaffSuggestTests.java:105,149,181`. Gate 4 validation: `StaffSuggestTests.java:106-147` asserts POST `/staff/requests/{id}/suggest` runs the solver, places the hold, and moves the request to SUGGESTION_OFFERED; `:150-179` asserts manual calendar picking sets hold (vet, start, duration) and transitions from WITH_STAFF to SUGGESTION_OFFERED; `:182-244` asserts owner accept transitions to ACCEPTED with appointment created and reject clears hold and records rejection event with scope. Gate 5 rules: RULE-31/8/10/11 hold semantics for staff suggestion and calendar picking. Gate 6 routes: POST `/staff/requests/{id}/suggest`, POST `/my/requests/{id}/accept`, POST `/my/requests/{id}/another`. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 

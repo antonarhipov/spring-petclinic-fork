@@ -16,6 +16,11 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import org.springframework.samples.petclinic.owner.OwnerRepository;
+import org.springframework.samples.petclinic.scheduling.appointment.StaffBookingService;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
+import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -31,23 +36,62 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class StaffBookingController {
 
+	private final StaffBookingService staffBookingService;
+
+	private final OwnerRepository ownerRepository;
+
+	private final VetRepository vetRepository;
+
+	private final SchedulingRequestRepository requestRepository;
+
+	public StaffBookingController(StaffBookingService staffBookingService, OwnerRepository ownerRepository,
+			VetRepository vetRepository, SchedulingRequestRepository requestRepository) {
+		this.staffBookingService = staffBookingService;
+		this.ownerRepository = ownerRepository;
+		this.vetRepository = vetRepository;
+		this.requestRepository = requestRepository;
+	}
+
 	@GetMapping("/staff/appointments/new")
 	public String showBookingForm(@RequestParam(name = "requestId", required = false) Integer requestId,
 			@RequestParam(name = "petId", required = false) Integer petId, Model model) {
-		StaffBookingForm form = new StaffBookingForm();
+		SchedulingRequest request = null;
 		if (requestId != null) {
-			form.setRequestId(requestId);
+			request = this.requestRepository.findById(requestId).orElse(null);
 		}
-		if (petId != null) {
+		else if (petId != null) {
+			request = this.requestRepository.findByActivePetId(petId).orElse(null);
+		}
+
+		StaffBookingForm form = new StaffBookingForm();
+		if (request != null) {
+			form.setRequestId(request.getId());
+			form.setPetId(request.getPet().getId());
+			form.setReason(request.getReasonText());
+		}
+		else if (petId != null) {
 			form.setPetId(petId);
 		}
+		form.setDurationMinutes(30);
+
 		model.addAttribute("form", form);
-		return "staff/queue";
+		model.addAttribute("request", request);
+		model.addAttribute("vets", this.vetRepository.findAll());
+		model.addAttribute("pets", this.ownerRepository.findAll().stream().flatMap(o -> o.getPets().stream()).toList());
+
+		return "staff/bookingForm";
 	}
 
 	@PostMapping("/staff/appointments")
 	public String createBooking(@ModelAttribute("form") StaffBookingForm form, BindingResult bindingResult,
 			RedirectAttributes redirectAttributes) {
+		if (form.getPetId() == null || form.getVetId() == null || form.getAppointmentDate() == null
+				|| form.getStartTime() == null) {
+			redirectAttributes.addFlashAttribute("error", "Missing required booking fields");
+			return "redirect:/staff/appointments/new";
+		}
+		this.staffBookingService.directBook(form, "staff");
+		redirectAttributes.addFlashAttribute("message", "appointmentBooked");
 		return "redirect:/staff/calendar";
 	}
 

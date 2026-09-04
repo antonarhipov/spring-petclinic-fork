@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body>
+
+<h2 th:text="#{directBooking}">Direct booking</h2>
+
+<div th:if="${request != null}" class="alert alert-info">
+  <b th:text="#{openRequests}">Open request exists</b>:
+  <span th:text="${request.pet.name + ' - ' + request.reasonText + ' (' + request.state + ')'}">Pet request</span>
+</div>
+
+<form th:action="@{/staff/appointments}" th:object="${form}" method="post" class="form-horizontal">
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{pet}">Pet</label>
+    <div class="col-sm-10">
+      <select class="form-control" th:field="*{petId}">
+        <option th:each="p : ${pets}" th:value="${p.id}"
+                th:text="${p.name}">Pet</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{selectVet}">Select veterinarian</label>
+    <div class="col-sm-10">
+      <select class="form-control" th:field="*{vetId}">
+        <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Vet</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{appointmentDate}">Appointment date</label>
+    <div class="col-sm-10">
+      <input type="date" class="form-control" th:field="*{appointmentDate}" required="required"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{startTime}">Start time</label>
+    <div class="col-sm-10">
+      <input type="time" class="form-control" th:field="*{startTime}" required="required"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{duration}">Duration (minutes)</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" th:field="*{durationMinutes}"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{reason}">Reason</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" th:field="*{reason}"/>
+    </div>
+  </div>
+
+  <div class="form-group" th:if="${request != null or form.requestId != null}">
+    <label class="col-sm-2 control-label" th:text="#{bookingDecision}">Open request handling</label>
+    <div class="col-sm-10">
+      <input type="hidden" th:field="*{requestId}"/>
+      <div class="radio">
+        <label>
+          <input type="radio" th:field="*{decision}" value="attach"/>
+          <span th:text="#{attachRequest}">Attach to open request</span>
+        </label>
+      </div>
+      <div class="radio">
+        <label>
+          <input type="radio" th:field="*{decision}" value="leave_open"/>
+          <span th:text="#{leaveOpen}">Leave open request as-is</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-primary" th:text="#{bookAppointment}">Book appointment</button>
+      <a class="btn btn-default" th:href="@{/staff/calendar}" th:text="#{cancel}">Cancel</a>
+    </div>
+  </div>
+
+</form>
+
+</body>
+</html>
