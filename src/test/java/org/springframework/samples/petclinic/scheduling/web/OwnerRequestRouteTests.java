@@ -19,7 +19,6 @@ package org.springframework.samples.petclinic.scheduling.web;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -44,7 +43,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,8 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@Transactional
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class OwnerRequestRouteTests {
 
 	@Autowired
@@ -88,9 +85,6 @@ class OwnerRequestRouteTests {
 
 	@Autowired
 	private VetRepository vetRepository;
-
-	@Autowired
-	private EntityManager entityManager;
 
 	private MockMvc mockMvc;
 
@@ -141,7 +135,6 @@ class OwnerRequestRouteTests {
 				.andExpect(status().isNotFound())
 				.andExpect(content().string(not(containsString("Betty protected reason"))));
 		}
-		this.entityManager.clear();
 		SchedulingRequest protectedRequest = this.requestRepository.findById(otherOwner.getId()).orElseThrow();
 		assertThat(protectedRequest.getState()).isEqualTo(RequestState.AWAITING_CONSENT);
 		assertThat(protectedRequest.getReasonText()).isEqualTo("Betty protected reason");
@@ -171,8 +164,6 @@ class OwnerRequestRouteTests {
 			.andExpect(redirectedUrl("/my/requests/" + request.getId()))
 			.andExpect(flash().attribute(OwnerRequestActionController.REQUEST_EDITED, true));
 
-		this.entityManager.flush();
-		this.entityManager.clear();
 		SchedulingRequest edited = this.requestRepository.findById(request.getId()).orElseThrow();
 		assertThat(edited.getState()).isEqualTo(RequestState.AWAITING_CONSENT);
 		assertThat(edited.getReasonText()).isEqualTo("New skin concern");
@@ -189,8 +180,7 @@ class OwnerRequestRouteTests {
 
 		this.mockMvc.perform(post("/my/requests/{id}/consent", request.getId()).session(george).with(csrf()))
 			.andExpect(status().is3xxRedirection());
-		this.entityManager.flush();
-		this.entityManager.clear();
+		waitForState(request.getId(), RequestState.INTERPRETED);
 		assertThat(this.requestRepository.findById(request.getId()).orElseThrow().getState())
 			.isEqualTo(RequestState.INTERPRETED);
 		assertThat(this.interpretationRepository.findByRequestIdOrderByVersionDesc(request.getId()))
@@ -217,8 +207,6 @@ class OwnerRequestRouteTests {
 				.andExpect(redirectedUrl("/my/requests/" + request.getId()))
 				.andExpect(flash().attribute(OwnerRequestActionController.REQUEST_ROUTED_TO_STAFF, true));
 
-			this.entityManager.flush();
-			this.entityManager.clear();
 			SchedulingRequest routed = this.requestRepository.findById(request.getId()).orElseThrow();
 			assertThat(routed.getState()).isEqualTo(RequestState.WITH_STAFF);
 			assertThat(routed.hasHold()).isFalse();
@@ -234,8 +222,15 @@ class OwnerRequestRouteTests {
 				});
 
 			this.lifecycleService.abandon(routed, "george", "test cleanup");
-			this.entityManager.flush();
-			this.entityManager.clear();
+		}
+	}
+
+	private void waitForState(Integer requestId, RequestState expected) throws InterruptedException {
+		for (int attempt = 0; attempt < 100; attempt++) {
+			if (this.requestRepository.findById(requestId).map(SchedulingRequest::getState).orElse(null) == expected) {
+				return;
+			}
+			Thread.sleep(20);
 		}
 	}
 

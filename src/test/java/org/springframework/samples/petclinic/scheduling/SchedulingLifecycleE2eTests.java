@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * ({@code spring.jpa.open-in-view=false}), so lazy-loading failures surface here as they
  * would for a real owner.
  */
-@SpringBootTest
+@SpringBootTest(properties = "scheduling.interpretation.executor=synchronous")
 @Import(TestClockConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SchedulingLifecycleE2eTests {

@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.scheduling.web;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigService;
 import org.springframework.samples.petclinic.scheduling.request.IllegalRequestTransitionException;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
+import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SuggestionService;
 import org.springframework.samples.petclinic.security.SecurityUtils;
@@ -63,6 +64,9 @@ public class OwnerRequestActionController {
 	@GetMapping("/edit")
 	public String edit(@PathVariable Integer requestId, Model model) {
 		SchedulingRequest request = requireRequest(requestId);
+		if (request.getState() == RequestState.INTERPRETING) {
+			return "redirect:/my/requests/" + requestId;
+		}
 		model.addAttribute("request", request);
 		model.addAttribute("editForm", OwnerRequestEditForm.from(request));
 		model.addAttribute("editing", true);
@@ -74,6 +78,9 @@ public class OwnerRequestActionController {
 	public String edit(@PathVariable Integer requestId, @ModelAttribute("editForm") OwnerRequestEditForm form,
 			RedirectAttributes redirectAttributes) {
 		SchedulingRequest request = requireRequest(requestId);
+		if (request.getState() == RequestState.INTERPRETING) {
+			return refused(requestId, redirectAttributes);
+		}
 		try {
 			this.lifecycleService.editText(request, actor(), form.getReasonText(), form.getAvailabilityText());
 		}
@@ -104,6 +111,9 @@ public class OwnerRequestActionController {
 			@RequestParam(defaultValue = "Owner requested staff help") String reason,
 			RedirectAttributes redirectAttributes) {
 		SchedulingRequest request = requireRequest(requestId);
+		if (request.getState() == RequestState.INTERPRETING) {
+			return refused(requestId, redirectAttributes);
+		}
 		try {
 			this.lifecycleService.routeToStaff(request, actor(), reason);
 		}

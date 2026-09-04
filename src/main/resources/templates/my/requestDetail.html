@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'requestDetails')}">
 <body>
+  <meta th:if="${request.state.name() == 'INTERPRETING'}" http-equiv="refresh" content="3">
   <h2 th:text="#{requestDetails}">Request details</h2>
   <div th:if="${actionNotAllowed}" class="alert alert-danger" th:text="#{requestActionNotAllowed}"></div>
   <div th:if="${requestEdited}" class="alert alert-info" th:text="#{requestEdited}"></div>
@@ -18,6 +19,10 @@
     <form th:action="@{/my/requests/{id}/consent(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{grantConsent}">Grant consent</button></form>
     <form th:action="@{/my/requests/{id}/decline(id=${request.id})}" method="post"><button class="btn btn-secondary" type="submit" th:text="#{declineConsent}">Decline consent</button></form>
   </div>
+  <section th:if="${request.state.name() == 'INTERPRETING'}">
+    <h3 th:text="#{interpretingRequest}">Interpreting your request</h3>
+    <p th:text="#{interpretingRequestMessage}">The page refreshes while your request is interpreted.</p>
+  </section>
   <section th:if="${interpretation != null and request.state.name() != 'AWAITING_CONSENT'}">
     <h3 th:text="#{interpretation}">Interpretation</h3>
     <p th:text="${interpretation.reasonSummary}"></p>

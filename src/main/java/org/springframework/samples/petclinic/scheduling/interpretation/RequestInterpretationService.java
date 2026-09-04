@@ -15,10 +15,13 @@ import java.time.ZonedDateTime;
 import java.util.Optional;
 
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
+import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
+import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class RequestInterpretationService {
@@ -31,15 +34,18 @@ public class RequestInterpretationService {
 
 	private final RequestLifecycleService lifecycleService;
 
+	private final SchedulingRequestRepository requestRepository;
+
 	private final Clock clock;
 
 	public RequestInterpretationService(RequestInterpreter interpreter,
 			InterpretationRepository interpretationRepository, VetRepository vetRepository,
-			RequestLifecycleService lifecycleService, Clock clock) {
+			RequestLifecycleService lifecycleService, SchedulingRequestRepository requestRepository, Clock clock) {
 		this.interpreter = interpreter;
 		this.interpretationRepository = interpretationRepository;
 		this.vetRepository = vetRepository;
 		this.lifecycleService = lifecycleService;
+		this.requestRepository = requestRepository;
 		this.clock = clock;
 	}
 
@@ -47,6 +53,28 @@ public class RequestInterpretationService {
 	public Interpretation interpret(SchedulingRequest request, String actor) {
 		InterpretationResult result = this.interpreter.interpret(request.getReasonText(),
 				request.getAvailabilityText());
+		return persist(request, result, actor);
+	}
+
+	@Transactional(readOnly = true)
+	public Optional<InterpretationInput> inputFor(Integer requestId) {
+		return this.requestRepository.findById(requestId)
+			.filter(request -> request.getState() == RequestState.INTERPRETING)
+			.map(request -> new InterpretationInput(request.getReasonText(), request.getAvailabilityText()));
+	}
+
+	public InterpretationResult interpret(InterpretationInput input) {
+		return this.interpreter.interpret(input.reasonText(), input.availabilityText());
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public Optional<Interpretation> applyResult(Integer requestId, InterpretationResult result, String actor) {
+		return this.requestRepository.findById(requestId)
+			.filter(request -> request.getState() == RequestState.INTERPRETING)
+			.map(request -> persist(request, result, actor));
+	}
+
+	private Interpretation persist(SchedulingRequest request, InterpretationResult result, String actor) {
 		Interpretation interpretation = new Interpretation();
 		interpretation.setRequest(request);
 		interpretation
@@ -89,6 +117,9 @@ public class RequestInterpretationService {
 	@Transactional(readOnly = true)
 	public Optional<Interpretation> latest(Integer requestId) {
 		return this.interpretationRepository.findTopByRequestIdOrderByVersionDesc(requestId);
+	}
+
+	public record InterpretationInput(String reasonText, String availabilityText) {
 	}
 
 }

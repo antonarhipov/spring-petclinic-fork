@@ -6,6 +6,7 @@
 package org.springframework.samples.petclinic.scheduling.web;
 
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigService;
+import org.springframework.samples.petclinic.scheduling.interpretation.AsyncInterpretationService;
 import org.springframework.samples.petclinic.scheduling.interpretation.RequestInterpretationService;
 import org.springframework.samples.petclinic.scheduling.request.ActiveRequestExistsException;
 import org.springframework.samples.petclinic.scheduling.request.IllegalRequestTransitionException;
@@ -36,16 +37,19 @@ public class OwnerRequestController {
 
 	private final RequestInterpretationService interpretationService;
 
+	private final AsyncInterpretationService asyncInterpretationService;
+
 	private final SuggestionService suggestionService;
 
 	private final ClinicConfigService clinicConfigService;
 
 	public OwnerRequestController(OwnerSchedulingAccessService accessService, RequestLifecycleService lifecycleService,
-			RequestInterpretationService interpretationService, SuggestionService suggestionService,
-			ClinicConfigService clinicConfigService) {
+			RequestInterpretationService interpretationService, AsyncInterpretationService asyncInterpretationService,
+			SuggestionService suggestionService, ClinicConfigService clinicConfigService) {
 		this.accessService = accessService;
 		this.lifecycleService = lifecycleService;
 		this.interpretationService = interpretationService;
+		this.asyncInterpretationService = asyncInterpretationService;
 		this.suggestionService = suggestionService;
 		this.clinicConfigService = clinicConfigService;
 	}
@@ -89,7 +93,7 @@ public class OwnerRequestController {
 		String actor = SecurityUtils.getCurrentUsername().orElseThrow();
 		try {
 			this.lifecycleService.consent(request, actor);
-			this.interpretationService.interpret(request, actor);
+			this.asyncInterpretationService.dispatch(request.getId(), actor);
 		}
 		catch (IllegalRequestTransitionException ex) {
 			return refused(requestId, redirectAttributes);
