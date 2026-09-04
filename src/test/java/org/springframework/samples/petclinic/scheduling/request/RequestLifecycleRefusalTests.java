@@ -197,8 +197,8 @@ class RequestLifecycleRefusalTests {
 
 		List<SchedulingRequestEvent> events = this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId());
 		assertThat(events).hasSize(4);
-		assertThat(events.get(0).getAction()).isEqualTo("consent");
-		assertThat(events.get(1).getAction()).isEqualTo("interpretation usable");
+		assertThat(events.get(0).getAction()).isEqualTo("CONSENT_GRANTED");
+		assertThat(events.get(1).getAction()).isEqualTo("INTERPRETATION_APPLIED");
 		assertThat(events.get(2).getAction()).isEqualTo("confirm feasible");
 		assertThat(events.get(3).getAction()).isEqualTo("accept");
 	}

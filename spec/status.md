@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.19 (UC-1 owner guided-flow HTTP end to end)
+- Task: task-2.20 (UC-2 ask-another HTTP end to end)
 - Status: NOT_STARTED
 
 ## Completed
@@ -32,6 +32,7 @@
 - task-2.16
 - task-2.17
 - task-2.18
+- task-2.19
 
 ## Phase Approvals
 
@@ -55,9 +56,13 @@
 - Waiver cp-1/G-1 (AC-138): phase-1 proves the thin UC-1 path only; AC-138's full interleaved lifecycle is a single claim of the later phase that completes it (re-plan removes AC-138 from phase-1 `covers`). Approved by the user on 2026-09-04.
 - cp-1/D-2 (RULE-17 default provider): NOT accepted as Δ. User decision: restore the `ollama` default per RULE-17 (`SCHEDULING_AI_PROVIDER` defaults to `ollama`; `matchIfMissing` on the Ollama interpreter); tests pin `scheduling.ai.provider=stub` in the test profile. Applied as a REVISE on task-1.6 together with REVISE 1–3.
 - task-1.3: `SecurityConfig.java` (declared) was built as `SecurityConfiguration.java`; rename recorded here per cp-1/P-4. The re-plan uses the as-built name.
+- task-2.19: user approved canonical RULE-44 event action names on 2026-09-04. `RequestLifecycleService` and its existing pinned assertion may be changed as supporting files in this task to replace `consent` / `interpretation usable` with `CONSENT_GRANTED` / `INTERPRETATION_APPLIED`.
+- task-2.19: user approved comparing the complete `(vet, start)` hold identity in the lost-hold HTTP extension on 2026-09-04; a same-time suggestion with a different veterinarian is a valid replacement.
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.19: base commit 1fe5b8b. Gate 1 artifacts: `OwnerGuidedFlowE2eTests.java`, `InterpretingPageTests.java`, and `LatchedRequestInterpreter.java` exist at the exact declared paths with all eight declared methods. Gate 2 scope: diff from 1fe5b8b plus untracked files contains only the three declared artifacts, approved supporting lifecycle/event assertion changes, and `status.md`. Gate 3 AC citations: task declares no `covers.acs`; validation citations AC-138/27/28/32 are tagged at `OwnerGuidedFlowE2eTests.java:96-98` and `InterpretingPageTests.java:73-76,122-124`. Gate 4 validation: UC-1 renders and persists every step through accepted appointment at `OwnerGuidedFlowE2eTests.java:98-157`, including canonical ordered events at `:115-128`; the real threaded executor stays blocked in INTERPRETING while the page renders exact meta refresh, edit/route are refused without mutation, and abandon succeeds at `InterpretingPageTests.java:76-120`; releasing the conforming latched double reaches INTERPRETED and renders the persisted review at `:124-142`. Gate 5 RULE-44: isolated Flyway H2, pinned clock, synchronous deterministic UC-1 and real filter chain are configured at `OwnerGuidedFlowE2eTests.java:58-61,90-94`; complete lost-hold tuple comparison is at `:213-242`; both HTTP races are at `:247-286,350-373`; the production-interface latched double is at `LatchedRequestInterpreter.java:8-24` and drives the real named executor at `InterpretingPageTests.java:43-45,76-142`. Gate 6 routes: no new routes; existing owner request routes are exercised with authenticated sessions and CSRF throughout both HTTP classes. Gate 7 plan guards: PASS after COMPLETE status (recorded by the guard run before commit). Gate 8 suite: Java 21 with Byte Buddy agent outside the socket-restricted sandbox, 239/0/0/0; `git diff --check` passes and the run changed no tracked file outside task scope. Approved deviations: canonical event actions `CONSENT_GRANTED` / `INTERPRETATION_APPLIED`; lost-hold recovery compares complete `(vet, start)`, allowing the same time with another veterinarian. Corrective attempts: fixed `List.empty()` compilation, managed-entity snapshot and one-pet concurrency fixture, then the incomplete start-only lost-hold assertion per the approved tuple decision.
 
 - task-2.18: base commit b4c7656. Gate 1 artifact: `ConcurrentActiveRequestTests.java` exists at the exact declared path with both declared methods. Gate 2 scope: diff from b4c7656 plus the untracked artifact contains only the declared test and `status.md`; the planned `RequestLifecycleService` mapping was already present and needed no production edit. Gate 3 AC citations: AC-22/23 are tagged at `ConcurrentActiveRequestTests.java:60-80`. Gate 4 validation: two READ_COMMITTED transactions synchronize before service invocation, then exactly one succeeds and one active row exists at `:62-75,97-129`; the losing transaction returns exactly `ActiveRequestExistsException`, while request/event counts each grow by only one at `:80-94`. Gate 5 RULE-9: nullable `active_pet_id` and its unique constraint remain at `V3__scheduling_schema.sql:17,28`, with service pre-check/constraint mapping at `RequestLifecycleService.java:51-87`; RULE-44 isolated Flyway H2, pinned clock and two real transaction templates are at `ConcurrentActiveRequestTests.java:37-39,63-65,97-129`. Gate 6 routes: none. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 232/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Non-obvious: the observed race reached the database guard (H2 reported `uq_scheduling_request_active_pet` for one insert), proving the pre-check is not the concurrency guarantee; the existing `saveAndFlush` catch maps that losing transaction to the named domain refusal.
 

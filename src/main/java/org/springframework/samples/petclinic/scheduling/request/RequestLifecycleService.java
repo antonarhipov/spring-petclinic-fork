@@ -91,7 +91,7 @@ public class RequestLifecycleService {
 
 	public SchedulingRequest consent(SchedulingRequest request, String actor) {
 		validateState(request, Set.of(RequestState.AWAITING_CONSENT), "consent");
-		return applyTransition(request, RequestState.INTERPRETING, actor, "consent", null, null);
+		return applyTransition(request, RequestState.INTERPRETING, actor, "CONSENT_GRANTED", null, null);
 	}
 
 	public SchedulingRequest declineConsent(SchedulingRequest request, String actor) {
@@ -123,7 +123,7 @@ public class RequestLifecycleService {
 
 	public SchedulingRequest interpretationUsable(SchedulingRequest request, String actor) {
 		validateState(request, Set.of(RequestState.INTERPRETING), "interpretation usable");
-		return applyTransition(request, RequestState.INTERPRETED, actor, "interpretation usable", null, null);
+		return applyTransition(request, RequestState.INTERPRETED, actor, "INTERPRETATION_APPLIED", null, null);
 	}
 
 	public SchedulingRequest interpretationFailed(SchedulingRequest request, String actor, String reason) {
