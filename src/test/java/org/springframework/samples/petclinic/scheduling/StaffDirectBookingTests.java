@@ -353,9 +353,9 @@ public class StaffDirectBookingTests {
 	}
 
 	private static RequestSnapshot snapshot(SchedulingRequest request) {
-		return new RequestSnapshot(request.getId(), request.getPet().getId(), request.getOwner().getId(), request.getState(),
-				request.getReasonText(), request.getAvailabilityText(), request.getActivePetId(), request.getFailedAttempts(),
-				request.getHeldVet() != null ? request.getHeldVet().getId() : null,
+		return new RequestSnapshot(request.getId(), request.getPet().getId(), request.getOwner().getId(),
+				request.getState(), request.getReasonText(), request.getAvailabilityText(), request.getActivePetId(),
+				request.getFailedAttempts(), request.getHeldVet() != null ? request.getHeldVet().getId() : null,
 				request.getHeldStart() != null ? request.getHeldStart().toInstant() : null, request.getHeldDuration(),
 				request.getCreatedAt().toInstant(), request.getUpdatedAt().toInstant());
 	}
