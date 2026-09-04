@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.13 (Solver budget and owner horizon boundary)
+- Task: task-2.14 (Suggestion and hold lifecycle)
 - Status: NOT_STARTED
 
 ## Completed
@@ -26,6 +26,7 @@
 - task-2.10
 - task-2.11
 - task-2.12
+- task-2.13
 
 ## Phase Approvals
 
@@ -52,6 +53,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.13: base commit e150cdd. Gate 1 artifact: `SolverBudgetAndHorizonTests.java` exists at the exact declared path with all five methods. Gate 2 scope: diff from e150cdd plus the untracked artifact contains only the declared test, both declared property modifications, the supporting `SuggestionService` locked-transaction integration required by the literal validation, and `status.md`. Gate 3 AC citations: AC-83/104/105/106 are tagged at `SolverBudgetAndHorizonTests.java:80-155`. Gate 4 validation: migrated grid 15, supported spent limit `1s`, and every ranked start on-grid are asserted at `:81-93`; the production-interface ranker double records same calling thread, active transaction, and `PESSIMISTIC_WRITE` vet lock at `:98-128`; interior and last horizon days are eligible at `:133-140`; the next day is owner-ineligible while a 75-minute future staff booking succeeds at `:145-155`. Gate 5 RULE-11: exact 1-second property is at `application.properties:10-11` and `src/test/resources/application.properties:12-13`, while `SuggestionService.java:74-88` locks vets in stable id order and invokes ranking synchronously in the same transaction; RULE-35 owner horizon filtering is at `DefaultSlotRanker.java:203-227` and owner/staff boundary evidence is at `SolverBudgetAndHorizonTests.java:133-155`. Gate 6 routes: none. Gate 7 plan guards: PASS after COMPLETE status (6/0/0/0). Gate 8 suite: Java 21 with Byte Buddy agent, 215/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Corrective attempt: one focused Maven invocation was interrupted before its fork started after an unusually long delay; the identical focused run then passed. Non-obvious: the current ranker API cannot identify the selected vet until solving, so confirm locks all eligible vets in stable id order before ranking; this gives the synchronous solve the required locked availability snapshot without a lock-order inversion.
 
 - task-2.12: base commit 89a81c0. Gate 1 artifact: `TimefoldHardConstraintBTests.java` exists at the exact declared path with all five methods; both declared solver files are modified. Gate 2 scope: diff from 89a81c0 plus untracked files contains only the declared test, `AppointmentConstraintProvider`, `DefaultSlotRanker`, and `status.md`. Gate 3 AC citations: AC-78/79/80/81/82 are tagged at `TimefoldHardConstraintBTests.java:53-135`. Gate 4 validation: an excluded-window candidate fails enumeration and its score-layer hard constraint at `:55-63`; an outside-union candidate fails both layers at `:68-76`; a still-open Monday candidate five weeks out fails the owner horizon at `:81-84`; overlapping appointment and hold for the same owner on another pet each fail enumeration and score-layer hard constraints at `:89-120`; four `HardMediumSoftScore` values prove preferred window > preferred vet > earlier time at `:125-135`. Gate 5 RULE-26: the complete candidate set is assembled and solved as one Timefold problem at `DefaultSlotRanker.java:99-136`; window, horizon and cross-pet checks are applied during enumeration at `:196-241`; corresponding Timefold window/cross-pet constraints and the medium/high-soft/per-minute ordering are at `AppointmentConstraintProvider.java:102-220`. Gate 6 routes: none. Gate 7 plan guards: PASS before completion. Gate 8 suite: Java 21 with Byte Buddy agent, 210/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Corrective attempt: the first focused run removed three pre-existing individually verified soft constraints from `defineConstraints`, so ConstraintVerifier could not locate them; they were restored without affecting the new hierarchy (specialty is uniform after hard filtering, previous-vet is unset in this flow, and single-entity load penalty is constant), after which all focused tests and the suite passed. Non-obvious: owner appointment overlap uses the appointment's source request to identify its owner because the stock `Pet` mapping is unidirectional; owner holds carry owner and pet directly.
 

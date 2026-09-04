@@ -73,6 +73,13 @@ public class SuggestionService {
 
 	public SchedulingRequest confirm(SchedulingRequest request, String actor) {
 		Objects.requireNonNull(request, "request must not be null");
+		// The Timefold call must observe the same locked availability snapshot that is
+		// revalidated before the hold is written (RULE-10/RULE-11). Lock in stable id
+		// order to avoid lock-order inversions when several vets are eligible.
+		this.vetRepository.findAll()
+			.stream()
+			.sorted((left, right) -> Integer.compare(left.getId(), right.getId()))
+			.forEach(vet -> this.vetRepository.findByIdForUpdate(vet.getId()).orElseThrow());
 
 		Interpretation interpretation = this.interpretationRepository
 			.findTopByRequestIdOrderByVersionDesc(request.getId())
