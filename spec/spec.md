@@ -877,3 +877,38 @@ F-19, F-21..F-25 remain open and are carried into the `tasks` re-plan as `Checkp
   UC-1; the mandatory interleaved scenario belongs to the phase that completes it.
 - **Missing web-controller ownership (upstream: tasks/review):** phase-1's artifact map assigns no controller artifact
   for its required owner/staff HTTP skeleton.
+
+## As-built convergence (cp-3)
+
+Checkpoint cp-3 was independently verified on 2026-09-04 and **REJECTED** (`convergence/cp-3.md`). No phase-3 drift is
+accepted as built. The following defects and evidence gaps remain open:
+
+- **F-26 (cp-3/C-1):** the shipped default Ollama application context does not start because
+  `OllamaRequestInterpreter` has two unmarked constructors and no default constructor; the test profile hides the bean.
+- **F-27 (cp-3/C-2):** `StaffBookingController` and `StaffRequestController` inject and call repositories directly,
+  violating RULE-2 and failing `ArchitectureBoundaryTests` with 17 violations.
+- **F-28 (cp-3/C-3):** phase-3 templates contain a missing `openRequests` key and four unkeyed visible literals; three
+  localization test methods fail.
+- **F-29 (cp-3/C-4):** leave-open direct booking updates/saves the request and inserts an event, contrary to AC-94 and
+  RULE-32's “request untouched” requirement.
+- **F-30 (cp-3/G-1):** AC-55 does not snapshot every persisted field/window of the prior AI version.
+- **F-31 (cp-3/G-2):** AC-84 does not assert ordering of rendered Needs-staff rows.
+- **F-32 (cp-3/G-3):** AC-85 does not assert held slot, age, or release action in rendered All-open rows.
+- **F-33 (cp-3/G-4):** AC-91 covers one accept and one event-only rejection, not normal-rule parity across all scopes.
+- **F-34 (cp-3/G-5):** AC-93 omits held-duration nullness and exact attach-event cardinality.
+- **F-35 (cp-3/G-6):** AC-121 samples six events without proving the complete seven-field tuple for every covered
+  transition/action and rendered timeline row.
+
+### Spec weaknesses exposed by cp-3
+
+- **“Any pet at any time” (upstream: spec/criteria):** AC-92/RULE-32 should be reconciled explicitly with RULE-35's
+  future-date, grid, and veterinarian-block limits so later tests do not choose incompatible meanings.
+
+### Plan weaknesses exposed by cp-3
+
+- **Rendered queue proof (upstream: tasks/review plan):** task-3.2 validations allow service-level ordering/details plus
+  string-presence HTTP checks, which cannot prove the rendered AC-84/85 rows.
+- **Leave-open closure contradiction (upstream: execute/task closure):** task-3.5 planned a complete unchanged snapshot
+  and no event, while the delivered test expects a same-state event.
+- **Checkpoint traceability (upstream: tasks/execute):** phase-3 covers 11 ACs, but the checkpoint report additionally
+  claims AC-90, AC-95, and AC-138 and substitutes a 19-test focused run for the required full suite.

@@ -3,7 +3,7 @@
 ## Current
 
 - Task: cp-3 (Phase 3 checkpoint)
-- Status: IN_PROGRESS
+- Status: REJECTED (cp-3 convergence; remediation required)
 
 ## Completed
 
@@ -69,6 +69,10 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- cp-3 convergence (2026-09-04): **REJECT** — 4 critical, 6 gaps, 4 protocol findings. Full suite is
+  265/4/0/0; the default application context fails at `ollamaRequestInterpreter`; phase controllers violate RULE-2;
+  phase localization is red; leave-open mutates the request contrary to AC-94/RULE-32. See `convergence/cp-3.md`.
 
 - task-3.6: base commit 411e63e. Gate 1 artifact: `StaffResolveRequestE2eTests.java` exists at the exact declared path with all three declared methods (`staffResolveQueuedRequestSteps1Through4`, `directBookAttachExtension`, `directBookLeaveOpenExtension`). Gate 2 scope: diff from 411e63e plus untracked files contains declared test artifact, modification to `bookingForm.html`, `StaffRouteSurfaceTests.java`, `StaffBookingController.java`, and `status.md`. Gate 3 AC citations: AC-138 tagged at `StaffResolveRequestE2eTests.java:104` (supporting direct booking attach/leave-open citations at `:216,284`). Gate 4 validation: `StaffResolveRequestE2eTests.java:105-213` drives UC-4 steps 1..4 through authenticated staff and owner HTTP sessions with CSRF, asserting request queue status, timeline events, staff interpretation save, solver suggestion hold placement, owner accept transition to ACCEPTED and confirmed appointment creation; `:217-281` drives direct-book attach closing the open request; `:285-345` drives direct-book leave-open keeping the open request in WITH_STAFF. Gate 5 RULE-44: real filter chain, isolated H2, and CSRF verification across every state-changing POST. Gate 6 routes: all Phase 3 staff routes exercised end to end. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
