@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.10 (Part-of-day and two-hour lead boundaries)
+- Task: task-2.11 (Timefold model and hard constraints A)
 - Status: NOT_STARTED
 
 ## Completed
@@ -23,6 +23,7 @@
 - task-2.7
 - task-2.8
 - task-2.9
+- task-2.10
 
 ## Phase Approvals
 
@@ -49,6 +50,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.10: base commit ed0a0a3. Gate 1 artifacts: `SlotBoundaryService.java` and `SlotBoundaryTests.java` exist at the exact declared paths with all four methods. Gate 2 scope: `git diff --name-only ed0a0a3` plus untracked files contains only both declared artifacts and `status.md`. Gate 3 AC citations: AC-49/50/51/52 are tagged at `SlotBoundaryTests.java:31-74`. Gate 4 validation: all 21 weekday/token intersections are compared by value and Monday EVENING is explicitly empty at `:33-54`; the first later grid point is allowed at `:57-60`; the exact two-hour grid point is both computed and allowed at `:63-68`; the preceding grid point is rejected at `:71-74`. Gate 5 rules: RULE-23 migrated opening/token intersections and empty-drop behavior are at `SlotBoundaryService.java:46-62`; RULE-24 uses the injected Clock, migrated grid interval, ceiling-to-grid calculation and inclusive boundary at `:68-78`. Gate 6 routes: none. Gate 7 plan guards: PASS after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 200/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Corrective attempt: the first full-suite run was sandboxed and its random-port tests failed to bind sockets; the identical command outside the sandbox passed. Non-obvious: Saturday/Sunday drop every token, Monday/Tue/Thu drop EVENING at the exact closing boundary, Wednesday retains EVENING 17:00-18:00, and Friday clips MORNING/AFTERNOON to 10:00-12:00/12:00-16:00.
 
 - task-2.9: base commit 17f4681. Gate 1 artifacts: `InterpretationPromptFactory.java`, `WindowMatcher.java`, and `PromptAndWindowTests.java` exist at exact declared paths with all five methods. Gate 2 scope: diff from 17f4681 plus untracked files contains only declared artifacts/modification, supporting read-only part-of-day entity/repository, and `status.md`. Gate 3 AC citations: AC-44/45/46/47/48 are tagged at `PromptAndWindowTests.java:44-102`. Gate 4 validation: 14→15, 61→60, null→30 at `:46-49`; pinned clock/horizon, every weekday hour, all three tokens, all six vets with specialties, offered specialties and owner text are compared by value at `:54-65`; weekday recurrence, exact date and inclusive date range match exact horizon dates at `:70-84`; preferred/allowed union accepts both interiors and rejects an outside slot at `:89-97`; no-positive fallback admits an interior slot while retaining exclusions at `:102-108`. Gate 5 rules: RULE-17 complete prompt is assembled from the Clock and migrated repositories at `InterpretationPromptFactory.java:50-94` and passed to the Ollama call at `OllamaRequestInterpreter.java:36-40`; RULE-20 clamp is at `InterpretationNormalizer.java:31-35`; RULE-22 union/fallback/date recurrence is at `WindowMatcher.java:24-60`; RULE-37 uses only injected Clock at `InterpretationPromptFactory.java:51-58`. Gate 6 routes: none. Gate 7 plan guards: PASS after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 196/0/0/0; working tree contains only task-attributable files. Non-obvious: `ClinicPartOfDay` and its repository expose the already-migrated table read-only to prompt construction and the next token-resolution task; no schema change was needed.
 
