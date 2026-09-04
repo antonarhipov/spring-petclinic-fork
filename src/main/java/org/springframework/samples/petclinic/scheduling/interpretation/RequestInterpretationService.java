@@ -84,6 +84,13 @@ public class RequestInterpretationService {
 			.map(request -> persist(request, result, actor));
 	}
 
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void applyModelUnavailable(Integer requestId, String reason, String actor) {
+		this.requestRepository.findById(requestId)
+			.filter(request -> request.getState() == RequestState.INTERPRETING)
+			.ifPresent(request -> this.lifecycleService.interpretationModelUnavailable(request, actor, reason));
+	}
+
 	private Interpretation persist(SchedulingRequest request, InterpretationResult result, String actor) {
 		Interpretation interpretation = new Interpretation();
 		interpretation.setRequest(request);
@@ -115,7 +122,10 @@ public class RequestInterpretationService {
 			interpretation.addWindow(persisted);
 		}
 		Interpretation saved = this.interpretationRepository.save(interpretation);
-		if (result.cannotInterpret() || isContradictory(result.windows())) {
+		if (isUnmatchedOtherSpecialty(result.specialty())) {
+			this.lifecycleService.interpretationUnmatchedSpecialty(request, actor, result.specialty());
+		}
+		else if (result.cannotInterpret() || isContradictory(result.windows())) {
 			String reason = result.cannotInterpret() ? "cannotInterpret" : "contradictory windows";
 			this.lifecycleService.interpretationFailed(request, actor, reason);
 		}
@@ -123,6 +133,17 @@ public class RequestInterpretationService {
 			this.lifecycleService.interpretationUsable(request, actor);
 		}
 		return saved;
+	}
+
+	private boolean isUnmatchedOtherSpecialty(String specialty) {
+		if (specialty == null || !specialty.startsWith("OTHER:")) {
+			return false;
+		}
+		String requested = specialty.substring("OTHER:".length()).trim();
+		return this.vetRepository.findAll()
+			.stream()
+			.flatMap(vet -> vet.getSpecialties().stream())
+			.noneMatch(offered -> offered.getName().equalsIgnoreCase(requested));
 	}
 
 	/**

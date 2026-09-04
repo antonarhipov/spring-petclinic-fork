@@ -13,6 +13,7 @@ package org.springframework.samples.petclinic.scheduling.config;
 import java.time.Duration;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
@@ -27,16 +28,15 @@ public class OllamaChatConfiguration {
 
 	static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
 
-	static final Duration READ_TIMEOUT = Duration.ofSeconds(120);
-
 	@Bean
 	ChatClient schedulingOllamaChatClient(ChatClient.Builder builder) {
 		return builder.build();
 	}
 
 	@Bean
-	RestClientCustomizer ollamaRestClientTimeoutCustomizer() {
-		HttpClientSettings settings = HttpClientSettings.defaults().withTimeouts(CONNECT_TIMEOUT, READ_TIMEOUT);
+	public RestClientCustomizer ollamaRestClientTimeoutCustomizer(
+			@Value("${scheduling.ai.timeout:60s}") Duration readTimeout) {
+		HttpClientSettings settings = HttpClientSettings.defaults().withTimeouts(CONNECT_TIMEOUT, readTimeout);
 		ClientHttpRequestFactory requestFactory = ClientHttpRequestFactoryBuilder.jdk().build(settings);
 		return builder -> builder.requestFactory(requestFactory);
 	}

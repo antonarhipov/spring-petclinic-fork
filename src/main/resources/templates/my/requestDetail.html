@@ -29,6 +29,7 @@
     <dl><dt th:text="#{estimatedMinutes}">Estimated minutes</dt><dd th:text="${interpretation.estimatedMinutes}"></dd><dt th:text="#{careType}">Care type</dt><dd th:text="${interpretation.careType}"></dd><dt th:text="#{specialties}">Specialty</dt><dd th:text="${interpretation.specialty}"></dd><dt th:text="#{preferredVet}">Preferred veterinarian</dt><dd th:text="${interpretation.preferredVet == null ? '-' : interpretation.preferredVet.firstName + ' ' + interpretation.preferredVet.lastName}"></dd></dl>
     <form th:if="${request.state.name() == 'INTERPRETED'}" th:action="@{/my/requests/{id}/confirm(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{confirmInterpretation}">Confirm interpretation</button></form>
   </section>
+  <p th:if="${request.state.name() == 'INTERPRETATION_FAILED' and request.failedAttempts >= 3}" class="alert alert-info" th:text="#{routingRecommended}">We recommend routing this request to clinic staff.</p>
   <section th:if="${request.state.name() == 'SUGGESTION_OFFERED'}">
     <h3 th:text="#{suggestion}">Suggested appointment</h3><p><span th:text="${request.heldVet.firstName + ' ' + request.heldVet.lastName}"></span> <span th:text="${request.heldStart}"></span></p>
     <form th:action="@{/my/requests/{id}/accept(id=${request.id})}" method="post"><button class="btn btn-primary" type="submit" th:text="#{acceptSuggestion}">Accept suggestion</button></form>

@@ -138,6 +138,12 @@ public class RequestLifecycleService {
 		return applyTransition(request, RequestState.WITH_STAFF, actor, "model unavailable", reason, null);
 	}
 
+	public SchedulingRequest interpretationUnmatchedSpecialty(SchedulingRequest request, String actor,
+			String specialty) {
+		validateState(request, Set.of(RequestState.INTERPRETING), "unmatched specialty");
+		return applyTransition(request, RequestState.WITH_STAFF, actor, "unmatched specialty", specialty, null);
+	}
+
 	public SchedulingRequest systemRestartInterrupted(SchedulingRequest request, String actor) {
 		validateState(request, Set.of(RequestState.INTERPRETING), "system restart");
 		return applyTransition(request, RequestState.INTERPRETATION_FAILED, actor, "system restart", "interrupted",

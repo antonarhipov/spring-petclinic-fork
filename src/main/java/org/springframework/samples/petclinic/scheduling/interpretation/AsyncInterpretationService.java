@@ -62,10 +62,15 @@ public class AsyncInterpretationService {
 	@Async(EXECUTOR_NAME)
 	public void interpret(Integer requestId, String actor) {
 		try {
-			this.interpretationService.inputFor(requestId).ifPresent(input -> {
-				InterpretationResult result = this.interpretationService.interpret(input);
-				this.interpretationService.applyResult(requestId, result, actor);
-			});
+			try {
+				this.interpretationService.inputFor(requestId).ifPresent(input -> {
+					InterpretationResult result = this.interpretationService.interpret(input);
+					this.interpretationService.applyResult(requestId, result, actor);
+				});
+			}
+			catch (ModelUnavailableException ex) {
+				this.interpretationService.applyModelUnavailable(requestId, ex.getMessage(), actor);
+			}
 		}
 		finally {
 			this.inFlight.remove(requestId);

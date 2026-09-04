@@ -22,11 +22,11 @@ class OllamaChatConfigurationTests {
 	@Test
 	void configuresTheProvenJdkConnectAndReadTimeouts() {
 		RestClient.Builder builder = RestClient.builder();
-		new OllamaChatConfiguration().ollamaRestClientTimeoutCustomizer().customize(builder);
+		new OllamaChatConfiguration().ollamaRestClientTimeoutCustomizer(Duration.ofSeconds(60)).customize(builder);
 
 		Object requestFactory = ReflectionTestUtils.getField(builder, "requestFactory");
 		assertThat(requestFactory).isInstanceOf(JdkClientHttpRequestFactory.class);
-		assertThat(ReflectionTestUtils.getField(requestFactory, "readTimeout")).isEqualTo(Duration.ofSeconds(120));
+		assertThat(ReflectionTestUtils.getField(requestFactory, "readTimeout")).isEqualTo(Duration.ofSeconds(60));
 		HttpClient httpClient = (HttpClient) ReflectionTestUtils.getField(requestFactory, "httpClient");
 		assertThat(httpClient.connectTimeout()).contains(Duration.ofSeconds(10));
 	}
