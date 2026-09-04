@@ -96,6 +96,9 @@
       <button type="submit" class="btn btn-success" th:text="#{suggest}">Suggest</button>
     </form>
 
+    <a class="btn btn-info" th:href="@{/staff/calendar/pick/{id}(id=${request.id})}"
+       th:text="#{calendar}">Pick on calendar</a>
+
     <a class="btn btn-default" th:href="@{/staff/appointments/new(requestId=${request.id}, petId=${request.pet.id})}"
        th:text="#{bookDirectly}">Book directly</a>
 

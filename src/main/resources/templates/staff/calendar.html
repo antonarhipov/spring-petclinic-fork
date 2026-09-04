@@ -3,14 +3,18 @@
 <body>
 <h2 th:text="#{calendar}">Calendar</h2>
 
+<th:block th:if="${calendarView != null}">
 <div class="calendar-header mb-3 d-flex align-items-center justify-content-between">
 	<div class="btn-group">
-		<a th:href="@{/staff/calendar(date=${calendarView.prevDate})}" class="btn btn-outline-secondary" th:text="#{previous}">Previous</a>
-		<a th:href="@{/staff/calendar(date=${calendarView.today})}" class="btn btn-outline-secondary" th:text="#{calendar}">Today</a>
-		<a th:href="@{/staff/calendar(date=${calendarView.nextDate})}" class="btn btn-outline-secondary" th:text="#{next}">Next</a>
+		<a th:if="${pickingRequestId == null}" th:href="@{/staff/calendar(date=${calendarView.prevDateIso})}" class="btn btn-outline-secondary" th:text="#{previous}">Previous</a>
+		<a th:if="${pickingRequestId != null}" th:href="@{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId},date=${calendarView.prevDateIso})}" class="btn btn-outline-secondary" th:text="#{previous}">Previous</a>
+		<a th:if="${pickingRequestId == null}" th:href="@{/staff/calendar(date=${calendarView.todayIso})}" class="btn btn-outline-secondary" th:text="#{calendar}">Today</a>
+		<a th:if="${pickingRequestId != null}" th:href="@{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId},date=${calendarView.todayIso})}" class="btn btn-outline-secondary" th:text="#{calendar}">Today</a>
+		<a th:if="${pickingRequestId == null}" th:href="@{/staff/calendar(date=${calendarView.nextDateIso})}" class="btn btn-outline-secondary" th:text="#{next}">Next</a>
+		<a th:if="${pickingRequestId != null}" th:href="@{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId},date=${calendarView.nextDateIso})}" class="btn btn-outline-secondary" th:text="#{next}">Next</a>
 	</div>
-	<form th:action="@{/staff/calendar}" method="get" class="d-inline-flex align-items-center">
-		<input type="date" name="date" th:value="${calendarView.date}" th:min="${calendarView.minDate}" th:max="${calendarView.maxDate}" class="form-control" onchange="this.form.submit()" />
+	<form th:action="${pickingRequestId == null} ? @{/staff/calendar} : @{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId})}" method="get" class="d-inline-flex align-items-center">
+		<input type="date" name="date" th:value="${calendarView.dateIso}" th:min="${calendarView.minDateIso}" th:max="${calendarView.maxDateIso}" class="form-control" onchange="this.form.submit()" />
 	</form>
 </div>
 
@@ -39,11 +43,22 @@
 		<tr th:each="row : ${calendarView.gridRows}">
 			<td class="time-cell" th:text="${row.timeLabel}">09:00</td>
 			<td th:each="cell : ${row.cells}" th:class="${cell.state}">
-				<span th:text="${cell.label}">Free</span>
+				<form th:if="${pickingRequestId != null and cell.state == 'free'}" th:action="@{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId})}" method="post">
+					<input type="hidden" name="vetId" th:value="${cell.vetId}" />
+					<input type="hidden" name="appointmentDate" th:value="${calendarView.dateIso}" />
+					<input type="hidden" name="startTime" th:value="${cell.timeLabel}" />
+					<input type="hidden" name="durationMinutes" value="30" />
+					<button type="submit" class="btn btn-link p-0" th:text="${cell.label}">Free</button>
+				</form>
+				<a th:if="${pickingRequestId == null and cell.state == 'free'}"
+				   th:href="@{/staff/appointments/new(vetId=${cell.vetId},start=${calendarView.dateIso + 'T' + cell.timeLabel})}"
+				   th:text="${cell.label}">Free</a>
+				<span th:if="${cell.state != 'free'}" th:text="${cell.label}">Unavailable</span>
 			</td>
 		</tr>
 	</tbody>
 </table>
+</th:block>
 
 </body>
 </html>

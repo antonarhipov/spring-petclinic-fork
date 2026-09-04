@@ -208,6 +208,50 @@ public class StaffResolveRequestE2eTests {
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("CONFIRMED")))
 			.andExpect(content().string(containsString(pet.getName())));
+
+		// Second scenario: UC-4 Step 3 executed via calendar picking branch
+		SchedulingRequest request2 = new SchedulingRequest();
+		request2.setOwner(owner);
+		request2.setPet(pet);
+		request2.setState(RequestState.AWAITING_CONSENT);
+		request2.setReasonText("Follow-up check");
+		request2.setAvailabilityText("anytime");
+		request2.setActivePetId(pet.getId());
+		request2.setFailedAttempts(0);
+		request2.setCreatedAt(now.minusMinutes(10));
+		request2.setUpdatedAt(now.minusMinutes(10));
+		request2 = this.requestRepository.saveAndFlush(request2);
+
+		request2 = this.requestLifecycleService.declineConsent(request2, "george");
+		assertThat(request2.getState()).isEqualTo(RequestState.WITH_STAFF);
+
+		// Staff opens calendar picking page
+		this.mockMvc.perform(get("/staff/calendar/pick/" + request2.getId() + "?date=2026-09-08").session(staffSession))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("action=\"/staff/calendar/pick/" + request2.getId() + "\"")));
+
+		// Staff picks a free slot on Tuesday 09:00 with Vet 1
+		this.mockMvc
+			.perform(post("/staff/calendar/pick/" + request2.getId()).session(staffSession)
+				.with(csrf())
+				.param("vetId", "1")
+				.param("appointmentDate", "2026-09-08")
+				.param("startTime", "09:00")
+				.param("durationMinutes", "30"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/staff/requests/" + request2.getId()));
+
+		SchedulingRequest offered2 = this.requestRepository.findById(request2.getId()).orElseThrow();
+		assertThat(offered2.getState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
+		assertThat(offered2.hasHold()).isTrue();
+
+		// Owner accepts suggestion
+		this.mockMvc.perform(post("/my/requests/" + request2.getId() + "/accept").session(ownerSession).with(csrf()))
+			.andExpect(status().is3xxRedirection());
+
+		SchedulingRequest accepted2 = this.requestRepository.findById(request2.getId()).orElseThrow();
+		assertThat(accepted2.getState()).isEqualTo(RequestState.ACCEPTED);
+		assertThat(accepted2.hasHold()).isFalse();
 	}
 
 	@Test

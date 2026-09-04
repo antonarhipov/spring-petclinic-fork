@@ -28,6 +28,30 @@ public record CalendarDayView(LocalDate date, LocalDate prevDate, LocalDate next
 		LocalDate minDate, LocalDate maxDate, String clinicHoursSummary, boolean clinicClosed,
 		List<VetColumn> vetColumns, List<GridRow> gridRows) {
 
+	public String getDateIso() {
+		return this.date != null ? this.date.toString() : "";
+	}
+
+	public String getPrevDateIso() {
+		return this.prevDate != null ? this.prevDate.toString() : "";
+	}
+
+	public String getNextDateIso() {
+		return this.nextDate != null ? this.nextDate.toString() : "";
+	}
+
+	public String getTodayIso() {
+		return this.today != null ? this.today.toString() : "";
+	}
+
+	public String getMinDateIso() {
+		return this.minDate != null ? this.minDate.toString() : "";
+	}
+
+	public String getMaxDateIso() {
+		return this.maxDate != null ? this.maxDate.toString() : "";
+	}
+
 	public record VetColumn(Integer vetId, String vetName, String specialties, String openingHoursLayer,
 			String effectiveBlocksLayer, int bookedCount, int bookedMinutes, int heldCount, int heldMinutes,
 			int remainingCapacityMinutes) {

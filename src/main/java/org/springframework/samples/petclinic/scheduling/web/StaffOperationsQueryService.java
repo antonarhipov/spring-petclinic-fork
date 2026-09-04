@@ -18,9 +18,12 @@ package org.springframework.samples.petclinic.scheduling.web;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
+import org.springframework.samples.petclinic.scheduling.interpretation.Interpretation;
+import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.vet.Vet;
@@ -40,11 +43,14 @@ public class StaffOperationsQueryService {
 
 	private final OwnerRepository ownerRepository;
 
+	private final InterpretationRepository interpretationRepository;
+
 	public StaffOperationsQueryService(SchedulingRequestRepository requestRepository, VetRepository vetRepository,
-			OwnerRepository ownerRepository) {
+			OwnerRepository ownerRepository, InterpretationRepository interpretationRepository) {
 		this.requestRepository = requestRepository;
 		this.vetRepository = vetRepository;
 		this.ownerRepository = ownerRepository;
+		this.interpretationRepository = interpretationRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -70,8 +76,19 @@ public class StaffOperationsQueryService {
 	}
 
 	@Transactional(readOnly = true)
+	public Vet getVet(Integer vetId) {
+		return this.vetRepository.findById(vetId)
+			.orElseThrow(() -> new IllegalArgumentException("Vet not found: " + vetId));
+	}
+
+	@Transactional(readOnly = true)
 	public List<Pet> findPets() {
 		return this.ownerRepository.findAll().stream().flatMap(owner -> owner.getPets().stream()).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public Optional<Interpretation> getLatestInterpretation(Integer requestId) {
+		return this.interpretationRepository.findTopByRequestIdOrderByVersionDesc(requestId);
 	}
 
 }
