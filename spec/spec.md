@@ -824,7 +824,10 @@ Handoff to the criteria step. One observable behavior per entry, in document ord
 
 Checkpoint cp-1 was independently verified on 2026-09-04 (REJECT), revised by commit 7a5be39, and re-verified on
 2026-09-04 (REJECT again; see `convergence/cp-1.md`). Findings F-1..F-13 of the first verification are closed by
-7a5be39 as verified in the report, except that F-7 continues as F-18.
+7a5be39 as verified in the report, except that F-7 continues as F-18. The REJECT was answered by four revision commits
+(`8d35373`, `8b55b4a`, `6e32f14`, `df964f8`) and re-verified in task mode on 2026-09-04 as **APPROVED WITH NOTES**
+(`convergence/cp-1.1.md`): F-14, F-15, F-16 and F-20 closed; F-17 and F-18 waived by the user (`status.md` Deviations);
+F-19, F-21..F-25 remain open and are carried into the `tasks` re-plan as `Checkpoint 1 Remediation`.
 
 ### Δ accepted as built (cp-1)
 
@@ -836,19 +839,19 @@ Checkpoint cp-1 was independently verified on 2026-09-04 (REJECT), revised by co
 
 ### F-n open (not accepted as as-built behavior)
 
-- **F-14 (cp-1/C-1):** `GET /my/requests/{id}` returns 500 (`LazyInitializationException` on `request.pet`) — UC-1 steps 2–7 cannot be walked.
-- **F-15 (cp-1/C-2):** `GET /my/appointments` returns 500 once an appointment exists (`LazyInitializationException` on `appointment.vet`) — UC-1 step 8 / owner landing page.
-- **F-16 (cp-1/C-3):** a refused lifecycle transition on an owner action route surfaces as an unhandled 500 instead of a refusal notice.
-- **F-17 (cp-1/C-4):** the suite contains three random-port test classes; AC-139 requires exactly one smoke test (waiver candidate).
-- **F-18 (cp-1/G-1, ex F-7):** AC-138 is delivered as the thin owner-only UC-1 1–8; the interleaved owner/staff scenario is absent (plan double-claims AC-138; waiver candidate for cp-1).
+- **F-14 (cp-1/C-1) — CLOSED at cp-1.1 by `8d35373`:** `GET /my/requests/{id}` returned 500 (`LazyInitializationException` on `request.pet`); the owner read models now fetch every rendered association (`@EntityGraph` on `SchedulingRequestRepository.findByIdAndOwnerId`, `InterpretationRepository.findTopByRequestIdOrderByVersionDesc`); reproduced 200 at runtime.
+- **F-15 (cp-1/C-2) — CLOSED at cp-1.1 by `8d35373`:** `GET /my/appointments` returned 500 once an appointment existed; `AppointmentRepository.findAllOwnedBy`/`findOwnedById` now `JOIN FETCH` pet and vet; reproduced 200 at runtime.
+- **F-16 (cp-1/C-3) — CLOSED at cp-1.1 by `8b55b4a`:** a refused lifecycle transition on an owner action route surfaced as a 500; the owner action handlers now redirect to the request with the keyed notice `requestActionNotAllowed` (11 bundles); HTTP-level test `6e32f14`; reproduced 302 at runtime.
+- **F-17 (cp-1/C-4) — WAIVED (user, 2026-09-04, `status.md` Deviations):** the two stock random-port classes predate the feature; AC-139 is read as exactly one *feature* random-port smoke test (`SmokeTests`).
+- **F-18 (cp-1/G-1, ex F-7) — WAIVED for cp-1 (user, 2026-09-04, `status.md` Deviations):** phase-1 delivers the thin owner-only UC-1 1–8 (now rendered without a test transaction, `6e32f14`); the interleaved owner/staff scenario of AC-138 is a single claim of the phase that completes it; the re-plan removes AC-138 from phase-1 `covers`.
 - **F-19 (cp-1/G-2):** AC-21 pet-selector exclusion is not asserted on the rendered form.
-- **F-20 (cp-1/G-3):** AC-137 — tests do not pin `scheduling.ai.provider=stub` nor assert that the live model is never called.
+- **F-20 (cp-1/G-3) — CLOSED at cp-1.1 by `df964f8`:** AC-137 — `src/test/resources/application.properties` pins `scheduling.ai.provider=stub`; `SchedulingProviderPinningTests` asserts the stub bean, the absence of any Ollama interpreter/`ChatClient` bean in the test context, and that the shipped default stays `${SCHEDULING_AI_PROVIDER:ollama}`.
 - **F-21 (cp-1/G-4):** AC-118 has no owner appointment view/cancel route in phase-1; only service-level evidence exists.
 - **F-22 (cp-1/G-5):** 29 of 43 phase-1 ACs are not cited by any test; two citations are mis-scoped.
 - **F-23 (cp-1/G-6):** AC-58 — Timefold ranking and "top slot offered" are not asserted.
 - **F-24 (cp-1/G-7):** AC-7/16/17/18/19/140 rendered-page evidence covers two pages only; session invalidation, banner on every owner page, read-only My pets, layout reuse and Java literals are unproven.
-- **F-25 (cp-1/G-8):** no HTTP-level legal-URL/illegal-state refusal test for the owner action routes.
-- **Open decision (cp-1/D-2, P-5):** RULE-17 default provider is `ollama` in the spec but `stub` as built; not accepted as Δ until the user decides (record in `status.md` → Deviations).
+- **F-25 (cp-1/G-8):** no HTTP-level legal-URL/illegal-state refusal test for the owner action routes — *narrowed at cp-1.1:* `SchedulingLifecycleE2eTests` now covers one route/state (decline in ACCEPTED, `6e32f14`); the remaining routes/states stay open.
+- **Decision closed (cp-1/D-2, P-5) at cp-1.1:** RULE-17 default provider `ollama` restored by `df964f8` (user decision, `status.md` Deviations); not a Δ — the spec text stands as written. New cosmetic K-4 (cp-1.1): the owner action handlers catch the broad `IllegalStateException`; carried into the re-plan with K-1..K-3.
 
 ### Spec weaknesses exposed by cp-1
 
