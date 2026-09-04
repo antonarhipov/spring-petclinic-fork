@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.11 (Timefold model and hard constraints A)
+- Task: task-2.12 (Timefold hard constraints B and ranking priority)
 - Status: NOT_STARTED
 
 ## Completed
@@ -24,6 +24,7 @@
 - task-2.8
 - task-2.9
 - task-2.10
+- task-2.11
 
 ## Phase Approvals
 
@@ -50,6 +51,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.11: base commit 7982359. Gate 1 artifact: `TimefoldHardConstraintATests.java` exists at the exact declared path with all five methods; every declared production modification is present. Gate 2 scope: diff from 7982359 plus untracked files contains only the test artifact, the four declared solver modifications, and `status.md`. Gate 3 AC citations: AC-73/74/75/76/77 are tagged at `TimefoldHardConstraintATests.java:56-132`. Gate 4 validation: the model has one annotated entity, exactly one `slot` planning variable, one assignment and the exact enumerated slot, with the same outside-hours candidate rejected by enumeration and scoring at `:58-73`; outside opening is rejected at both layers at `:78-83`; a 30-minute slot spanning the 12:00-13:00 split gap is rejected at both layers at `:88-97`; appointment and hold overlap each fail enumeration and their matching hard constraint at `:102-123`; missing specialty fails enumeration and hard scoring at `:128-132`. Gate 5 rules: RULE-26 exact feasible-slot construction and one assignment are at `ScheduleSolution.java:76-84`, dual enumeration checks at `DefaultSlotRanker.java:146-210`, migrated hours/continuous blocks on the planning entity at `AppointmentAssignment.java:239-267`, and all score-layer hard constraints at `AppointmentConstraintProvider.java:35-92`; RULE-27 ranker constructs and solves one assignment per request/vet over enumerated slots at `DefaultSlotRanker.java:101-139`. Gate 6 routes: none. Gate 7 plan guards: PASS before and after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 205/0/0/0 outside the socket-restricted sandbox; working tree contains only task-attributable files. Non-obvious: production always supplies migrated opening/block data to the assignment; the legacy-hours fallback remains only for the pre-existing isolated constraint unit tests that construct assignments without problem facts.
 
 - task-2.10: base commit ed0a0a3. Gate 1 artifacts: `SlotBoundaryService.java` and `SlotBoundaryTests.java` exist at the exact declared paths with all four methods. Gate 2 scope: `git diff --name-only ed0a0a3` plus untracked files contains only both declared artifacts and `status.md`. Gate 3 AC citations: AC-49/50/51/52 are tagged at `SlotBoundaryTests.java:31-74`. Gate 4 validation: all 21 weekday/token intersections are compared by value and Monday EVENING is explicitly empty at `:33-54`; the first later grid point is allowed at `:57-60`; the exact two-hour grid point is both computed and allowed at `:63-68`; the preceding grid point is rejected at `:71-74`. Gate 5 rules: RULE-23 migrated opening/token intersections and empty-drop behavior are at `SlotBoundaryService.java:46-62`; RULE-24 uses the injected Clock, migrated grid interval, ceiling-to-grid calculation and inclusive boundary at `:68-78`. Gate 6 routes: none. Gate 7 plan guards: PASS after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 200/0/0/0 outside the socket-restricted sandbox; tree contains only task-attributable files. Corrective attempt: the first full-suite run was sandboxed and its random-port tests failed to bind sockets; the identical command outside the sandbox passed. Non-obvious: Saturday/Sunday drop every token, Monday/Tue/Thu drop EVENING at the exact closing boundary, Wednesday retains EVENING 17:00-18:00, and Friday clips MORNING/AFTERNOON to 10:00-12:00/12:00-16:00.
 

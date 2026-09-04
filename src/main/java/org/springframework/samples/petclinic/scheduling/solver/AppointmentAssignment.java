@@ -27,6 +27,8 @@ import ai.timefold.solver.core.api.domain.common.PlanningId;
 import ai.timefold.solver.core.api.domain.entity.PlanningEntity;
 import ai.timefold.solver.core.api.domain.variable.PlanningVariable;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.clinic.ClinicOpeningHour;
+import org.springframework.samples.petclinic.scheduling.clinic.VetWeeklyBlock;
 import org.springframework.samples.petclinic.scheduling.interpretation.AvailabilityWindow;
 import org.springframework.samples.petclinic.scheduling.interpretation.WindowKind;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
@@ -58,6 +60,10 @@ public class AppointmentAssignment {
 	private int duration = 30;
 
 	private List<AvailabilityWindow> preferredWindows = new ArrayList<>();
+
+	private List<ClinicOpeningHour> clinicOpeningHours = new ArrayList<>();
+
+	private List<VetWeeklyBlock> vetWorkingBlocks = new ArrayList<>();
 
 	@PlanningVariable
 	private AppointmentSlot slot;
@@ -161,6 +167,14 @@ public class AppointmentAssignment {
 		this.preferredWindows = preferredWindows;
 	}
 
+	public void setClinicOpeningHours(List<ClinicOpeningHour> clinicOpeningHours) {
+		this.clinicOpeningHours = clinicOpeningHours != null ? clinicOpeningHours : List.of();
+	}
+
+	public void setVetWorkingBlocks(List<VetWeeklyBlock> vetWorkingBlocks) {
+		this.vetWorkingBlocks = vetWorkingBlocks != null ? vetWorkingBlocks : List.of();
+	}
+
 	public Vet getVet() {
 		return this.slot == null ? null : this.slot.vet();
 	}
@@ -232,24 +246,31 @@ public class AppointmentAssignment {
 			return false;
 		}
 
-		DayOfWeek dow = start.getDayOfWeek();
-		LocalTime startT = start.toLocalTime();
-		LocalTime endT = end.toLocalTime();
+		if (this.clinicOpeningHours.isEmpty()) {
+			return legacyClinicHours(start, end);
+		}
+		return this.clinicOpeningHours.stream()
+			.filter(hours -> hours.getDayOfWeek() == start.getDayOfWeek() && !hours.isClosed())
+			.anyMatch(hours -> !start.toLocalTime().isBefore(hours.getOpenTime())
+					&& !end.toLocalTime().isAfter(hours.getCloseTime()));
+	}
 
-		if (dow == DayOfWeek.SUNDAY) {
+	public boolean isWithinContinuousVetBlock() {
+		if (getVet() == null || getStartTime() == null || this.vetWorkingBlocks.isEmpty()) {
 			return false;
 		}
-		else if (dow == DayOfWeek.SATURDAY) {
-			LocalTime open = LocalTime.of(9, 0);
-			LocalTime close = LocalTime.of(13, 0);
-			return !startT.isBefore(open) && !endT.isAfter(close);
-		}
-		else {
-			// Monday to Friday: 08:30 to 17:30
-			LocalTime open = LocalTime.of(8, 30);
-			LocalTime close = LocalTime.of(17, 30);
-			return !startT.isBefore(open) && !endT.isAfter(close);
-		}
+		return this.vetWorkingBlocks.stream()
+			.filter(block -> block.getVet() != null && Objects.equals(block.getVet().getId(), getVet().getId()))
+			.filter(block -> block.getDayOfWeek() == getStartTime().getDayOfWeek())
+			.anyMatch(block -> !getStartTime().toLocalTime().isBefore(block.getStartTime())
+					&& !getEndTime().toLocalTime().isAfter(block.getEndTime()));
+	}
+
+	private static boolean legacyClinicHours(ZonedDateTime start, ZonedDateTime end) {
+		DayOfWeek dow = start.getDayOfWeek();
+		LocalTime open = dow == DayOfWeek.SATURDAY ? LocalTime.of(9, 0) : LocalTime.of(8, 30);
+		LocalTime close = dow == DayOfWeek.SATURDAY ? LocalTime.of(13, 0) : LocalTime.of(17, 30);
+		return dow != DayOfWeek.SUNDAY && !start.toLocalTime().isBefore(open) && !end.toLocalTime().isAfter(close);
 	}
 
 	public boolean hasSpecialtyMismatch() {

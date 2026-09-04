@@ -74,6 +74,17 @@ public class ScheduleSolution {
 		this.activeHolds = activeHolds != null ? activeHolds : new ArrayList<>();
 	}
 
+	/**
+	 * Builds the single-request problem directly from already-enumerated feasible slots.
+	 */
+	public ScheduleSolution(List<AppointmentSlot> feasibleSlots, AppointmentAssignment assignment,
+			List<Appointment> existingAppointments, List<SchedulingRequest> activeHolds) {
+		this.slotList = feasibleSlots != null ? feasibleSlots : new ArrayList<>();
+		this.assignmentList = assignment != null ? List.of(assignment) : new ArrayList<>();
+		this.existingAppointments = existingAppointments != null ? existingAppointments : new ArrayList<>();
+		this.activeHolds = activeHolds != null ? activeHolds : new ArrayList<>();
+	}
+
 	public HardMediumSoftScore getScore() {
 		return this.score;
 	}

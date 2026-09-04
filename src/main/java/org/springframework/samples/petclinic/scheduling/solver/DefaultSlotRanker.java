@@ -102,7 +102,9 @@ public class DefaultSlotRanker implements SlotRanker {
 			if (!hasRequiredSpecialty(vet, interpretation)) {
 				continue;
 			}
-			List<ZonedDateTime> candidates = enumerate(vet, clinicHours, config, now, duration);
+			List<VetWeeklyBlock> blocks = this.weeklyBlockRepository.findByVetId(vet.getId());
+			List<ZonedDateTime> candidates = enumerate(vet, clinicHours, blocks, config, now, duration, appointments,
+					holds, interpretation == null ? null : interpretation.getSpecialty());
 			if (candidates.isEmpty()) {
 				continue;
 			}
@@ -114,8 +116,11 @@ public class DefaultSlotRanker implements SlotRanker {
 			if (interpretation != null && interpretation.getPreferredVet() != null) {
 				assignment.setPreferredVetId(interpretation.getPreferredVet().getId());
 			}
-			ScheduleSolution problem = new ScheduleSolution(List.of(vet), candidates, List.of(assignment), appointments,
-					holds);
+			assignment.setClinicOpeningHours(clinicHours);
+			assignment.setVetWorkingBlocks(blocks);
+			ScheduleSolution problem = new ScheduleSolution(
+					candidates.stream().map(candidate -> new AppointmentSlot(vet, candidate)).toList(), assignment,
+					appointments, holds);
 			ScheduleSolution solved;
 			try {
 				solved = this.solverManager.solve(UUID.randomUUID().toString(), problem).getFinalBestSolution();
@@ -138,9 +143,9 @@ public class DefaultSlotRanker implements SlotRanker {
 		return ranked;
 	}
 
-	private List<ZonedDateTime> enumerate(Vet vet, List<ClinicOpeningHour> clinicHours, ClinicConfig config,
-			ZonedDateTime now, int duration) {
-		List<VetWeeklyBlock> blocks = this.weeklyBlockRepository.findByVetId(vet.getId());
+	private List<ZonedDateTime> enumerate(Vet vet, List<ClinicOpeningHour> clinicHours, List<VetWeeklyBlock> blocks,
+			ClinicConfig config, ZonedDateTime now, int duration, List<Appointment> appointments,
+			List<SchedulingRequest> holds, String requiredSpecialty) {
 		List<LocalDate> unavailable = this.exceptionRepository.findByVetId(vet.getId())
 			.stream()
 			.filter(VetException::isUnavailable)
@@ -170,7 +175,8 @@ public class DefaultSlotRanker implements SlotRanker {
 				for (LocalTime cursor = start; !cursor.plusMinutes(duration).isAfter(end); cursor = cursor
 					.plusMinutes(config.getGridIntervalMinutes())) {
 					ZonedDateTime candidate = date.atTime(cursor).atZone(this.clock.getZone());
-					if (candidate.isAfter(now)) {
+					if (candidate.isAfter(now) && isCandidateFeasible(vet, candidate, duration, clinicHours, blocks,
+							appointments, holds, requiredSpecialty)) {
 						result.add(candidate);
 					}
 				}
@@ -179,14 +185,42 @@ public class DefaultSlotRanker implements SlotRanker {
 		return result;
 	}
 
+	static boolean isCandidateFeasible(Vet vet, ZonedDateTime start, int duration, List<ClinicOpeningHour> clinicHours,
+			List<VetWeeklyBlock> blocks, List<Appointment> appointments, List<SchedulingRequest> holds,
+			String requiredSpecialty) {
+		ZonedDateTime end = start.plusMinutes(duration);
+		boolean withinOpening = start.toLocalDate().equals(end.toLocalDate()) && clinicHours.stream()
+			.filter(hours -> hours.getDayOfWeek() == start.getDayOfWeek() && !hours.isClosed())
+			.anyMatch(hours -> !start.toLocalTime().isBefore(hours.getOpenTime())
+					&& !end.toLocalTime().isAfter(hours.getCloseTime()));
+		boolean withinBlock = blocks.stream()
+			.filter(block -> block.getVet() != null && block.getVet().getId().equals(vet.getId()))
+			.filter(block -> block.getDayOfWeek() == start.getDayOfWeek())
+			.anyMatch(block -> !start.toLocalTime().isBefore(block.getStartTime())
+					&& !end.toLocalTime().isAfter(block.getEndTime()));
+		boolean appointmentFree = appointments.stream()
+			.filter(existing -> existing.getVet() != null && existing.getVet().getId().equals(vet.getId()))
+			.noneMatch(existing -> start.isBefore(existing.getEndTime()) && end.isAfter(existing.getStartTime()));
+		boolean holdFree = holds.stream()
+			.filter(hold -> hold.getHeldVet() != null && hold.getHeldVet().getId().equals(vet.getId()))
+			.filter(hold -> hold.getHeldStart() != null && hold.getHeldDuration() != null)
+			.noneMatch(hold -> start.isBefore(hold.getHeldStart().plusMinutes(hold.getHeldDuration()))
+					&& end.isAfter(hold.getHeldStart()));
+		return withinOpening && withinBlock && appointmentFree && holdFree
+				&& hasRequiredSpecialty(vet, requiredSpecialty);
+	}
+
 	private static boolean hasRequiredSpecialty(Vet vet, Interpretation interpretation) {
-		if (interpretation == null || interpretation.getSpecialty() == null
-				|| interpretation.getSpecialty().isBlank()) {
+		return hasRequiredSpecialty(vet, interpretation == null ? null : interpretation.getSpecialty());
+	}
+
+	private static boolean hasRequiredSpecialty(Vet vet, String requiredSpecialty) {
+		if (requiredSpecialty == null || requiredSpecialty.isBlank()) {
 			return true;
 		}
 		return vet.getSpecialties()
 			.stream()
-			.anyMatch(specialty -> specialty.getName().equalsIgnoreCase(interpretation.getSpecialty().trim()));
+			.anyMatch(specialty -> specialty.getName().equalsIgnoreCase(requiredSpecialty.trim()));
 	}
 
 	private static org.springframework.samples.petclinic.scheduling.interpretation.AvailabilityWindow toValue(

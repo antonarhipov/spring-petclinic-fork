@@ -34,9 +34,16 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
 	@Override
 	public Constraint[] defineConstraints(ConstraintFactory factory) {
 		return new Constraint[] { vetDoubleBooking(factory), vetDoubleBookingWithExisting(factory),
-				clinicOperatingHours(factory), specialtyMismatch(factory), activeHoldCollision(factory),
-				preferredTimeWindow(factory), specialtyMatchingPreference(factory), vetContinuity(factory),
-				loadBalancing(factory) };
+				clinicOperatingHours(factory), continuousVetWorkingBlock(factory), specialtyMismatch(factory),
+				activeHoldCollision(factory), preferredTimeWindow(factory), specialtyMatchingPreference(factory),
+				vetContinuity(factory), loadBalancing(factory) };
+	}
+
+	Constraint continuousVetWorkingBlock(ConstraintFactory factory) {
+		return factory.forEach(AppointmentAssignment.class)
+			.filter(a -> a.getStartTime() != null && !a.isWithinContinuousVetBlock())
+			.penalize(HardMediumSoftScore.ONE_HARD)
+			.asConstraint("Continuous veterinarian working block");
 	}
 
 	// H1 (Hard): Vet double-booking (AC-111)
