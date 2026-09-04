@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-1.6 (cp-3/C-1 revision)
-- Status: COMPLETE (cp-3/C-1 revision)
+- Task: task-3.5 (cp-3/C-4,G-5 revision)
+- Status: COMPLETE (cp-3/C-4,G-5 revision)
 
 ## Completed
 
@@ -69,6 +69,16 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.5 cp-3/C-4,G-5 revision: base commit `4758b8e`. Gate 1 artifacts remain at exact declared paths. Gate 2 scope:
+  only `StaffBookingService.java`, `StaffDirectBookingTests.java`, and `status.md`. Gate 3 AC citations remain AC-92/93/94.
+  Gate 4: `StaffDirectBookingTests.java:166-196` asserts all three hold fields null and exactly one added attach event for
+  every non-terminal state; `:217-245,355-366` compares every persisted request field before/after leave-open and the
+  unchanged request-event count. Gate 5 RULE-32: `StaffBookingService.java:109-112` now creates only an unlinked
+  appointment for leave-open and never invokes the request lifecycle. Focused Java 21 validation:
+  `StaffDirectBookingTests` 4/0/0/0; the first corrective attempt exposed ZonedDateTime zone-id normalization by H2,
+  so the snapshot compares timestamp instants while preserving every stored value. Remaining known cp-3 suite failures
+  belong to subsequent revision directives.
 
 - task-1.6 cp-3/C-1 revision: base commit `1cbfd74`. Gate 1 artifact/supporting test:
   `OllamaRequestInterpreter.java` and `OllamaProviderContextTests.java` exist. Gate 2 scope: only those files and

@@ -107,11 +107,8 @@ public class StaffBookingService {
 				return appointment;
 			}
 			else {
-				Appointment appointment = this.appointmentLifecycleService.bookAppointment(pet, vet, startTime,
-						duration, reason, null, effectiveActor);
-				this.requestLifecycleService.staffBookLeaveOpen(openRequest, effectiveActor,
-						"staff direct booking leave open");
-				return appointment;
+				return this.appointmentLifecycleService.bookAppointment(pet, vet, startTime, duration, reason, null,
+						effectiveActor);
 			}
 		}
 

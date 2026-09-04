@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.scheduling;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -162,6 +163,7 @@ public class StaffDirectBookingTests {
 			form.setReason("Attach booking for " + targetState);
 			form.setRequestId(request.getId());
 			form.setDecision("attach");
+			int eventCountBefore = this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()).size();
 
 			Appointment appt = this.staffBookingService.directBook(form, "staff");
 
@@ -175,6 +177,7 @@ public class StaffDirectBookingTests {
 			assertThat(reloaded.hasHold()).isFalse();
 			assertThat(reloaded.getHeldVet()).isNull();
 			assertThat(reloaded.getHeldStart()).isNull();
+			assertThat(reloaded.getHeldDuration()).isNull();
 			assertThat(reloaded.getActivePetId()).isNull();
 
 			// 3. Appointment is created and linked to request
@@ -185,6 +188,7 @@ public class StaffDirectBookingTests {
 			// 4. Exactly one attach event logged
 			List<SchedulingRequestEvent> events = this.eventRepository
 				.findByRequestIdOrderByTimestampAsc(request.getId());
+			assertThat(events).hasSize(eventCountBefore + 1);
 			SchedulingRequestEvent lastEvent = events.get(events.size() - 1);
 			assertThat(lastEvent.getFromState()).isEqualTo(targetState);
 			assertThat(lastEvent.getToState()).isEqualTo(RequestState.ACCEPTED);
@@ -210,10 +214,8 @@ public class StaffDirectBookingTests {
 			Pet pet = owner.getPets().get(0);
 			SchedulingRequest request = setupRequestInState(owner, pet, targetState, vet, now, i + 10);
 
-			boolean initialHasHold = request.hasHold();
-			Vet initialHeldVet = request.getHeldVet();
-			ZonedDateTime initialHeldStart = request.getHeldStart();
-			Integer initialHeldDuration = request.getHeldDuration();
+			RequestSnapshot requestBefore = snapshot(request);
+			int eventCountBefore = this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()).size();
 
 			ZonedDateTime apptStart = now.plusDays(4 + i).withHour(11).withMinute(0).withSecond(0).withNano(0);
 
@@ -229,32 +231,17 @@ public class StaffDirectBookingTests {
 
 			Appointment appt = this.staffBookingService.directBook(form, "staff");
 
-			// Assertions:
-			// 1. Request state is unchanged
 			SchedulingRequest reloaded = this.requestRepository.findById(request.getId()).orElseThrow();
-			assertThat(reloaded.getState()).as("Request in %s must stay in %s on leave-open", targetState, targetState)
-				.isEqualTo(targetState);
+			assertThat(snapshot(reloaded)).as("leave-open must not change any request field from %s", targetState)
+				.isEqualTo(requestBefore);
 
-			// 2. Hold fields are unchanged
-			assertThat(reloaded.hasHold()).isEqualTo(initialHasHold);
-			if (initialHasHold) {
-				assertThat(reloaded.getHeldVet().getId()).isEqualTo(initialHeldVet.getId());
-				assertThat(reloaded.getHeldStart().isEqual(initialHeldStart)).isTrue();
-				assertThat(reloaded.getHeldDuration()).isEqualTo(initialHeldDuration);
-			}
-
-			// 3. Appointment is created with null request link (independent appointment)
+			// Appointment is created with null request link (independent appointment).
 			assertThat(appt.getRequest()).isNull();
 			assertThat(appt.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
 
-			// 4. Audit event logged
-			List<SchedulingRequestEvent> events = this.eventRepository
-				.findByRequestIdOrderByTimestampAsc(request.getId());
-			SchedulingRequestEvent lastEvent = events.get(events.size() - 1);
-			assertThat(lastEvent.getFromState()).isEqualTo(targetState);
-			assertThat(lastEvent.getToState()).isEqualTo(targetState);
-			assertThat(lastEvent.getAction()).isEqualTo("staff book leave open");
-			assertThat(lastEvent.getActor()).isEqualTo("staff");
+			assertThat(this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()))
+				.as("leave-open must not append a request event")
+				.hasSize(eventCountBefore);
 		}
 	}
 
@@ -363,6 +350,19 @@ public class StaffDirectBookingTests {
 			.andExpect(status().is3xxRedirection())
 			.andReturn();
 		return (MockHttpSession) result.getRequest().getSession(false);
+	}
+
+	private static RequestSnapshot snapshot(SchedulingRequest request) {
+		return new RequestSnapshot(request.getId(), request.getPet().getId(), request.getOwner().getId(), request.getState(),
+				request.getReasonText(), request.getAvailabilityText(), request.getActivePetId(), request.getFailedAttempts(),
+				request.getHeldVet() != null ? request.getHeldVet().getId() : null,
+				request.getHeldStart() != null ? request.getHeldStart().toInstant() : null, request.getHeldDuration(),
+				request.getCreatedAt().toInstant(), request.getUpdatedAt().toInstant());
+	}
+
+	private record RequestSnapshot(Integer id, Integer petId, Integer ownerId, RequestState state, String reason,
+			String availability, Integer activePetId, int failedAttempts, Integer heldVetId, Instant heldStart,
+			Integer heldDuration, Instant createdAt, Instant updatedAt) {
 	}
 
 }
