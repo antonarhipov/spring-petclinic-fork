@@ -44,8 +44,9 @@ class SuggestionServiceOrderingTests {
 		AppointmentRepository appointmentRepository = mock(AppointmentRepository.class);
 		VetRepository vets = mock(VetRepository.class);
 		Clock clock = Clock.fixed(Instant.parse("2026-09-07T07:00:00Z"), ZoneId.of("Europe/Amsterdam"));
-		SuggestionService service = new SuggestionService(requests, lifecycle, interpretations, ranker, appointments,
-				appointmentRepository, vets, clock);
+		HoldService holds = new HoldService(requests, appointmentRepository, lifecycle);
+		SuggestionService service = new SuggestionService(lifecycle, holds, interpretations, ranker, appointments, vets,
+				clock);
 
 		Vet vet = new Vet();
 		vet.setId(1);

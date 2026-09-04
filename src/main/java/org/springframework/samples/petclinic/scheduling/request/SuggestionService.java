@@ -24,7 +24,6 @@ import java.util.Objects;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
-import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.interpretation.Interpretation;
 import org.springframework.samples.petclinic.scheduling.interpretation.InterpretationRepository;
 import org.springframework.samples.petclinic.scheduling.solver.SlotRanker;
@@ -41,9 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SuggestionService {
 
-	private final SchedulingRequestRepository requestRepository;
-
 	private final RequestLifecycleService requestLifecycleService;
+
+	private final HoldService holdService;
 
 	private final InterpretationRepository interpretationRepository;
 
@@ -51,28 +50,27 @@ public class SuggestionService {
 
 	private final AppointmentLifecycleService appointmentLifecycleService;
 
-	private final AppointmentRepository appointmentRepository;
-
 	private final VetRepository vetRepository;
 
 	private final Clock clock;
 
-	public SuggestionService(SchedulingRequestRepository requestRepository,
-			RequestLifecycleService requestLifecycleService, InterpretationRepository interpretationRepository,
-			SlotRanker slotRanker, AppointmentLifecycleService appointmentLifecycleService,
-			AppointmentRepository appointmentRepository, VetRepository vetRepository, Clock clock) {
-		this.requestRepository = requestRepository;
+	public SuggestionService(RequestLifecycleService requestLifecycleService, HoldService holdService,
+			InterpretationRepository interpretationRepository, SlotRanker slotRanker,
+			AppointmentLifecycleService appointmentLifecycleService, VetRepository vetRepository, Clock clock) {
 		this.requestLifecycleService = requestLifecycleService;
+		this.holdService = holdService;
 		this.interpretationRepository = interpretationRepository;
 		this.slotRanker = slotRanker;
 		this.appointmentLifecycleService = appointmentLifecycleService;
-		this.appointmentRepository = appointmentRepository;
 		this.vetRepository = vetRepository;
 		this.clock = clock;
 	}
 
 	public SchedulingRequest confirm(SchedulingRequest request, String actor) {
 		Objects.requireNonNull(request, "request must not be null");
+		if (request.getState() != RequestState.INTERPRETED && request.getState() != RequestState.SUGGESTION_OFFERED) {
+			throw new IllegalRequestTransitionException(request.getState(), "suggest");
+		}
 		// The Timefold call must observe the same locked availability snapshot that is
 		// revalidated before the hold is written (RULE-10/RULE-11). Lock in stable id
 		// order to avoid lock-order inversions when several vets are eligible.
@@ -88,7 +86,7 @@ public class SuggestionService {
 		List<SlotRanker.RankedSlot> rankedSlots = this.slotRanker.rankSlots(request, interpretation);
 
 		if (rankedSlots.isEmpty()) {
-			return this.requestLifecycleService.confirmNoFeasibleSlots(request, actor, "No feasible slots available");
+			return this.holdService.exhausted(request, actor, "No feasible slots available");
 		}
 
 		for (SlotRanker.RankedSlot candidate : rankedSlots) {
@@ -99,14 +97,16 @@ public class SuggestionService {
 
 				// Verify slot availability against confirmed appointments and active
 				// holds
-				if (isSlotAvailable(vet.getId(), candidate.startTime(), candidate.duration(), request.getId())) {
-					return this.requestLifecycleService.confirmFeasible(request, actor, lockedVet,
-							candidate.startTime(), candidate.duration());
+				if (this.holdService.isAvailable(vet.getId(), candidate.startTime(), candidate.duration(),
+						request.getId())) {
+					SlotRanker.RankedSlot lockedCandidate = new SlotRanker.RankedSlot(lockedVet, candidate.startTime(),
+							candidate.duration(), candidate.explanation(), candidate.score());
+					return this.holdService.offer(request, actor, lockedCandidate);
 				}
 			}
 		}
 
-		return this.requestLifecycleService.confirmNoFeasibleSlots(request, actor, "All candidate slots conflicted");
+		return this.holdService.exhausted(request, actor, "All candidate slots conflicted");
 	}
 
 	public Appointment accept(SchedulingRequest request, String actor) {
@@ -124,7 +124,7 @@ public class SuggestionService {
 		heldVet = this.vetRepository.findByIdForUpdate(heldVet.getId()).orElseThrow();
 
 		// Re-validate hold under lock (RULE-11)
-		if (!isSlotAvailable(heldVet.getId(), heldStart, heldDuration, request.getId())) {
+		if (!this.holdService.isAvailable(heldVet.getId(), heldStart, heldDuration, request.getId())) {
 			Interpretation interpretation = this.interpretationRepository
 				.findTopByRequestIdOrderByVersionDesc(request.getId())
 				.orElse(null);
@@ -132,8 +132,8 @@ public class SuggestionService {
 
 			SlotRanker.RankedSlot availableNext = null;
 			for (SlotRanker.RankedSlot candidate : nextSlots) {
-				if (candidate.vet() != null && isSlotAvailable(candidate.vet().getId(), candidate.startTime(),
-						candidate.duration(), request.getId())) {
+				if (candidate.vet() != null && this.holdService.isAvailable(candidate.vet().getId(),
+						candidate.startTime(), candidate.duration(), request.getId())) {
 					availableNext = candidate;
 					break;
 				}
@@ -172,31 +172,6 @@ public class SuggestionService {
 			throw new IllegalRequestTransitionException(request.getState(), "ask for another option");
 		}
 		return request;
-	}
-
-	private boolean isSlotAvailable(Integer vetId, ZonedDateTime start, int duration, Integer currentRequestId) {
-		ZonedDateTime end = start.plusMinutes(duration);
-
-		List<Appointment> conflicts = this.appointmentRepository.findConfirmedByVetIdAndDateRange(vetId,
-				start.minusMinutes(120), end.plusMinutes(120));
-		for (Appointment app : conflicts) {
-			if (app.getStartTime().isBefore(end) && app.getEndTime().isAfter(start)) {
-				return false;
-			}
-		}
-
-		List<SchedulingRequest> activeHolds = this.requestRepository.findActiveHoldsByVetId(vetId);
-		for (SchedulingRequest hold : activeHolds) {
-			if (!Objects.equals(hold.getId(), currentRequestId) && hold.getHeldStart() != null
-					&& hold.getHeldDuration() != null) {
-				ZonedDateTime holdEnd = hold.getHeldStart().plusMinutes(hold.getHeldDuration());
-				if (hold.getHeldStart().isBefore(end) && holdEnd.isAfter(start)) {
-					return false;
-				}
-			}
-		}
-
-		return true;
 	}
 
 }
