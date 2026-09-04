@@ -7,11 +7,16 @@ description: Generate an implementation task list from validated spec artifacts
 
 Translate a validated spec into an ordered, atomic, AC-traceable execution list an implementing agent can run task by task.
 
-Pipeline position: proposal → spec → criteria → rules → review → **tasks** → execute ⇄ converge
+Pipeline position: proposal → spec → criteria → rules → review → **tasks** → review (plan) → execute ⇄ converge
 
 # Role
 
 You translate a validated spec into a task list written to disk. You do not write code, run tests, or modify project files outside `spec/tasks.yaml`. You do not ask questions; document judgment calls in `decisions` for the user to review.
+
+The plan you write is itself reviewed (`spec-review` in plan mode writes `spec/plan-review.md`) before `execute` may
+start, and it is executed by a model that does **exactly what the artifact map says and nothing more**. Every hole in
+the artifact map becomes missing code; every ambiguity in `validation` becomes the weakest test that passes. Write the
+plan for that executor: exact paths, exact routes, exact test names, small tasks.
 
 # Pipeline Contract
 
@@ -79,15 +84,23 @@ rung that fired, and the signal that triggered it as `dec-1` (see *Recording the
    **phase-1**. The skeleton is the **primary use case's main success scenario, thin** — every step present, no
    extensions yet — plus the mandatory tasks. It MUST contain, thinly but really:
    - login for each role the feature introduces, with the security surface for the whole URL→role matrix;
+   - **the HTTP surface**: a controller artifact for every `GET`/`POST` the primary UC's main scenario and the `cp-1`
+     walkthrough touch, listed in the phase's `routes` inventory with an owning task (the *HTTP surface* mandatory
+     task). Templates and security rules without controllers do not walk;
    - at least one page per role rendered inside the existing layout with that role's menu entries, signed-in state and
      logout (the *Presentation and navigation* mandatory task);
    - one persisted entity of the feature, created through its migration and read back;
    - one round trip across **every** external seam the happy path crosses, through the production interface with its
      test double (AI interpreter, solver, message broker, …);
-   - the isolated test datasource and the clean-working-tree check (the *Test environment* mandatory task);
+   - the isolated test datasource and the clean-working-tree check (the *Test environment* mandatory task), and the
+     *Plan guards* mandatory task;
+   - the primary UC's HTTP-level end-to-end test as the phase's `skeleton_test`, written **first** and red until the
+     last task (see *Outside-in Skeleton Ordering*);
    - the human walkthrough criterion at `cp-1`.
-   A skeleton that is a service with a unit test is not a skeleton. After rung 3 fires, **re-apply rungs 4–5 to the
-   remaining ACs** to order the thickening phases and record the hybrid `walking_skeleton then <result>`.
+   A skeleton that is a service with a unit test is not a skeleton. A skeleton whose e2e test is the last task is a
+   skeleton the executor will fill with domain code and close with whatever test passes. After rung 3 fires,
+   **re-apply rungs 4–5 to the remaining ACs** to order the thickening phases and record the hybrid
+   `walking_skeleton then <result>`.
 4. **Separable ACs.** If the ACs partition into two or more clusters that could each ship on their own without the
    others, use `feature_slice`. One cluster is not a partition. Use cases are the natural clusters: a UC whose
    postcondition is reachable without the others is a slice. Order slices by the primary UC's extensions first (they
@@ -139,14 +152,63 @@ UC and no extension has no demo sentence — revisit the ladder.
 
 - Completable in a single focused effort (rule of thumb: under an hour)
 - Produces a verifiable artifact (file, passing test, documented decision)
-- Small enough to roll back cleanly
+- Small enough to roll back cleanly — and to commit alone: the executor makes one commit per task
 - References ACs and RULES it covers via `covers`
+- **At most 5 ACs per task.** Six or more means the task is really "write the tests for the phase" or "build the
+  domain"; split it along the ACs' `Flow:` tags or along artifacts.
+- **Complexity `L` is a smell, not a size.** Split an `L` task into `M`/`S` tasks with their own artifacts. If a task
+  genuinely cannot be split (a single migration, a single security configuration), keep it `L` **and** follow it with an
+  intermediate checkpoint `cp-N.M` so converge looks at it before the next task builds on it. Never more than one
+  unsplit `L` task between two checkpoints in phase-1.
+- **No single-line prose.** `description` and `validation` are YAML block scalars (`|`) or lists; a description that
+  runs past ~600 characters on one line is unreadable to the tools the executor uses and will be skimmed. Use short
+  paragraphs and bullets: what to build, which spec rows/steps to reproduce, what must not be touched.
+
+# Artifact Exactness
+
+`artifact` is the executor's definition of done and the first thing converge checks. It is a **YAML list of exact
+repository-relative paths**, one per line. Rules:
+
+- No globs (`templates/my/*.html`), no ellipses (`…`), no prose ("ownership guard service"), no "and friends". Name
+  every file: every controller, every template, every entity, every repository, every configuration class, every
+  message-bundle file the task adds keys to, every migration script.
+- Test artifacts name the **class and the methods**, so a rename or a drop is visible:
+  `src/test/java/org/example/app/security/SecurityMatrixWebTests.java (methods: anonymous_every_route_redirects_to_login, wrongRole_every_route_403_and_never_service, wrongOwner_every_owner_route_403_no_body_disclosure)`.
+- A task whose `description` mentions a class, page, route or key that is not in its `artifact` (and not in an
+  earlier task's) has a hole; add the path or move the sentence.
+- The union of all `artifact` lists in a phase must be **sufficient to perform the phase's checkpoint criteria**:
+  walk each criterion and each walkthrough URL and point at the artifact that renders it, guards it and localizes it.
+  A criterion with no artifact behind it is a plan defect, not an executor problem.
+- The executor may not rename an artifact. If you are unsure of a name, decide now and record the decision; do not
+  leave it to the executor.
+
+# Route Inventory per Phase
+
+Every phase that adds or changes an HTTP route carries a `routes` list: `"<METHOD> <path> → task-N.M"`, one entry per
+request mapping the phase introduces (form `GET` and its `POST` are two entries). Rules:
+
+- Every URL named in the phase's `checkpoint.criteria`, its walkthrough script, or its use-case steps appears in
+  `routes` with an owning task whose `artifact` contains the controller.
+- Every route in `routes` appears in the rules' URL→role matrix (or the plan records the omission as an assumption for
+  the `rules` skill to fix).
+- A skeleton phase has a dedicated **HTTP surface** task (controllers + the security matrix entries for those routes)
+  rather than smuggling controllers into template or security tasks.
+- The plan-guard `RouteInventoryTest` asserts, for every task marked complete, that its routes resolve to a handler.
 
 # Validation Shape
 
-`validation` is the sentence converge will execute, so it states the **assertion shape**, not the activity. "Run
-the tests" or "tests pass" is never a valid `validation`. Derive it from the AC pattern (see the rules' Testing
-Strategy table):
+`validation` is the checklist the executor fulfils literally and converge re-executes, so it states the **assertion
+shape**, not the activity. "Run the tests" or "tests pass" is never a valid `validation`. It is a **YAML list**, one
+bullet per assertion, each of the form:
+
+```
+TestClass.method → AC-n → <what is asserted, at which level, with which strength>
+```
+
+for example `SeedMigrationTests.clinicHours_allSevenRows_byValue → AC-12 → every row of the clinic-hours table
+compared field by field on a fresh H2 database; no count assertions`. Prose paragraphs are paraphrased by the executor
+into whatever passes; a bullet with a class, a method, an AC and a shape survives. Derive the shape from the AC pattern
+(see the rules' Testing Strategy table):
 
 | AC pattern of the task's `covers.acs` | `validation` must say |
 |---|---|
@@ -160,6 +222,10 @@ Strategy table):
 
 Every task that ships a test double states in `description` that the double conforms to the production interface
 (same exceptions, nullability, `Optional` semantics). Every task that ships tests names the isolated datasource.
+
+Every AC in a task's `covers.acs` appears in at least one of its `validation` bullets; every test class named in
+`validation` appears in `artifact`. Under a `skeleton_test`, every intermediate task's `validation` also carries one
+bullet `skeleton_test → reaches UC-n step k (<what the step does>)` so the executor knows what "advanced" means.
 
 # Mandatory Tasks
 
@@ -178,10 +244,43 @@ another task) for:
   first phase that adds a test
 - **Use cases** — for every UC, one HTTP-level end-to-end test task (main scenario + state-changing extensions) in the
   phase that completes the UC; the task `description` copies the step list from `spec.md` and names the actors
+- **HTTP surface** — in every phase with a `routes` inventory, the controllers (and their security-matrix entries) for
+  those routes as an explicit task, with each controller class in `artifact`; in a skeleton phase this task precedes the
+  template and ownership-guard tasks that assume the routes exist
+- **Plan guards** — in the first phase that adds a test, alongside *Test environment*, three small tests (~100 lines
+  in total) that make the plan itself executable and are re-run at every task closure and every checkpoint:
+  - `RouteInventoryTest`: for every task marked `COMPLETE` in `status.md`, every `METHOD path` assigned to it in the
+    phase `routes` resolves to a handler (query the request-mapping registry); and every route in the rules' URL→role
+    matrix that belongs to a completed task is mapped
+  - `ArtifactInventoryTest`: reads `spec/tasks.yaml` and `spec/status.md`; for every task marked `COMPLETE`, every path
+    in its `artifact` list exists
+  - `AcTagCoverageTest`: for every task marked `COMPLETE`, every `AC-n` in its `covers.acs` appears as a `@Tag`,
+    method name or `@DisplayName` in at least one test under `src/test`
+  Their `artifact` lists the three classes; their `validation` states that each fails on a deliberately broken
+  fixture (a missing path, an unmapped route, an untagged AC) and passes on the current tree. They are the difference
+  between "REJECT after 6,500 lines" and "red build after 400".
 
-Under a `walking_skeleton` plan all five of the first group land in phase-1 by construction (see rung 3), and the
-primary UC's end-to-end test lands in phase-1 under a skeleton; under any other principle each lands in the phase named
-above, never later.
+Under a `walking_skeleton` plan all of the first group, the HTTP surface, the plan guards and the primary UC's
+end-to-end test (as `skeleton_test`) land in phase-1 by construction (see rung 3); under any other principle each lands
+in the phase named above, never later.
+
+# Outside-in Skeleton Ordering
+
+When rung 3 fires, order phase-1 **from the outside in** so the executor cannot spend the phase on domain code:
+
+1. *Test environment* + *Plan guards* (the suite can run, the guards are red-capable).
+2. The `skeleton_test`: the primary UC's HTTP-level end-to-end test (MockMvc or `MockMvcTester` over the real
+   `SecurityFilterChain` with CSRF, as each named actor, on the isolated datasource, asserting state after every step).
+   It is committed **red**; the phase declares it under `skeleton_test` so `execute` and `converge` know its failure is
+   expected until the last task.
+3. *Security surface* + *HTTP surface* (login works, every route in `routes` returns something other than 404).
+4. *Normative data* and the one persisted entity.
+5. *Presentation and navigation* (pages render inside the layout for every role).
+6. The external-seam round trips (interpreter, solver, …) through their production interfaces with doubles.
+7. The task that turns the `skeleton_test` green and adds the state-changing extension legs.
+
+Every task from 3 onward names in `validation` the UC step the `skeleton_test` must reach after it. A task after which
+the skeleton test does not advance is either misplaced or building something the skeleton does not need.
 
 # Dependency Rules
 
@@ -199,12 +298,20 @@ Place checkpoints where human review meaningfully reduces risk:
 - After test suite green for a phase's ACs
 - Before any irreversible step (migrations, deletions, API contract changes)
 
-Every phase ends with a checkpoint. Intermediate checkpoints allowed within a phase.
+Every phase ends with a checkpoint. Intermediate checkpoints allowed within a phase, and **required** after any
+unsplit `L` task in phase-1 and after the *HTTP surface* task of a skeleton phase (that is where "no controllers" is
+caught at one task's cost instead of seven). An intermediate checkpoint `cp-N.M` is converged in task mode: categories
+1, 2, 6 and 10 only, over the tasks since the previous checkpoint.
 
 Checkpoints are verified by the `converge` skill, so write `checkpoint.criteria` as sentences converge can check, not
 as goals: name the observable outcome and the evidence shape ("migration test asserts all 7 clinic-hour rows by value",
 "anonymous GET on every route in the security matrix redirects to `/login` and no service is invoked"), never "tests
 pass" or "UI works".
+
+Every URL a criterion names must be in the phase's `routes`; every artifact a criterion needs must be in some task's
+`artifact`. Every terminal checkpoint of a phase with routes also carries a **runtime evidence** criterion: "the
+executor's checkpoint report in `spec/checkpoints/cp-N.md` records, for each actor, login and each walkthrough URL with
+the HTTP status observed against the running application".
 
 Any phase that ships templates gets one **human walkthrough** criterion: "signed in as <actor>, execute **UC-n main
 scenario by hand** (and extensions <list>); pages render inside the existing layout with only that role's menu entries,
@@ -227,7 +334,10 @@ Aim for ≤ 5 phases, ≤ 7 tasks per phase. If you exceed:
 - The feature is probably too large. Recommend a split in `decisions` rather than padding.
 - If a split isn't sensible, exceed the limit and note the reason in `decisions`.
 
-Don't pad or merge to fit the numbers.
+Don't pad or merge to fit the numbers. In particular, never merge tasks to stay under 7: the 5-AC cap, the `L`-split
+rule and the mandatory tasks (a skeleton phase-1 has at least eight) take precedence over the task count. A skeleton
+phase-1 of 9–11 small tasks with two intermediate checkpoints is the expected shape, not a violation; note it in
+`decisions` once.
 
 # Coverage
 
@@ -235,8 +345,14 @@ Every AC in `criteria.md` appears in some task's `covers.acs`, OR in `coverage_d
 
 Coverage is per assertion, not per mention. A task whose `covers.acs` lists a refusal AC, a negative authz AC or a
 data-exactness AC must have a `validation` of the matching shape (see *Validation Shape*); otherwise the AC is not
-covered and the task must be split or its `validation` sharpened. A single task covering more than seven ACs is a
-smell: check that it is not "write the tests" for a whole phase.
+covered and the task must be split or its `validation` sharpened. A single task covering more than five ACs violates
+*Task Granularity*: split it.
+
+**Phase coverage equals task coverage.** `phase.covers` is exactly the union of its tasks' `covers.acs` — no AC that no
+task in the phase asserts, and no task description that says an AC "is completed in phase-M" while the phase claims it.
+An AC whose lifecycle spans phases is listed in the phase where its full assertion lands and nowhere earlier; a partial
+leg in an earlier phase is described in that task's `description` without listing the AC. Two readings of what a phase
+owes is a licence for the lenient one.
 
 # Output Schema
 
@@ -265,20 +381,34 @@ tasks:
   phases:
     - id: phase-1
       name: "<phase name>"
-      description: "<what this accomplishes>. Demo: <what a human can do against the running app at the end of this phase>"
-      covers: [AC-1, AC-2]
+      description: |
+        <what this accomplishes>.
+        Demo: <what a human can do against the running app at the end of this phase>
+      covers: [AC-1, AC-2]                # exactly the union of the tasks' covers.acs
       entry_criteria: "<what must be true to start>"
+      routes:                             # every request mapping this phase introduces, with its owning task
+        - "GET /my/appointments → task-1.3"
+        - "POST /my/requests → task-1.3"
+      skeleton_test: "src/test/java/<pkg>/SchedulingUc1SkeletonTests.java"   # walking_skeleton phase-1 only; red until the last task
       tasks:
         - id: task-1.1
           name: "<task name>"
-          description: "<what to do>"
-          artifact: "<file path or outcome>"
+          description: |
+            <what to do, in short paragraphs and bullets: what to build, which spec rows / UC steps to reproduce,
+            what must not be touched>
+          artifact:                       # exact repository-relative paths, one per line; no globs, no prose (<pkg> is a placeholder for this schema only)
+            - "src/main/java/<pkg>/FooController.java"
+            - "src/main/resources/templates/my/foo.html"
+            - "src/main/resources/messages/messages.properties"
+            - "src/test/java/<pkg>/FooWebTests.java (methods: ac1_anonymous_redirects_to_login, ac2_wrong_owner_403_no_disclosure)"
           covers:
-            acs: [AC-1]
+            acs: [AC-1]                   # at most 5
             rules: [RULE-3, RULE-7]
           depends_on: []
-          complexity: "S | M | L"
-          validation: "<assertion shape: which test, at which level, asserts what — see Validation Shape>"
+          complexity: "S | M"             # L only when unsplittable, and then followed by an intermediate checkpoint
+          validation:                     # one bullet per assertion: TestClass.method → AC-n → shape
+            - "FooWebTests.ac1_anonymous_redirects_to_login → AC-1 → 302 to /login and never() on FooService, over the real SecurityFilterChain"
+            - "skeleton_test → reaches UC-1 step 3 (owner sees the request form)"
           risk: "<from Risk Hotspots, if applicable>"
           source: "<review/MAJOR-N if addressing a review finding>"
       checkpoint:
@@ -288,9 +418,12 @@ tasks:
           - "<criterion 1>"
 ```
 
-**Required**: top-level `feature`, `review_verdict`, `organizing_principle`, `phases`, and `decisions` containing `dec-1` with `principle`, `rung`, `signal`; phase `id`, `name`, `description` (ending with a demo sentence), `covers`, `tasks`, `checkpoint`; task `id`, `name`, `description`, `artifact`, `covers`, `depends_on`, `validation`; checkpoint `id`, `description`, `criteria`.
+Intermediate checkpoints are expressed as a task-level `checkpoint:` block (`id: cp-N.M`, `description`, `criteria`)
+on the task they follow.
 
-**Optional**: `assumptions`, further `decisions`, `coverage_deferrals`, `entry_criteria`, `complexity`, `risk`, `source`.
+**Required**: top-level `feature`, `review_verdict`, `organizing_principle`, `phases`, and `decisions` containing `dec-1` with `principle`, `rung`, `signal`; phase `id`, `name`, `description` (ending with a demo sentence), `covers`, `tasks`, `checkpoint`, and `routes` when the phase adds a request mapping; task `id`, `name`, `description`, `artifact` (list of exact paths), `covers`, `depends_on`, `validation` (list of bullets); checkpoint `id`, `description`, `criteria`.
+
+**Optional**: `assumptions`, further `decisions`, `coverage_deferrals`, `entry_criteria`, `complexity`, `risk`, `source`, `skeleton_test` (required when rung 3 fired), task-level `checkpoint`.
 
 # Success Criteria
 
@@ -302,8 +435,14 @@ Complete only when ALL hold:
 - Every `depends_on` references an earlier task in execution order
 - No circular dependencies
 - Every phase ends with a checkpoint whose criteria name an observable outcome and an evidence shape; UI phases have a walkthrough criterion; terminal checkpoints have the clean-working-tree criterion
-- Every `validation` states an assertion shape matching the AC pattern (no "run tests"/"tests pass")
-- Mandatory tasks present for every spec section that triggers them (normative data, state model, security surface, presentation and navigation, test environment, use cases)
+- Every `validation` is a list of `TestClass.method → AC-n → shape` bullets matching the AC pattern (no "run tests"/"tests pass"); every AC in `covers.acs` appears in a bullet; every test class named appears in `artifact`
+- Every `artifact` is a list of exact repository-relative paths (no globs, ellipses or prose); test artifacts name their methods
+- Every phase that adds a request mapping has a `routes` inventory; every URL in its checkpoint criteria, walkthrough and UC steps is in `routes`; every route's owning task has the controller in `artifact`
+- For every phase, the union of its tasks' `artifact` lists is sufficient to perform every checkpoint criterion (walk each criterion and point at the artifacts that render, guard and localize it)
+- No task covers more than 5 ACs; no `L` task without a following intermediate checkpoint; no single-line `description` or `validation`
+- `phase.covers` equals the union of the phase's tasks' `covers.acs`; no task description defers an AC the phase lists
+- Mandatory tasks present for every spec section that triggers them (normative data, state model, security surface, HTTP surface, presentation and navigation, test environment, plan guards, use cases)
+- If rung 3 fired, phase-1 declares `skeleton_test`, its task order follows *Outside-in Skeleton Ordering*, and every task from the HTTP-surface task onward names the UC step the skeleton test reaches
 - No task references a table, state model or matrix by pointer to another file
 - `organizing_principle` set by the selection ladder, with the rung and quoted signal in `dec-1`; hybrids name the handoff phase; a pure `layered` result is accompanied by evidence that rungs 2–4 did not fire
 - If rung 3 fired, phase-1 contains every skeleton item listed under rung 3 and `cp-1` has the walkthrough criterion
@@ -315,11 +454,17 @@ Complete only when ALL hold:
 Verification pass before writing:
 - Walk phases in order; every `depends_on` points to a task that has appeared
 - AC IDs in `covers.acs` (across all tasks) equals AC IDs in `criteria.md` minus `coverage_deferrals`
+- For each phase, `phase.covers` equals the union of its tasks' `covers.acs`
 - Every RULE ID in `covers.rules` is real in `rules.md`
+- For each phase with `routes`: every route has an owning task, that task's `artifact` contains a controller, and every URL in the checkpoint criteria is in `routes`
+- For each checkpoint criterion: name the artifact(s) that satisfy it; a criterion with none is a hole — add the task
+- No `artifact` entry contains `*`, `…`, `...` or a space-separated description instead of a path
+- Every `validation` bullet parses as `<Class>.<method> → AC-n → <shape>` (or the `skeleton_test → reaches …` form)
 - `feature`, `review_verdict`, `organizing_principle`, `dec-1` (`principle`, `rung`, `signal`), every phase checkpoint present
 
 Do not write a partial file.
 
 # Output
 
-Write to `spec/tasks.yaml`.
+Write to `spec/tasks.yaml`. Then tell the user to run `spec-review` in plan mode (it writes `spec/plan-review.md`);
+`execute` refuses to start without it.

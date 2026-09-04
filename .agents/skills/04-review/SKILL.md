@@ -1,17 +1,28 @@
 ---
 name: spec-review
-description: Stress-test the spec pipeline outputs against each other and the codebase before implementation begins
+description: Stress-test the spec pipeline outputs against each other and the codebase before implementation begins (spec mode), and gate the implementation plan in spec/tasks.yaml before execution starts (plan mode). Use plan mode whenever the user asks to review, check or validate the plan / tasks.yaml, or right after the tasks skill has written it.
 ---
 
 # Spec Review Skill
 
 Stress-test the spec pipeline against itself and the codebase. Surface anything that would cause an implementing agent to fail or build the wrong thing. Trust upstream's self-verification by default; investigate the seams.
 
-Pipeline position: proposal → spec → criteria → rules → **review** → tasks → execute ⇄ converge
+Pipeline position: proposal → spec → criteria → rules → **review** → tasks → **review (plan)** → execute ⇄ converge
+
+Review runs **twice**:
+
+- **Spec mode** (default) — before `tasks`: categories 1–5 below over proposal / spec / criteria / rules. Output
+  `spec/review.md`.
+- **Plan mode** — after `tasks`, before `execute`: categories P1–P6 under *Plan Review* over `spec/tasks.yaml`. Output
+  `spec/plan-review.md`. Choose this mode when `spec/tasks.yaml` exists and the user asks to review the plan, or when the
+  `tasks` skill has just run. `execute` refuses to start without a non-FAIL `plan-review.md`.
+
+A plan that was never reviewed is how a phase named "walking skeleton" ships without a single controller: the spec was
+sound, the artifact map had a hole, and the executor built exactly what the map said.
 
 # Role
 
-You produce a report and, when needed, a Fix Plan that sequences the user's resolution work. You do not fix issues yourself. You do not ask the user questions. If findings need resolution, the user reruns the relevant upstream skill in the order the Fix Plan prescribes.
+You produce a report and, when needed, a Fix Plan that sequences the user's resolution work. You do not fix issues yourself. You do not ask the user questions. If findings need resolution, the user reruns the relevant upstream skill in the order the Fix Plan prescribes (in plan mode, that skill is `tasks`).
 
 # Operating Principle
 
@@ -45,6 +56,7 @@ Before checking anything else, ground the review in the actual project state:
 - Read existing patterns for persistence, error handling, logging, testing. Confirm the Design section and rules align, or that deviations are justified in rules' `Reason:` lines.
 - Read the test setup. Confirm the proposed test strategy is achievable with the project's existing test infrastructure. Note which datasource tests use today and whether a runtime data file is tracked in the repository.
 - Read the security configuration and **enumerate every route in the codebase** (pre-existing controllers, static resources, login/logout, error pages). You will compare this list against the rules' URL→role matrix in category 2.
+- **Verify every existence claim against `HEAD`.** For every route, file, class, property or library the spec, criteria or rules call "pre-existing", "stock", "existing", "already present" or "inherited", confirm it is in the working tree now (`git log --diff-filter=D` catches files deleted in an earlier commit; the framework's reference for the declared version catches renamed properties). A claim about something that no longer exists is a BLOCKER: the executor will either build against a ghost or quietly "fix" the reference.
 - Read the presentation conventions (layout fragment, menu fragment, form-field fragments, stylesheet, message bundles) so you can tell whether rules.md restates them for the feature.
 
 This grounding feeds the Codebase Grounding category later. Without it, that category can only check claims, not reality.
@@ -91,7 +103,10 @@ The centerpiece. No upstream step can detect these.
 
 - **AC ↔ AC**: two ACs that cannot both hold
 - **AC ↔ RULE**: a rule that prevents an AC's outcome
-- **RULE ↔ RULE**: two rules that cannot both hold
+- **RULE ↔ RULE**: two rules that cannot both hold. Check boundary rules against framework-requirement rules in
+  particular: "no `<library>` import outside package X" versus "the entity / solution / provider classes carry
+  `<library>` annotations" cannot both hold unless one names the exempt package. Left unresolved, the executor resolves
+  it silently (an exemption in the architecture test) instead of reporting it
 - **Design ↔ Rules**: a rule that contradicts the Design section in rules.md (e.g., Design says "synchronous flow," a rule introduces async messaging)
 - **Scope reintroduction**: anything in `Out of scope` (spec), `Coverage exclusions` (criteria), or `Design exclusions` (rules) that resurfaces elsewhere in the pipeline
 - **Negative-decision violations**: any rule that proposes adopting an ecosystem option that another rule explicitly declined (e.g., a rule references Spring Batch APIs when another rule declined Spring Batch)
@@ -146,6 +161,82 @@ If you cannot identify any, write `Hotspots: none considered material` with a on
 
 This is the section most likely to be useful to the implementing agent. It's the only output review produces that upstream cannot.
 
+# Plan Review (plan mode)
+
+Run only in plan mode, after the `tasks` skill has written `spec/tasks.yaml`. Inputs: `tasks.yaml`, `criteria.md`,
+`rules.md` (URL→role matrix, testing strategy), `spec.md` (use cases, checkpoint walkthroughs), `review.md` (hotspots
+that must appear as `risk`), and the codebase grounding above. Severity and verdict are as in spec mode; fixes route to
+the `tasks` skill. Run all six categories.
+
+## P1. Checkpoint Reachability (the centerpiece)
+
+For every phase, take the **union of every `artifact` in the phase** and walk every line of `checkpoint.criteria`, the
+walkthrough script, and the phase's demo sentence with the question: *can a human perform this with only these files?*
+For each URL: which artifact maps it (controller), renders it (template), guards it (security matrix entry), and
+localizes it (message keys)? For each assertion criterion: which test class in which task's `artifact` asserts it?
+
+- A criterion, walkthrough URL or demo-sentence action with no artifact behind it is a BLOCKER against `tasks`.
+- A controller that appears first in a later phase than the checkpoint that needs its route is a BLOCKER.
+- A phase named for an outcome ("walking skeleton", "UC-1 end to end") whose artifacts do not include the HTTP surface
+  for that outcome is a BLOCKER.
+
+## P2. Artifact Exactness
+
+- Every `artifact` is a list of exact repository-relative paths; any glob, ellipsis (`…`, `...`), or prose entry
+  ("ownership guard service", "templates for staff") is a MAJOR — the executor will pick a name, and the pipeline will
+  not notice the rename.
+- Every test artifact names its class and methods.
+- Every class, page, route or message key mentioned in a task `description` appears in that task's `artifact` or an
+  earlier task's; an unowned mention is a MAJOR.
+- Every path is creatable in the current layout (package exists or is consistent with grounding).
+
+## P3. Route Inventory
+
+- Every phase that introduces a request mapping has a `routes` list; each entry has an owning task whose `artifact`
+  contains a controller class. Missing `routes` on such a phase is a BLOCKER.
+- Every URL in the phase's checkpoint criteria, walkthrough and UC steps is in `routes`. Every route in `routes` is in
+  the rules' URL→role matrix (or recorded as an assumption for `rules`). Cross-check both directions.
+- A skeleton phase has a dedicated *HTTP surface* task (MAJOR if controllers are folded into template/security tasks).
+
+## P4. Coverage Consistency
+
+- `phase.covers` equals the union of the phase's tasks' `covers.acs` — both directions. An AC the phase claims that no
+  task asserts is a BLOCKER (the checkpoint will demand it; no task will produce it).
+- No task `description` defers an AC that its own `covers.acs` or its phase's `covers` lists ("AC-138's full lifecycle
+  is completed in phase-5" while phase-1 lists AC-138). Two readings is a MAJOR.
+- Every AC in `criteria.md` is in some `covers.acs` or in `coverage_deferrals` (spot-check; `tasks` verified this).
+- Every Risk Hotspot from `review.md` appears as a `risk` on a task; every MAJOR condition appears as a task or risk.
+
+## P5. Task Shape and Validation Literalness
+
+- No task covers more than 5 ACs; no `L` task without a following intermediate checkpoint; no single-line
+  `description` or `validation` beyond ~600 characters. Each is a MAJOR: dense prose is what the executor paraphrases.
+- Every `validation` is a list of `TestClass.method → AC-n → shape` bullets; every AC in `covers.acs` appears in a
+  bullet; every named test class is in `artifact`. Any "run the tests" / "tests pass" / prose paragraph is a MAJOR.
+- Every bullet's shape matches the AC pattern per the rules' Testing Strategy (by value for data exactness; `never()` +
+  no disclosure for negative authz; HTTP level with real `SecurityFilterChain` and CSRF for lifecycle). A bullet that
+  permits a weaker level than the AC demands is a MAJOR (verification-shape drift, now in the plan).
+- Every bullet is **literally satisfiable** in this codebase with the declared rules and versions: the property exists
+  in the declared framework version, the test can be written without violating a MUST NOT, the route it redirects to
+  exists. An unsatisfiable bullet is a BLOCKER — the executor's only correct move would be to stop, and the plan
+  should not invite it.
+
+## P6. Skeleton Ordering and Plan Guards
+
+When `organizing_principle` starts with `walking_skeleton`:
+
+- Phase-1 declares `skeleton_test` (the primary UC's HTTP-level e2e test), written in the first test-bearing task and
+  red until the last task; every task from the HTTP-surface task onward names the UC step the skeleton test reaches.
+  An e2e test that is the **last** task with no `skeleton_test` declaration is a MAJOR (the executor will write it
+  last, as whatever passes).
+- Phase-1 contains the *Plan guards* task (`RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest`) and
+  the *Test environment* task before any other test-bearing task. Missing guards is a MAJOR.
+- Phase-1 follows the outside-in order (environment + guards → skeleton test → security + HTTP surface → data →
+  presentation → seams → green); an order that puts domain/solver/interpreter tasks before the HTTP surface is a MAJOR.
+- Intermediate checkpoints exist after the HTTP-surface task and after any unsplit `L` task.
+
+For any principle: the first phase that adds a test contains the *Plan guards* task.
+
 # Finding Format
 
 Each finding has:
@@ -163,8 +254,8 @@ Produce a Fix Plan when the verdict is PASS WITH CONDITIONS or FAIL. Omit for PA
 
 Structure:
 
-- One header line naming the execution order through the pipeline, e.g. `Execution order: spec → criteria → rules → review`. Include only steps that have fixes; always end with `review`.
-- One subsection per upstream step that has fixes, in pipeline order (spec, then criteria, then rules).
+- One header line naming the execution order through the pipeline, e.g. `Execution order: spec → criteria → rules → review`. Include only steps that have fixes; always end with `review`. In plan mode the order is `tasks → review (plan)`, unless a plan finding exposes an upstream defect (a route missing from the rules' matrix, a UC step with no AC), in which case the upstream step precedes `tasks` and the spec-mode review must be rerun before `tasks`.
+- One subsection per upstream step that has fixes, in pipeline order (spec, then criteria, then rules; then tasks in plan mode).
 - Within each subsection, a numbered list of fixes. Each fix has:
     - A `[cascades]` or `[localized]` tag
     - The finding ID this fix resolves (`BLOCKER-N`, `MAJOR-N`)
@@ -187,8 +278,9 @@ The plan ends with `### review` indicating when to rerun this skill (once all up
 
 Complete only when ALL hold:
 
-- Codebase grounding pass executed before any category, including the full route enumeration
-- All five categories run; each either confirms pass or lists findings
+- Codebase grounding pass executed before any category, including the full route enumeration and the verification of every "pre-existing" / "stock" claim against `HEAD`
+- Spec mode: all five categories run; plan mode: all six plan categories run; each either confirms pass or lists findings
+- Plan mode: for every phase, every checkpoint criterion and walkthrough URL is mapped to the artifact(s) that satisfy it, or is a finding; `phase.covers` was compared with the union of task `covers.acs` in both directions
 - No artifact references a decision, table or definition by pointer to another file; every normative table, state table and URL→role matrix was checked for presence, not just for being mentioned
 - Every negative authz AC was checked against the full route list
 - Risk Hotspots populated (or explicitly empty with reason)
@@ -201,7 +293,8 @@ Do not write a partial file.
 
 # Output
 
-Write to `spec/review.md`. For a clean spec, this should be a short document. Bloat is a smell.
+Spec mode: write to `spec/review.md`. Plan mode: write to `spec/plan-review.md` (template below the spec one). For a
+clean spec or plan, this should be a short document. Bloat is a smell.
 
 ```
 # Spec Review: <Feature>
@@ -238,4 +331,49 @@ Execution order: <pipeline steps with fixes, in order, ending with review>
 
 ### review
 Rerun once all upstream fixes are in.
+```
+
+Plan mode:
+
+```
+# Plan Review: <Feature>
+
+## Summary
+- Feature: <name>
+- Plan: spec/tasks.yaml (<n> phases, <n> tasks, organizing principle <…>)
+- Verdict: <PASS | PASS WITH CONDITIONS | FAIL>
+- Counts: <N blockers, N majors, N minors>
+- Action: <one line; references Fix Plan for non-PASS verdicts>
+
+## Checkpoint Reachability
+<per phase: each criterion / walkthrough URL → the artifact(s) that satisfy it, or the finding id>
+
+## Artifact Exactness
+<confirmed clean, or findings>
+
+## Route Inventory
+<per phase: routes ↔ owning tasks ↔ URL→role matrix; or findings>
+
+## Coverage Consistency
+<phase.covers vs union of task covers.acs per phase; deferral contradictions; hotspots as risks; or findings>
+
+## Task Shape and Validation Literalness
+<confirmed clean, or findings>
+
+## Skeleton Ordering and Plan Guards
+<n/a unless walking_skeleton; otherwise confirmed order, skeleton_test, guards, intermediate checkpoints; or findings>
+
+## Conditions for execute
+<for PASS WITH CONDITIONS: per task, the conditions execute must treat as extra validation bullets; omit for PASS>
+
+## Fix Plan
+For PASS WITH CONDITIONS or FAIL only; omit entirely for PASS.
+
+Execution order: <e.g. tasks → review (plan), or rules → review → tasks → review (plan)>
+
+### tasks (rerun <position>)
+1. [cascades|localized] <FINDING-ID>: <what to change in tasks.yaml>
+
+### review (plan)
+Rerun once the plan fixes are in.
 ```

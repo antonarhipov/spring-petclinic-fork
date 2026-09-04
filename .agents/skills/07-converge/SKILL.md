@@ -8,10 +8,19 @@ description: Independently verify the implementation against the spec at a check
 Independently verify what the executor built at a checkpoint, grade the *evidence* (not the claims), reconcile the spec
 with the implementation, and produce the approval response the `execute` skill is waiting for.
 
-Pipeline position: proposal → spec → criteria → rules → review → tasks → execute → **converge** → (execute …)
+Pipeline position: proposal → spec → criteria → rules → review → tasks → review (plan) → execute → **converge** → (execute …)
 
 Converge runs at **every** checkpoint (`cp-N`, `cp-N.M`) and may be run on demand for a single task. It is the loop
 closer: execute stops at a checkpoint, converge decides, execute resumes.
+
+Two depths:
+
+- **Phase mode** (`cp-N`) — all ten categories over the whole phase, walkthrough gate, full report.
+- **Task mode** (`cp-N.M`, or a user request naming one or more tasks) — the *Protocol Gate* plus categories 1, 2, 6
+  and 10 over the tasks since the previous checkpoint; no walkthrough; short report `spec/convergence/cp-N.M.md`
+  (or `task-N.M.md` for an on-demand run). Task mode exists so that "no controllers" is found after one task, not
+  seven; the plan places intermediate checkpoints after the HTTP-surface task and after every unsplit `L` task, and
+  the user may request one at any time.
 
 # Role
 
@@ -45,8 +54,11 @@ ACs over the whole URL space.
 
 # Inputs
 
-- Checkpoint under review: the executor's Checkpoint report (chat) and `spec/status.md`
-- Plan: @file:spec/tasks.yaml (the phase's tasks, `covers`, `validation`, `checkpoint.criteria`)
+- Checkpoint under review: the executor's committed Checkpoint report `spec/checkpoints/cp-N[.M].md` and
+  `spec/status.md` (per-task notes carry the executor's closure-gate evidence)
+- Plan: @file:spec/tasks.yaml (the phase's tasks, `artifact` lists, `covers`, `validation` bullets, `routes`,
+  `skeleton_test`, `checkpoint.criteria`) and @file:spec/plan-review.md (conditions the executor had to meet)
+- Git history: one commit per task is part of the protocol; `git log` is evidence
 - Acceptance criteria: @file:spec/criteria.md
 - Constraints: @file:spec/rules.md (rules, URL→role matrix, testing strategy, inherited conventions)
 - Behaviors, state model, normative data: @file:spec/spec.md and the proposal it derives from
@@ -58,19 +70,62 @@ ACs over the whole URL space.
 If `spec.md` still references normative data by pointer ("matching the tables in …"), resolve the pointer yourself and
 verify against the pointed-to table. Note the pointer as a spec weakness in *Spec Reconciliation*.
 
+# Protocol Gate (run before anything else)
+
+Before grading evidence, check that the executor followed the protocol at all. Any failure here is recorded as a
+finding `P-N` (PROTOCOL, blocks approval like a GAP) and, for items 1–2, **stops the audit**: the response is
+`REVISE: task-N.M - <fix the protocol>` for the first offending task, and the rest of the report is not written. There
+is no point grading the evidence behind a phase whose report does not exist or whose tasks were built as one lump.
+
+1. **The checkpoint report is committed.** `spec/checkpoints/cp-N[.M].md` exists in `HEAD` with the sections the
+   `execute` skill prescribes (Task Closure, AC Coverage with class.method, Routes, Runtime Evidence, Validation). A
+   report that exists only in chat, or a file missing Runtime Evidence for a phase with routes, fails this item.
+2. **One commit per task, in order.** `git log --oneline <phase start>..HEAD` shows a `task-N.M: …` commit for every
+   task claimed complete, in plan order, each followed only by that task's files (`git show --stat`). Two commits for
+   seven tasks is batching; a commit whose stat lists another task's artifact is scope bleed. Record the commit table.
+3. **The plan was reviewed.** `spec/plan-review.md` exists with a non-FAIL verdict; its per-task conditions are treated
+   as validation bullets in item 5 below.
+4. **Declared artifacts exist by exact name.** For every task in scope, every path in `artifact` exists at that path
+   (`ls`). A file under a different name is a missing artifact **and** an undocumented rename; check *Deviations* in
+   `status.md` — a rename without a Deviation entry is a `P-N`. Then read the renamed file: in the field, every rename
+   coincided with a weaker assertion (`SeedMigrationTests` → `SchemaValidationTest` counting rows,
+   `SecurityMatrixWebTests` → `SecurityMatrixTests` asserting status only).
+5. **Closure-gate evidence is present per task.** `status.md` notes for each task list: base commit; artifact
+   existence; scope check; one `file:line` per `validation` bullet and per `RULE-n`; the AC ids cited by tests;
+   skeleton-test step reached (when declared). Missing evidence is a `P-N`; it also tells you where to look first in
+   category 2.
+6. **Blockers were raised where they had to be.** Read *Deviations* and *Notes* for phrases like "worked around",
+   "adjusted", "instead", "not supported in", "exempted", "disabled". Each is a place where the `execute` skill's
+   *When to Raise a Blocker* list applied. A workaround with no Blocker report is a `P-N` and usually hides a CRITICAL
+   (an exemption in an architecture test, a property silently dropped, a test rewritten against the service).
+7. **Scope per task.** For each task commit, `git show --stat` lists only the task's artifacts, its supporting test
+   files, and `status.md`. A domain model, solver, or constraint provider appearing in a commit whose artifact is a
+   test class (or a controller) is out-of-task scope: `P-N`, and grade the task's own deliverable with suspicion —
+   effort spent on the interesting problem was taken from the assigned one.
+
 # Grounding (run first)
 
 1. Read `status.md`; confirm which phase/tasks are claimed complete and which prior F-n findings are still open.
 2. Record `git status --short` **before** running anything.
 3. Run the project's full test command yourself (offline if possible). Record counts: run / failed / errors / skipped,
-   and which tests are skipped and why.
+   and which tests are skipped and why. Run the plan guard tests (`RouteInventoryTest`, `ArtifactInventoryTest`,
+   `AcTagCoverageTest`) explicitly and record their result; if they are absent from a phase whose plan requires them,
+   that is a finding against task closure.
 4. Record `git status --short` **after**. Any tracked file modified by the test run (runtime DB, generated files) is a
    finding (test isolation).
-5. List the phase's tasks and, for each, the `artifact` path(s): confirm they exist. Missing artifact → finding.
+5. List the phase's tasks and, for each, the `artifact` path(s): confirm they exist (done in the Protocol Gate; carry
+   the result). Missing artifact → finding.
 6. Enumerate the application's full HTTP surface: every request-mapping in the codebase (stock and new), plus static and
-   login/logout routes. You will need it in category 6.
+   login/logout routes. Diff it against the phase's `routes` inventory: a route in `routes` with no mapping is a
+   CRITICAL against its owning task; a mapping not in `routes` or the rules' URL→role matrix is a *Spec Reconciliation*
+   item. You will need the list again in category 6.
+7. **Reproduce the runtime evidence.** Start the application the way the checkpoint report says it did, log in as each
+   actor named in the walkthrough criterion, and request every walkthrough URL yourself (`curl -i` with the session
+   cookie, or the test client). Record the statuses next to the executor's. A URL that returns 404/500, or a login that
+   fails, is CRITICAL regardless of what the suite says — the walkthrough is the acceptance criterion and the human
+   should not be the first to discover that it cannot be walked.
 
-Do not proceed to categories without steps 2–4. "Tests pass" reported by the executor is not a substitute.
+Do not proceed to categories without steps 2–4 and 7. "Tests pass" reported by the executor is not a substitute.
 
 # Verification Categories
 
@@ -78,13 +133,25 @@ Run all ten. For each, record findings inline or confirm pass with the evidence 
 
 ## 1. Task Closure
 
-For every task in the phase:
+Re-run the `execute` skill's *Task Closure Gate* yourself for every task in scope; do not read the executor's gate
+evidence as proof, use it as a map. For every task:
 
-- Artifact exists at the declared path and does what the `description` says (spot-read, don't assume from the name).
-- `validation` was actually runnable and you ran it. If `validation` is vague ("run the suite"), run the tests that
-  cover the task's `covers.acs` and say which.
+- Every declared artifact exists at the declared path **and** does what the `description` says (spot-read, don't
+  assume from the name). For test artifacts, every declared method exists.
+- Every `validation` bullet (`TestClass.method → AC-n → shape`) resolves to a real assertion at the cited `file:line`,
+  **at the level and strength the bullet names**. Run that test alone. The substitutions the `execute` skill forbids —
+  count for by-value, status for `never()`, sample for whole matrix, `@SpringBootTest` service call for HTTP,
+  `@WithMockUser` with security disabled for "real SecurityFilterChain" — are each a GAP against this task, and the
+  AC's ledger row is WEAK or MISPLACED. If `validation` is vague (a legacy plan), run the tests that cover the task's
+  `covers.acs` and say which.
+- Every AC in `covers.acs` is cited (`@Tag`, method name or `@DisplayName`) by at least one passing test in the class
+  the bullet names. `grep -rn "AC-n" src/test`. An AC with no citing test is ABSENT before you even read the code.
 - Every `covers.rules` MUST / MUST NOT is checked against the artifact (see category 10).
-- Nothing outside the task's artifact and supporting files was modified without a note in `status.md`.
+- The task's commit touches nothing outside its artifact and supporting files (Protocol Gate item 7); anything else
+  needs a `status.md` note, and files that are a later task's artifact are a finding even with a note.
+- Under a declared `skeleton_test`: the step the executor recorded after each task is plausible against that task's
+  commit (`git show <commit>:<path>` of the controllers/templates it added); the skeleton test was never `@Disabled`,
+  trimmed or weakened along the way (`git log -p -- <skeleton_test path>`).
 
 ## 2. AC Evidence Audit (the centerpiece)
 
@@ -118,6 +185,10 @@ For each EARS pattern, the minimum acceptable evidence shape (mirrors `review` c
 - Lifecycle / path → the test traverses **every step of the UC main success scenario the AC's `Flow:` tag names**, as
   the named actor, through HTTP; a test that skips a step, merges two actors into one, or drives services directly is
   MISPLACED. Ledger rows for these ACs cite the UC steps traversed (`UC-1 1–5, 4a`).
+
+The `Claimed in` column is filled from the committed checkpoint report's *AC Coverage* table, not from the executor's
+chat. An AC whose report row names no class.method, or names one that does not exist, is ABSENT. When the report's
+row and the ledger's grade disagree, quote both: that diff is what the executor learns from.
 
 ## 3. Normative Data by Value
 
@@ -159,6 +230,10 @@ Where data is produced, then persisted or displayed (interpretations, configurat
 
 Using the full route list from Grounding:
 
+- First, the phase's `routes` inventory: every entry is mapped by a handler in the owning task's controller artifact,
+  and returns the expected status for the expected role in your runtime reproduction (Grounding 7). An unmapped route
+  is CRITICAL against the owning task; a route mapped in a different class than declared is a `P-N` plus a DRIFT.
+- Every route in the checkpoint's walkthrough script appears both in `routes` and in the URL→role matrix.
 - Map every route to the roles allowed by the rules' URL→role matrix. Routes absent from the matrix are findings against
   the rules, not against the code — record them for *Spec Reconciliation*.
 - For each route that displays or mutates owner-scoped data, confirm enforcement for: anonymous, other-owner, wrong
@@ -204,6 +279,10 @@ Applies to any phase that ships templates or user-visible text.
 - No test depends on wall-clock dates that will expire, on network, or on a live model.
 - Test doubles conform to the production interface contract (same exceptions, same nullability, same `Optional`
   semantics). A double that can do what production cannot is the root of IMPOSSIBLE evidence.
+- Architecture tests (`ArchUnit`, Modulith verification) have not acquired exemptions during the phase
+  (`git log -p -- <arch test path>`; look for `.that().doNotHaveSimpleName`, `resideOutsideOfPackage`, string
+  substrings, `@Disabled`). An exemption that makes two contradictory rules "pass" is a CRITICAL against the rule and a
+  `P-N` for the Blocker that was not raised.
 
 ## 10. Constraint Conformance
 
@@ -217,6 +296,10 @@ For each RULE in the phase's coverage: quote the MUST/MUST NOT, point at the cod
   error on a spec'd path, credential that does not work, silent semantic downgrade. Blocks approval.
 - **GAP** — the behavior may be right but is not proven: WEAK / IMPOSSIBLE / MISPLACED / ABSENT evidence for an AC in the
   phase; required test scenario missing; security matrix narrower than the AC. Blocks approval.
+- **PROTOCOL** (`P-N`) — the executor did not follow the `execute` protocol: no committed checkpoint report, batched
+  commits, renamed artifact without a Deviation, missing closure-gate evidence, workaround where a Blocker was due,
+  out-of-task scope. Blocks approval. Items 1–2 of the Protocol Gate stop the audit; the others are graded alongside
+  the evidence they undermine.
 - **DRIFT** — the implementation differs from the spec's wording in a way that still satisfies the AC's observable
   outcome and that the spec left open (e.g. two actions merged into one, a placeholder enum made concrete, a port or
   property name). Candidate **Δ**; does not block.
@@ -227,10 +310,17 @@ spec *permits*, never for differences the spec did not foresee.
 
 # Verdict
 
-- **APPROVE** — zero CRITICAL, zero GAP, walkthrough confirmed (or no UI in the phase). Paste `APPROVED` or
-  `APPROVED WITH NOTES: <Δ list>` to the executor.
-- **APPROVE PENDING WALKTHROUGH** — zero CRITICAL, zero GAP, UI phase; becomes APPROVE when the user confirms the script.
-- **REJECT** — any CRITICAL or GAP. Emit ordered `REVISE:` directives and/or a remediation phase.
+- **APPROVE** — zero CRITICAL, zero GAP, zero PROTOCOL, walkthrough confirmed (or no UI in the phase). Paste `APPROVED`
+  or `APPROVED WITH NOTES: <Δ list>` to the executor.
+- **APPROVE PENDING WALKTHROUGH** — zero CRITICAL, zero GAP, zero PROTOCOL, UI phase; becomes APPROVE when the user
+  confirms the script.
+- **REJECT** — any CRITICAL, GAP or PROTOCOL. Emit ordered `REVISE:` directives and/or a remediation phase.
+- **REFUSED (protocol)** — Protocol Gate item 1 or 2 failed; the audit was not performed. The response is a single
+  `REVISE:` that names the protocol repair (commit the report; split the batched commit per task with the closure gate
+  re-run for each). Re-run converge once the executor has done so.
+
+In task mode the same verdicts apply to the tasks in scope; `APPROVED` in task mode lets execute continue to the next
+task, it does not approve the phase.
 
 Carry-forward rule: an open F-n from an earlier convergence report that is still unresolved and still unwaived counts as
 a finding of this checkpoint at its original severity.
@@ -239,8 +329,8 @@ a finding of this checkpoint at its original severity.
 
 Each finding has:
 
-- Stable ID: `C-N` (CRITICAL), `G-N` (GAP), `D-N` (DRIFT), `K-N` (COSMETIC), numbered per checkpoint; prefix with the
-  checkpoint when cited elsewhere (`cp-5/C-2`)
+- Stable ID: `C-N` (CRITICAL), `G-N` (GAP), `P-N` (PROTOCOL), `D-N` (DRIFT), `K-N` (COSMETIC), numbered per
+  checkpoint; prefix with the checkpoint when cited elsewhere (`cp-5/C-2`)
 - Title
 - Spec reference(s): AC-N / B-N / RULE-N quoted verbatim
 - Evidence: file:line with a one-line excerpt for **both** the code and the test that let it pass
@@ -264,6 +354,12 @@ these ways:
   omits routes: list them under `### Spec weaknesses exposed by cp-N` with the upstream skill that should fix them
   (`spec`, `criteria`, `rules`). Do not fix them yourself in the middle of execution unless the user asks; they feed the
   next proposal/spec revision.
+- **Plan weaknesses** — a checkpoint criterion with no artifact behind it, a route with no owning task, an artifact
+  named by glob or prose, a `validation` bullet that was not literally satisfiable, an AC the phase claims that no task
+  asserts, a task over 5 ACs or an unsplit `L` with no intermediate checkpoint: list them under
+  `### Plan weaknesses exposed by cp-N` with `tasks` / `review (plan)` as the owner. Distinguish them from executor
+  findings in the report: when the plan gave the executor two readings or no artifact, the finding is still a finding,
+  but the fix is a plan fix and the `REVISE:` line says so.
 - `criteria.md`: header note only ("Converged at cp-N …") plus verification-placement notes. ACs are never altered.
 - `status.md`: set `phase-N: PENDING` (REJECT / PENDING WALKTHROUGH) or leave for the executor to set `APPROVED`; add
   waivers under *Deviations* with the finding id and the user's decision.
@@ -303,13 +399,23 @@ one, and record the answer in the report and in `status.md` *Deviations*. Never 
 - An "end-to-end" test that traverses a path no use case describes, or that omits an extension the spec marks as
   state-changing
 - A walkthrough script written by converge instead of taken from the use cases
+- Auditing the executor's chat instead of a committed `spec/checkpoints/cp-N.md`; the claims then cannot be diffed
+  against the ledger after the fact
+- Grading evidence for a phase delivered as two commits for seven tasks, as if the per-task loop had run
+- Accepting a renamed test class as the declared artifact without reading what the rename dropped
+- Treating "worked around" in `status.md` as a note rather than as the Blocker that was never raised
+- Trusting the executor's Runtime Evidence table without requesting the URLs yourself
 
 # Success Criteria
 
 Complete only when ALL hold:
 
-- Grounding executed: before/after `git status`, full test run with counts, artifacts located, full route list built
-- All ten categories run; each either confirms pass with the evidence used or lists findings
+- Protocol Gate executed first: committed report present, one commit per task verified from `git log`, plan review
+  present, artifacts by exact name, closure-gate evidence per task, Blocker/workaround scan, per-commit scope
+- Grounding executed: before/after `git status`, full test run with counts (plan guards named), artifacts located, full
+  route list built and diffed against the phase `routes`, runtime walkthrough URLs requested and statuses recorded
+- Phase mode: all ten categories run; task mode: the Protocol Gate and categories 1, 2, 6, 10 over the tasks in scope;
+  each either confirms pass with the evidence used or lists findings
 - Evidence Ledger has one row for every AC in the phase's coverage; every non-STRONG row has a finding
 - Every finding has all fields; every quoted spec text matches the file verbatim; every evidence pointer is file:line
 - Verdict matches severity counts and the walkthrough rule
@@ -322,18 +428,27 @@ Do not write a partial report.
 
 # Output
 
-Write to `spec/convergence/cp-N.md` (create the folder if missing). One file per checkpoint; re-running converge on the
-same checkpoint overwrites it and notes the previous verdict.
+Write to `spec/convergence/cp-N.md` (create the folder if missing); task mode writes `cp-N.M.md` or `task-N.M.md` with
+the Summary, Protocol Gate, Evidence Ledger, Findings, Category Notes (1, 2, 6, 10) and Approval response sections only.
+One file per checkpoint; re-running converge on the same checkpoint overwrites it and notes the previous verdict.
 
 ```markdown
 # Convergence: cp-N — <phase name>
 
 ## Summary
-- Checkpoint: cp-N (<phase-N>, <n>/<n> tasks claimed complete)
-- Verdict: <APPROVE | APPROVE PENDING WALKTHROUGH | REJECT>
-- Counts: <N critical, N gaps, N drift, N cosmetic>; carried forward: <ids or none>
-- Suite (run by converge): <run>/<failed>/<errors>/<skipped> — <skipped names + reason>
+- Checkpoint: cp-N (<phase-N>, <n>/<n> tasks claimed complete); executor report: spec/checkpoints/cp-N.md @ <commit>
+- Verdict: <APPROVE | APPROVE PENDING WALKTHROUGH | REJECT | REFUSED (protocol)>
+- Counts: <N critical, N gaps, N protocol, N drift, N cosmetic>; carried forward: <ids or none>
+- Suite (run by converge): <run>/<failed>/<errors>/<skipped> — <skipped names + reason>; plan guards: <PASS | FAIL | absent>
 - Working tree after test run: <clean | files modified>
+
+## Protocol Gate
+| Task | Commit | Files in commit match artifact + supporting | Artifacts by exact name | Gate evidence in status.md | Blocker due / raised |
+|---|---|---|---|---|---|
+
+## Runtime Reproduction
+| Actor | URL | Executor reported | Converge observed |
+|---|---|---|---|
 
 ## Evidence Ledger
 (lifecycle rows cite the UC steps traversed, e.g. `UC-1 1–5, 4a`)
@@ -345,6 +460,8 @@ same checkpoint overwrites it and notes the previous verdict.
 <C-N … (empty if none)>
 ### Gaps
 <G-N …>
+### Protocol
+<P-N …>
 ### Drift (Δ candidates)
 <D-N …>
 ### Cosmetic
@@ -360,6 +477,7 @@ same checkpoint overwrites it and notes the previous verdict.
 - Δ folded in: <B-N/RULE-N/AC-N … with note text>
 - F-n open: <ids>
 - Spec weaknesses exposed: <item → upstream skill>
+- Plan weaknesses exposed: <item → tasks / review (plan)>
 
 ## Resolution
 <ordered REVISE directives, or "Remediation phase phase-N appended to tasks.yaml", or none>

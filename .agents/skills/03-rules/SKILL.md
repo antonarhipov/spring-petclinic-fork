@@ -7,7 +7,7 @@ description: Capture feature-level design decisions and the technical constraint
 
 Translate spec and criteria into the design shape for this feature and the constraints that follow. Constraints specify HOW the system should be built, complementing acceptance criteria which specify WHAT.
 
-Pipeline position: proposal → spec → criteria → **rules** → review → tasks → execute ⇄ converge
+Pipeline position: proposal → spec → criteria → **rules** → review → tasks → review (plan) → execute ⇄ converge
 
 # Role
 
