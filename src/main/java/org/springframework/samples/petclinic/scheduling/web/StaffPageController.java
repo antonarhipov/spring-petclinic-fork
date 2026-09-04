@@ -16,11 +16,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class StaffPageController {
 
-	@GetMapping("/staff/queue")
-	public String queue() {
-		return "staff/queue";
-	}
-
 	@GetMapping("/staff/calendar")
 	public String calendar() {
 		return "staff/calendar";
