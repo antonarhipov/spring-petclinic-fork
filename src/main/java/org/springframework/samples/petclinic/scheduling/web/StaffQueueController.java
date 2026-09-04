@@ -16,6 +16,10 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.util.List;
+
+import org.springframework.samples.petclinic.scheduling.request.StaffQueueService;
+import org.springframework.samples.petclinic.scheduling.request.StaffQueueService.StaffQueueItem;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +31,27 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class StaffQueueController {
 
+	private final StaffQueueService staffQueueService;
+
+	public StaffQueueController(StaffQueueService staffQueueService) {
+		this.staffQueueService = staffQueueService;
+	}
+
 	@GetMapping("/staff/queue")
 	public String queue(@RequestParam(name = "tab", required = false, defaultValue = "needs-staff") String tab,
 			Model model) {
-		model.addAttribute("activeTab", tab);
+		String activeTab = ("all-open".equalsIgnoreCase(tab)) ? "all-open" : "needs-staff";
+		model.addAttribute("activeTab", activeTab);
+
+		List<StaffQueueItem> items;
+		if ("all-open".equals(activeTab)) {
+			items = this.staffQueueService.getAllOpenQueue();
+		}
+		else {
+			items = this.staffQueueService.getNeedsStaffQueue();
+		}
+		model.addAttribute("queueItems", items);
+
 		return "staff/queue";
 	}
 

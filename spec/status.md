@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-3.2
+- Task: task-3.3
 - Status: NOT_STARTED
 
 ## Completed
@@ -36,6 +36,7 @@
 - task-2.20
 - task-2.21
 - task-3.1
+- task-3.2
 
 ## Phase Approvals
 
@@ -64,6 +65,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.2: base commit e96b0f9. Gate 1 artifacts: `StaffQueueService.java` and `StaffQueueTests.java` exist at exact declared paths. Gate 2 scope: diff from e96b0f9 plus untracked files contains only declared artifacts, modifications to `StaffQueueController.java`, `staff/queue.html`, supporting `@EntityGraph` in `SchedulingRequestRepository.java`, and `status.md`. Gate 3 AC citations: AC-84, AC-85, AC-86 tagged at `StaffQueueTests.java:97,171,257`. Gate 4 validation: `StaffQueueTests.java:98-168` asserts only WITH_STAFF rows ordered by created timestamp with exact hand-off triggers ("Declined consent", "Owner routed to staff", "Model unavailable", "No slots available"); `:172-254` asserts every non-terminal state appears with hold and clock-derived age while terminal states are excluded; `:258-298` asserts `staffReleaseHold` transitions to WITH_STAFF, clears all 3 hold fields, and logs the event reason and actor. Gate 5 RULE-29: Needs staff default tab and All open tab with state, hold, age, and release hold action. Gate 6 routes: GET `/staff/queue` renders both tabs over HTTP. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
 - task-3.1: base commit fd35ec1. Gate 1 artifacts: `StaffQueueController.java`, `StaffRequestController.java`, `StaffBookingController.java`, `StaffInterpretationForm.java`, `StaffBookingForm.java`, and `StaffRouteSurfaceTests.java` exist at exact declared paths. Gate 2 scope: diff from fd35ec1 plus untracked files contains only declared artifacts, the removed GET `/staff/queue` from `StaffPageController`, 11 message bundle properties files, and `status.md`. Gate 3 AC citations: task covers no direct ACs; supporting citations AC-84 and AC-9 are tagged at `StaffRouteSurfaceTests.java:100,142`. Gate 4 validation: `StaffRouteSurfaceTests.java:101-139` asserts GET `/staff/queue` resolves to exactly one handler method (`StaffQueueController`), and all staff GET/POST routes resolve through real filter chain with CSRF; `:142-173` asserts anonymous is redirected to login, owner gets 403, no protected staff data is disclosed, and database snapshot is unchanged. Gate 5 rules: RULE-2/RULE-12/RULE-13 staff security matrix, CSRF validation, and localization across all 11 bundles. Gate 6 routes: all phase-3 staff routes resolve. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 

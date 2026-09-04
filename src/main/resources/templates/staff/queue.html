@@ -1,4 +1,80 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
-<body><h2 th:text="#{schedulingQueue}">Scheduling queue</h2><p th:text="#{queueEmpty}">No requests need staff attention.</p></body>
+<body>
+<h2 th:text="#{schedulingQueue}">Scheduling queue</h2>
+
+<div th:if="${message != null}" class="alert alert-info" th:text="#{${message}}"></div>
+
+<ul class="nav nav-tabs" style="margin-bottom: 15px;">
+  <li role="presentation" th:classappend="${activeTab == 'needs-staff'} ? 'active' : ''">
+    <a th:href="@{/staff/queue(tab='needs-staff')}" th:text="#{needsStaff}">Needs staff</a>
+  </li>
+  <li role="presentation" th:classappend="${activeTab == 'all-open'} ? 'active' : ''">
+    <a th:href="@{/staff/queue(tab='all-open')}" th:text="#{allOpen}">All open</a>
+  </li>
+</ul>
+
+<div th:if="${queueItems == null or queueItems.empty}">
+  <p th:text="#{queueEmpty}">No requests need staff attention.</p>
+</div>
+
+<div th:if="${queueItems != null and not queueItems.empty}">
+  <table class="table table-striped" th:if="${activeTab == 'needs-staff'}">
+    <thead>
+      <tr>
+        <th th:text="#{pet}">Pet</th>
+        <th th:text="#{owner}">Owner</th>
+        <th th:text="#{reason}">Reason</th>
+        <th th:text="#{handOffTrigger}">Trigger</th>
+        <th th:text="#{age}">Age</th>
+        <th th:text="#{actions}">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="item : ${queueItems}">
+        <td th:text="${item.request.pet.name}">Pet</td>
+        <td th:text="${item.request.owner.firstName + ' ' + item.request.owner.lastName}">Owner</td>
+        <td th:text="${item.request.reasonText}">Reason</td>
+        <td th:text="${item.trigger}">Trigger</td>
+        <td th:text="${item.formattedAge}">Age</td>
+        <td>
+          <a class="btn btn-default btn-xs" th:href="@{/staff/requests/{id}(id=${item.request.id})}" th:text="#{viewDetail}">View</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="table table-striped" th:if="${activeTab == 'all-open'}">
+    <thead>
+      <tr>
+        <th th:text="#{pet}">Pet</th>
+        <th th:text="#{owner}">Owner</th>
+        <th th:text="#{reason}">Reason</th>
+        <th th:text="#{status}">Status</th>
+        <th th:text="#{heldSlot}">Held slot</th>
+        <th th:text="#{age}">Age</th>
+        <th th:text="#{actions}">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="item : ${queueItems}">
+        <td th:text="${item.request.pet.name}">Pet</td>
+        <td th:text="${item.request.owner.firstName + ' ' + item.request.owner.lastName}">Owner</td>
+        <td th:text="${item.request.reasonText}">Reason</td>
+        <td th:text="${item.request.state}">Status</td>
+        <td th:text="${item.heldSlot}">Held slot</td>
+        <td th:text="${item.formattedAge}">Age</td>
+        <td>
+          <a class="btn btn-default btn-xs" th:href="@{/staff/requests/{id}(id=${item.request.id})}" th:text="#{viewDetail}">View</a>
+          <form style="display:inline;" th:if="${item.request.state.name() == 'SUGGESTION_OFFERED'}"
+                th:action="@{/staff/requests/{id}/release-hold(id=${item.request.id})}" method="post">
+            <button type="submit" class="btn btn-warning btn-xs" th:text="#{releaseHold}">Release hold</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
 </html>

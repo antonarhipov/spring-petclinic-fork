@@ -42,12 +42,18 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 	Optional<SchedulingRequest> findByIdAndOwnerId(Integer id, Integer ownerId);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "pet", "owner", "heldVet" }, type = EntityGraph.EntityGraphType.LOAD)
+	Optional<SchedulingRequest> findById(Integer id);
+
+	@Transactional(readOnly = true)
 	Optional<SchedulingRequest> findByActivePetId(Integer petId);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "pet", "owner", "heldVet" }, type = EntityGraph.EntityGraphType.LOAD)
 	List<SchedulingRequest> findByState(RequestState state);
 
 	@Transactional(readOnly = true)
+	@EntityGraph(attributePaths = { "pet", "owner", "heldVet" }, type = EntityGraph.EntityGraphType.LOAD)
 	@Query("SELECT r FROM SchedulingRequest r WHERE r.state NOT IN ('ACCEPTED', 'ABANDONED') ORDER BY r.createdAt ASC")
 	List<SchedulingRequest> findAllOpen();
 
