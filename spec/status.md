@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-3.3
+- Task: task-3.4
 - Status: NOT_STARTED
 
 ## Completed
@@ -37,6 +37,7 @@
 - task-2.21
 - task-3.1
 - task-3.2
+- task-3.3
 
 ## Phase Approvals
 
@@ -65,6 +66,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-3.3: base commit df4a516. Gate 1 artifacts: `StaffInterpretationService.java`, `requestDetail.html`, `interpretationForm.html`, and `StaffInterpretationTests.java` exist at exact declared paths. Gate 2 scope: diff from df4a516 plus untracked files contains only declared artifacts, modifications to `StaffRequestController.java`, 11 message bundle properties files, and `status.md`. Gate 3 AC citations: AC-55, AC-56, AC-89, AC-121 tagged at `StaffInterpretationTests.java:109,176,218,299,331`. Gate 4 validation: `StaffInterpretationTests.java:110-173` asserts AI version row is retained unmodified and incremented STAFF version row is compared field by field; `:177-215` asserts raw model response, model tag, and prompt version are rendered on staff detail but omitted on owner detail; `:219-296` asserts POST interpretation creates a STAFF version whose structured fields are read back by value and second save increments version while keeping earlier row; `:300-328` asserts suggest is refused on uninterpreted declined-consent request until complete staff interpretation exists; `:332-403` asserts ordered timeline displays from/to state, actor, action, reason, payload, and timestamp. Gate 5 rules: RULE-25/31/43 versioning provenance, staff suggest workflow, and event timeline. Gate 6 routes: all phase-3 staff request routes resolve and render. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 
 - task-3.2: base commit e96b0f9. Gate 1 artifacts: `StaffQueueService.java` and `StaffQueueTests.java` exist at exact declared paths. Gate 2 scope: diff from e96b0f9 plus untracked files contains only declared artifacts, modifications to `StaffQueueController.java`, `staff/queue.html`, supporting `@EntityGraph` in `SchedulingRequestRepository.java`, and `status.md`. Gate 3 AC citations: AC-84, AC-85, AC-86 tagged at `StaffQueueTests.java:97,171,257`. Gate 4 validation: `StaffQueueTests.java:98-168` asserts only WITH_STAFF rows ordered by created timestamp with exact hand-off triggers ("Declined consent", "Owner routed to staff", "Model unavailable", "No slots available"); `:172-254` asserts every non-terminal state appears with hold and clock-derived age while terminal states are excluded; `:258-298` asserts `staffReleaseHold` transitions to WITH_STAFF, clears all 3 hold fields, and logs the event reason and actor. Gate 5 RULE-29: Needs staff default tab and All open tab with state, hold, age, and release hold action. Gate 6 routes: GET `/staff/queue` renders both tabs over HTTP. Gate 7 plan guards: PASS (8/0/0/0). Gate 8 suite: green, tree attributable.
 

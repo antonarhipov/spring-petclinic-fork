@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
+<body>
+
+<h2 th:text="#{requestDetail}">Request details</h2>
+
+<div th:if="${message != null}" class="alert alert-info" th:text="#{${message}}"></div>
+<div th:if="${error != null}" class="alert alert-danger" th:text="${error}"></div>
+
+<div class="panel panel-default">
+  <div class="panel-heading"><b th:text="#{requestDetail}">Request details</b></div>
+  <div class="panel-body">
+    <dl class="dl-horizontal">
+      <dt th:text="#{pet}">Pet</dt>
+      <dd th:text="${request.pet.name}">Pet Name</dd>
+
+      <dt th:text="#{owner}">Owner</dt>
+      <dd th:text="${request.owner.firstName + ' ' + request.owner.lastName}">Owner Name</dd>
+
+      <dt th:text="#{status}">Status</dt>
+      <dd><span class="label label-primary" th:text="${request.state}">State</span></dd>
+
+      <dt th:text="#{reason}">Reason</dt>
+      <dd th:text="${request.reasonText}">Reason</dd>
+
+      <dt th:text="#{availability}">Availability</dt>
+      <dd th:text="${request.availabilityText}">Availability</dd>
+
+      <dt th:if="${request.heldVet != null}" th:text="#{heldSlot}">Held slot</dt>
+      <dd th:if="${request.heldVet != null}" th:text="${request.heldVet.firstName + ' ' + request.heldVet.lastName + ' @ ' + request.heldStart + ' (' + request.heldDuration + ' min)'}">Held slot</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <b th:text="#{staffInterpretation}">Staff interpretation</b>
+    <span class="pull-right" th:if="${interpretation != null}">
+      <span class="badge" th:text="'v' + ${interpretation.version}">v1</span>
+      <span class="label label-info" th:text="${interpretation.provenance}">STAFF</span>
+    </span>
+  </div>
+  <div class="panel-body">
+    <div th:if="${interpretation == null}">
+      <p class="text-muted" th:text="#{noInterpretations}">No interpretation available.</p>
+    </div>
+
+    <div th:if="${interpretation != null}">
+      <dl class="dl-horizontal">
+        <dt th:text="#{provenance}">Provenance</dt>
+        <dd th:text="${interpretation.provenance}">STAFF</dd>
+
+        <dt th:text="#{version}">Version</dt>
+        <dd th:text="${interpretation.version}">1</dd>
+
+        <dt th:text="#{reasonSummary}">Reason summary</dt>
+        <dd th:text="${interpretation.reasonSummary}">Summary</dd>
+
+        <dt th:text="#{careType}">Care type</dt>
+        <dd th:text="${interpretation.careType}">GENERAL</dd>
+
+        <dt th:text="#{specialty}">Specialty</dt>
+        <dd th:text="${interpretation.specialty != null ? interpretation.specialty : '-'}">-</dd>
+
+        <dt th:text="#{duration}">Duration</dt>
+        <dd th:text="${interpretation.estimatedMinutes + ' min'}">30 min</dd>
+
+        <dt th:text="#{preferredVet}">Preferred veterinarian</dt>
+        <dd th:text="${interpretation.preferredVet != null ? interpretation.preferredVet.firstName + ' ' + interpretation.preferredVet.lastName : '-'}">-</dd>
+
+        <dt th:text="#{cannotInterpret}">Cannot interpret</dt>
+        <dd th:text="${interpretation.cannotInterpret}">false</dd>
+
+        <dt th:if="${interpretation.rawResponse != null}" th:text="#{rawResponse}">Raw model response</dt>
+        <dd th:if="${interpretation.rawResponse != null}"><pre th:text="${interpretation.rawResponse}"></pre></dd>
+
+        <dt th:if="${interpretation.modelTag != null}" th:text="#{modelTag}">Model tag</dt>
+        <dd th:if="${interpretation.modelTag != null}" th:text="${interpretation.modelTag}"></dd>
+
+        <dt th:if="${interpretation.promptVersion != null}" th:text="#{promptVersion}">Prompt version</dt>
+        <dd th:if="${interpretation.promptVersion != null}" th:text="${interpretation.promptVersion}"></dd>
+      </dl>
+
+      <h4 th:text="#{availability}">Availability windows</h4>
+      <ul th:if="${not interpretation.windows.empty}">
+        <li th:each="w : ${interpretation.windows}"
+            th:text="${w.kind + ': ' + (w.tokens != null ? w.tokens : (w.dayOfWeek != null ? w.dayOfWeek : w.dateVal) + ' ' + (w.startTime != null ? w.startTime + '-' + w.endTime : ''))}">Window</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <a class="btn btn-primary" th:href="@{/staff/requests/{id}/interpretation(id=${request.id})}"
+       th:text="${interpretation != null ? #messages.msg('editInterpretation') : #messages.msg('createInterpretation')}">Edit interpretation</a>
+
+    <form style="display:inline;" th:action="@{/staff/requests/{id}/suggest(id=${request.id})}" method="post">
+      <button type="submit" class="btn btn-success" th:text="#{suggest}">Suggest</button>
+    </form>
+
+    <a class="btn btn-default" th:href="@{/staff/appointments/new(requestId=${request.id}, petId=${request.pet.id})}"
+       th:text="#{bookDirectly}">Book directly</a>
+
+    <form style="display:inline;" th:if="${request.hasHold()}"
+          th:action="@{/staff/requests/{id}/release-hold(id=${request.id})}" method="post">
+      <button type="submit" class="btn btn-warning" th:text="#{releaseHold}">Release hold</button>
+    </form>
+  </div>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading"><b th:text="#{requestTimeline}">Request timeline</b></div>
+  <div class="panel-body">
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th th:text="#{timestamp}">Timestamp</th>
+          <th th:text="#{eventActor}">Actor</th>
+          <th th:text="#{eventAction}">Action</th>
+          <th th:text="#{fromState}">From state</th>
+          <th th:text="#{toState}">To state</th>
+          <th th:text="#{reason}">Reason</th>
+          <th th:text="#{payload}">Payload</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="ev : ${timeline}">
+          <td th:text="${ev.timestamp}">2026-09-04 12:00</td>
+          <td th:text="${ev.actor}">staff</td>
+          <td th:text="${ev.action}">action</td>
+          <td th:text="${ev.fromState}">from</td>
+          <td th:text="${ev.toState}">to</td>
+          <td th:text="${ev.reason != null ? ev.reason : '-'}">-</td>
+          <td th:text="${ev.payload != null ? ev.payload : '-'}">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

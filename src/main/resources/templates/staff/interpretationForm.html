@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
+<body>
+
+<h2 th:text="#{staffInterpretation}">Staff interpretation</h2>
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <b th:text="#{requestDetail}">Request details</b>:
+    <span th:text="${request.pet.name + ' (' + request.owner.firstName + ' ' + request.owner.lastName + ')'}">Pet (Owner)</span>
+  </div>
+  <div class="panel-body">
+    <dl class="dl-horizontal">
+      <dt th:text="#{reason}">Reason</dt>
+      <dd th:text="${request.reasonText}">Reason</dd>
+      <dt th:text="#{availability}">Availability</dt>
+      <dd th:text="${request.availabilityText}">Availability</dd>
+    </dl>
+  </div>
+</div>
+
+<form th:action="@{/staff/requests/{id}/interpretation(id=${request.id})}" th:object="${form}" method="post" class="form-horizontal">
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{reasonSummary}">Reason summary</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" th:field="*{reasonSummary}"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{duration}">Duration (minutes)</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" th:field="*{estimatedMinutes}"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{careType}">Care type</label>
+    <div class="col-sm-10">
+      <select class="form-control" th:field="*{careType}">
+        <option value="GENERAL">GENERAL</option>
+        <option value="SPECIALTY">SPECIALTY</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{specialty}">Specialty</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" th:field="*{specialty}"/>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{preferredVet}">Preferred veterinarian</label>
+    <div class="col-sm-10">
+      <select class="form-control" th:field="*{preferredVetId}">
+        <option value="">-</option>
+        <option th:each="v : ${vets}" th:value="${v.id}" th:text="${v.firstName + ' ' + v.lastName}">Vet</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{cannotInterpret}">Cannot interpret</label>
+    <div class="col-sm-10">
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" th:field="*{cannotInterpret}"/>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{preferredWindows}">Preferred windows</label>
+    <div class="col-sm-10">
+      <textarea class="form-control" rows="2" th:field="*{preferredWindows}"></textarea>
+      <span class="help-block">e.g. MONDAY:09:00-12:00; 2026-09-10:14:00-17:00</span>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{allowedWindows}">Allowed windows</label>
+    <div class="col-sm-10">
+      <textarea class="form-control" rows="2" th:field="*{allowedWindows}"></textarea>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-sm-2 control-label" th:text="#{excludedWindows}">Excluded windows</label>
+    <div class="col-sm-10">
+      <textarea class="form-control" rows="2" th:field="*{excludedWindows}"></textarea>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-primary" th:text="#{saveInterpretation}">Save interpretation</button>
+      <a class="btn btn-default" th:href="@{/staff/requests/{id}(id=${request.id})}" th:text="#{cancel}">Cancel</a>
+    </div>
+  </div>
+
+</form>
+
+</body>
+</html>
