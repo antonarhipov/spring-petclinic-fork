@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-2.8 (Interpretation content, preferred vet, and duration boundary)
+- Task: task-2.9 (Prompt, clamping, and window structure)
 - Status: NOT_STARTED
 
 ## Completed
@@ -21,6 +21,7 @@
 - task-2.5
 - task-2.6
 - task-2.7
+- task-2.8
 
 ## Phase Approvals
 
@@ -47,6 +48,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+
+- task-2.8: base commit 3f88c98. Gate 1 artifacts: `InterpretationNormalizer.java` and `InterpretationNormalizerTests.java` exist at exact declared paths with all five methods. Gate 2 scope: diff from 3f88c98 plus untracked files contains only both declared artifacts, the required `RequestInterpretationService` integration, and `status.md`. Gate 3 AC citations: AC-39/40/41/42/43 are tagged at `InterpretationNormalizerTests.java:38-88`. Gate 4 validation: every scalar and all three ordered window kinds are compared by value at `:40-59`; known id 2 resolves exactly to Helen Leary at `:64-69`; unknown id 999 and null/ambiguous input both normalize to null at `:74-76`; 16/59 and exact 15/60 remain unchanged at `:81-90`. Gate 5 rules: RULE-20 uses migrated min/max/default settings at `InterpretationNormalizer.java:31-35`; RULE-21 accepts only an existing exact id and otherwise nulls it at `:36-39`, with no name matching. Gate 6 routes: none. Gate 7 plan guards: PASS after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 191/0/0/0; working tree contains only task-attributable files. Corrective attempt: the first compile showed the stock `VetRepository` does not expose `existsById`; exact-id validation was changed to its supported `findById`, after which focused tests passed. Non-obvious: normalization is invoked immediately before persistence at `RequestInterpretationService.java:97-99`, so both stub and Ollama results share the same application-owned boundary.
 
 - task-2.7: base commit 15992ce. Gate 1 artifacts: `ModelUnavailableException.java` and `OllamaAdapterContractTests.java` exist at the exact declared paths with all five declared methods. Gate 2 scope: `git diff --name-only 15992ce` plus untracked files contains only the declared artifacts/modifications, async/lifecycle routing support, the request-detail recommendation, aligned timeout/config tests, and `status.md`. Gate 3 AC citations: AC-34/35/36/37/38 are tagged at `OllamaAdapterContractTests.java:107-180`. Gate 4 validation: two malformed calls throw the fixed unavailable reason and route WITH_STAFF with that persisted event reason at `:109-123`; timeout makes one call, routes with reason, and pins default 60s plus property-bound 17s override on the configured JDK client at `:128-143,198-224`; unmatched `OTHER:cardiology` routes WITH_STAFF while retaining SPECIALTY and exact text at `:148-160`; attempts one and two render rephrase without recommendation at `:165-176`; attempts three and four render both recommendation and rephrase at `:181-197,240-253`. Gate 5 rules: RULE-17 structured-call retry/timeout classification is at `OllamaRequestInterpreter.java:47-98`, timeout property/client binding at `OllamaChatConfiguration.java:37-41` and both property files; RULE-19 unavailable routing is at `AsyncInterpretationService.java:62-74` plus `RequestInterpretationService.java:87-92`, unmatched OTHER routing at `RequestInterpretationService.java:125-149`, and the third-or-later presentation boundary at `requestDetail.html:32`. Gate 6 routes: no new routes owned; rephrase and route-to-staff controls use the previously mapped request routes and are rendered in the HTTP assertions at `OllamaAdapterContractTests.java:240-253`. Gate 7 plan guards: PASS after completion. Gate 8 suite: Java 21 with Byte Buddy agent, 186/0/0/0; working tree contains only task-attributable files. Corrective attempt: the first full suite exposed the interpretation package's no-Spring-Web architecture boundary; transport detection was changed from a Spring Web exception type to standard `IOException` cause inspection, after which focused architecture tests and the full suite passed. Non-obvious: malformed structured output re-invokes the model exactly once; timeout/transport failures do not retry. Model-unavailable results create no interpretation row, while unmatched well-formed OTHER output is persisted verbatim for staff before hand-off.
 

@@ -42,6 +42,8 @@ public class RequestInterpretationService {
 
 	private final SchedulingRequestRepository requestRepository;
 
+	private final InterpretationNormalizer normalizer;
+
 	private final ClinicConfigRepository configRepository;
 
 	private final Clock clock;
@@ -49,12 +51,13 @@ public class RequestInterpretationService {
 	public RequestInterpretationService(RequestInterpreter interpreter,
 			InterpretationRepository interpretationRepository, VetRepository vetRepository,
 			RequestLifecycleService lifecycleService, SchedulingRequestRepository requestRepository,
-			ClinicConfigRepository configRepository, Clock clock) {
+			InterpretationNormalizer normalizer, ClinicConfigRepository configRepository, Clock clock) {
 		this.interpreter = interpreter;
 		this.interpretationRepository = interpretationRepository;
 		this.vetRepository = vetRepository;
 		this.lifecycleService = lifecycleService;
 		this.requestRepository = requestRepository;
+		this.normalizer = normalizer;
 		this.configRepository = configRepository;
 		this.clock = clock;
 	}
@@ -92,6 +95,7 @@ public class RequestInterpretationService {
 	}
 
 	private Interpretation persist(SchedulingRequest request, InterpretationResult result, String actor) {
+		result = this.normalizer.normalize(result);
 		Interpretation interpretation = new Interpretation();
 		interpretation.setRequest(request);
 		interpretation
