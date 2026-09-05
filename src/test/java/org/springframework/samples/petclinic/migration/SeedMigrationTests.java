@@ -58,7 +58,7 @@ class SeedMigrationTests {
 		assertThat(jdbc.queryForObject(
 				"SELECT COUNT(*) FROM \"flyway_schema_history\" WHERE \"success\" AND \"version\" IS NOT NULL",
 				Integer.class))
-			.isEqualTo(4);
+			.isEqualTo(5);
 	}
 
 	@Test

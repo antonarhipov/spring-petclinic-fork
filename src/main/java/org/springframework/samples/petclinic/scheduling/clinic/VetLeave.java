@@ -17,7 +17,6 @@
 package org.springframework.samples.petclinic.scheduling.clinic;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,25 +27,26 @@ import jakarta.persistence.Table;
 import org.springframework.samples.petclinic.model.BaseEntity;
 import org.springframework.samples.petclinic.vet.Vet;
 
+/**
+ * Persistent entity representing veterinarian leave (Layer 3: Leave) (AC-100..104,
+ * RULE-34).
+ */
 @Entity
-@Table(name = "vet_exception")
-public class VetException extends BaseEntity {
+@Table(name = "vet_leave")
+public class VetLeave extends BaseEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "vet_id", nullable = false)
 	private Vet vet;
 
-	@Column(name = "exception_date", nullable = false)
-	private LocalDate exceptionDate;
+	@Column(name = "start_date", nullable = false)
+	private LocalDate startDate;
 
-	@Column(name = "unavailable", nullable = false)
-	private boolean unavailable;
+	@Column(name = "end_date", nullable = false)
+	private LocalDate endDate;
 
-	@Column(name = "start_time")
-	private LocalTime startTime;
-
-	@Column(name = "end_time")
-	private LocalTime endTime;
+	@Column(name = "reason")
+	private String reason;
 
 	public Vet getVet() {
 		return this.vet;
@@ -56,36 +56,28 @@ public class VetException extends BaseEntity {
 		this.vet = vet;
 	}
 
-	public LocalDate getExceptionDate() {
-		return this.exceptionDate;
+	public LocalDate getStartDate() {
+		return this.startDate;
 	}
 
-	public void setExceptionDate(LocalDate exceptionDate) {
-		this.exceptionDate = exceptionDate;
+	public void setStartDate(LocalDate startDate) {
+		this.startDate = startDate;
 	}
 
-	public boolean isUnavailable() {
-		return this.unavailable;
+	public LocalDate getEndDate() {
+		return this.endDate;
 	}
 
-	public void setUnavailable(boolean unavailable) {
-		this.unavailable = unavailable;
+	public void setEndDate(LocalDate endDate) {
+		this.endDate = endDate;
 	}
 
-	public LocalTime getStartTime() {
-		return this.startTime;
+	public String getReason() {
+		return this.reason;
 	}
 
-	public void setStartTime(LocalTime startTime) {
-		this.startTime = startTime;
-	}
-
-	public LocalTime getEndTime() {
-		return this.endTime;
-	}
-
-	public void setEndTime(LocalTime endTime) {
-		this.endTime = endTime;
+	public void setReason(String reason) {
+		this.reason = reason;
 	}
 
 }

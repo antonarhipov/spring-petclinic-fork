@@ -50,7 +50,7 @@ class SchemaValidationTest {
 		List<Map<String, Object>> migrations = jdbcTemplate.queryForList(
 				"SELECT \"version\", \"description\", \"type\", \"success\" FROM \"flyway_schema_history\" WHERE \"version\" IS NOT NULL ORDER BY \"installed_rank\"");
 
-		assertThat(migrations).hasSize(4);
+		assertThat(migrations).hasSize(5);
 		assertThat(migrations.get(0).get("version")).isEqualTo("1");
 		assertThat(migrations.get(0).get("description")).isEqualTo("stock schema");
 		assertThat(migrations.get(0).get("success")).isEqualTo(true);
@@ -66,6 +66,10 @@ class SchemaValidationTest {
 		assertThat(migrations.get(3).get("version")).isEqualTo("4");
 		assertThat(migrations.get(3).get("description")).isEqualTo("scheduling seed");
 		assertThat(migrations.get(3).get("success")).isEqualTo(true);
+
+		assertThat(migrations.get(4).get("version")).isEqualTo("5");
+		assertThat(migrations.get(4).get("description")).isEqualTo("vet exception replacement blocks");
+		assertThat(migrations.get(4).get("success")).isEqualTo(true);
 	}
 
 	@Test

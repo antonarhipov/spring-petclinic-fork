@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'vets')}">
+<body>
+
+<h2 th:text="#{vetAvailability} + ': ' + ${vet.firstName} + ' ' + ${vet.lastName}">Veterinarian availability</h2>
+
+<div th:if="${message != null}" class="alert alert-info" th:text="#{${message}}"></div>
+<div th:if="${warning != null}" class="alert alert-warning" th:text="#{${warning}}"></div>
+<div th:if="${notice != null}" class="alert alert-warning" th:text="#{${notice}}"></div>
+<div th:if="${error != null}" class="alert alert-danger">
+	<span th:text="#{${error}}">Error</span>
+	<ul th:if="${conflicts != null}">
+		<li th:each="c : ${conflicts}" th:text="${c.startTime} + ' - ' + ${c.pet.name} + ' (' + ${c.reason} + ')'">Conflict</li>
+	</ul>
+</div>
+
+<form th:action="@{/staff/vets/{id}/availability(id=${vet.id})}" th:object="${form}" method="post" class="form-horizontal">
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{weeklySchedule}">Weekly schedule</b></div>
+		<div class="panel-body">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th th:text="#{weeklySchedule}">Day of week</th>
+						<th th:text="#{actions}">Shift 1</th>
+						<th th:text="#{startTime}">Shift 1 times</th>
+						<th th:text="#{actions}">Shift 2</th>
+						<th th:text="#{startTime}">Shift 2 times</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="dow : ${T(java.time.DayOfWeek).values()}">
+						<td th:text="${dow}">MONDAY</td>
+						<td>
+							<input type="checkbox" th:name="'weeklySchedule[' + ${dow.name()} + '_1_active]'" value="true"
+							       th:checked="${form.weeklySchedule[dow.name() + '_1_active'] == 'true'}" />
+						</td>
+						<td>
+							<input type="time" th:name="'weeklySchedule[' + ${dow.name()} + '_1_start]'"
+							       th:value="${form.weeklySchedule[dow.name() + '_1_start']}" />
+							<input type="time" th:name="'weeklySchedule[' + ${dow.name()} + '_1_end]'"
+							       th:value="${form.weeklySchedule[dow.name() + '_1_end']}" />
+						</td>
+						<td>
+							<input type="checkbox" th:name="'weeklySchedule[' + ${dow.name()} + '_2_active]'" value="true"
+							       th:checked="${form.weeklySchedule[dow.name() + '_2_active'] == 'true'}" />
+						</td>
+						<td>
+							<input type="time" th:name="'weeklySchedule[' + ${dow.name()} + '_2_start]'"
+							       th:value="${form.weeklySchedule[dow.name() + '_2_start']}" />
+							<input type="time" th:name="'weeklySchedule[' + ${dow.name()} + '_2_end]'"
+							       th:value="${form.weeklySchedule[dow.name() + '_2_end']}" />
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{exceptions}">Exceptions</b></div>
+		<div class="panel-body">
+			<table class="table table-bordered" th:if="${not #lists.isEmpty(data.exceptions)}">
+				<thead>
+					<tr>
+						<th th:text="#{startTime}">Date</th>
+						<th th:text="#{actions}">Replacement</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="ex : ${data.exceptions}">
+						<td th:text="${ex.exceptionDate}">2026-09-10</td>
+						<td th:text="${ex.unavailable ? 'unavailable' : ex.startTime + ' - ' + ex.endTime}">true</td>
+					</tr>
+				</tbody>
+			</table>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{exceptions}">Add exception date</label>
+				<div class="col-sm-4">
+					<input type="date" name="newExceptionDate" class="form-control" />
+				</div>
+				<div class="col-sm-2"><input type="time" name="newExceptionStart" class="form-control" /></div>
+				<div class="col-sm-2"><input type="time" name="newExceptionEnd" class="form-control" /></div>
+				<div class="col-sm-4">
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="newExceptionUnavailable" value="true" checked="checked" />
+							<span th:text="#{actions}">Unavailable all day</span>
+						</label>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{leave}">Leave</b></div>
+		<div class="panel-body">
+			<table class="table table-bordered" th:if="${not #lists.isEmpty(data.leaves)}">
+				<thead>
+					<tr>
+						<th th:text="#{startTime}">Start date</th>
+						<th th:text="#{startTime}">End date</th>
+						<th th:text="#{auditReason}">Reason</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="lv : ${data.leaves}">
+						<td th:text="${lv.startDate}">2026-09-15</td>
+						<td th:text="${lv.endDate}">2026-09-20</td>
+						<td th:text="${lv.reason}">Vacation</td>
+					</tr>
+				</tbody>
+			</table>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{leave}">Add leave</label>
+				<div class="col-sm-3">
+					<input type="date" name="newLeaveStartDate" class="form-control" />
+				</div>
+				<div class="col-sm-3">
+					<input type="date" name="newLeaveEndDate" class="form-control" />
+				</div>
+				<div class="col-sm-4">
+					<input type="text" name="newLeaveReason" th:placeholder="#{auditReason}" class="form-control" />
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{clinicClosures}">Clinic closures</b></div>
+		<div class="panel-body">
+			<table class="table table-bordered" th:if="${not #lists.isEmpty(data.closures)}">
+				<thead>
+					<tr>
+						<th th:text="#{startTime}">Closure date</th>
+						<th th:text="#{auditReason}">Reason</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="cl : ${data.closures}">
+						<td th:text="${cl.closureDate}">2026-12-25</td>
+						<td th:text="${cl.reason}">Christmas</td>
+					</tr>
+				</tbody>
+			</table>
+			<p th:if="${#lists.isEmpty(data.closures)}" class="text-muted" th:text="#{actions}">No clinic closures scheduled.</p>
+			<div class="form-group">
+				<div class="col-sm-4"><input type="date" name="newClosureDate" class="form-control" /></div>
+				<div class="col-sm-8"><input type="text" name="newClosureReason" th:placeholder="#{auditReason}" class="form-control" /></div>
+			</div>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10">
+			<button type="submit" class="btn btn-primary" th:text="#{saveAvailability}">Save availability</button>
+		</div>
+	</div>
+</form>
+
+</body>
+</html>
