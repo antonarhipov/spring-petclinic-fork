@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.scheduling.appointment;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,5 +29,8 @@ public interface AppointmentChangeRepository extends JpaRepository<AppointmentCh
 
 	@Transactional(readOnly = true)
 	List<AppointmentChange> findByAppointmentIdOrderByTimestampAsc(Integer appointmentId);
+
+	@Transactional(readOnly = true)
+	Optional<AppointmentChange> findTopByAppointmentIdOrderByTimestampDescIdDesc(Integer appointmentId);
 
 }

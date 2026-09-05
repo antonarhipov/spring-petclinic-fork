@@ -21,6 +21,7 @@ import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentChangeRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.web.OwnerResourceNotFoundException;
 import org.springframework.samples.petclinic.scheduling.web.OwnerSchedulingAccessService;
@@ -43,12 +44,15 @@ class OwnerSchedulingAccessServiceTests {
 	@Mock
 	private AppointmentRepository appointmentRepository;
 
+	@Mock
+	private AppointmentChangeRepository appointmentChangeRepository;
+
 	private OwnerSchedulingAccessService service;
 
 	@BeforeEach
 	void setUp() {
 		this.service = new OwnerSchedulingAccessService(this.ownerRepository, this.requestRepository,
-				this.appointmentRepository);
+				this.appointmentRepository, this.appointmentChangeRepository);
 	}
 
 	@Test

@@ -16,6 +16,15 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.security.Principal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
+
+import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentManagementService;
+import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,22 +40,68 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class StaffAppointmentController {
 
+	private final AppointmentManagementService appointmentManagementService;
+
+	private final Clock clock;
+
+	public StaffAppointmentController(AppointmentManagementService appointmentManagementService, Clock clock) {
+		this.appointmentManagementService = appointmentManagementService;
+		this.clock = clock;
+	}
+
 	@GetMapping("/staff/appointments/{appointmentId}/reschedule")
 	public String showRescheduleForm(@PathVariable("appointmentId") Integer appointmentId, Model model) {
-		return "staff/calendar";
+		Appointment appointment;
+		try {
+			appointment = this.appointmentManagementService.requireAppointment(appointmentId);
+		}
+		catch (IllegalArgumentException ex) {
+			return "redirect:/staff/calendar";
+		}
+		AppointmentActionForm form = new AppointmentActionForm();
+		form.setVetId(appointment.getVet().getId());
+		form.setAppointmentDate(appointment.getStartTime().toLocalDate().toString());
+		form.setStartTime(appointment.getStartTime().toLocalTime().toString());
+		form.setDurationMinutes(appointment.getDuration());
+		model.addAttribute("appointment", appointment);
+		model.addAttribute("form", form);
+		model.addAttribute("vets", this.appointmentManagementService.allVets());
+		model.addAttribute("changes", this.appointmentManagementService.changes(appointmentId));
+		return "staff/appointmentReschedule";
 	}
 
 	@PostMapping("/staff/appointments/{appointmentId}/reschedule")
 	public String rescheduleAppointment(@PathVariable("appointmentId") Integer appointmentId,
-			@ModelAttribute("form") AppointmentActionForm form, RedirectAttributes redirectAttributes) {
-		redirectAttributes.addFlashAttribute("message", "appointmentRescheduled");
+			@ModelAttribute("form") AppointmentActionForm form, Principal principal,
+			RedirectAttributes redirectAttributes) {
+		try {
+			Appointment appointment = this.appointmentManagementService.requireAppointment(appointmentId);
+			LocalDate date = LocalDate.parse(form.getAppointmentDate());
+			LocalTime time = LocalTime.parse(form.getStartTime());
+			ZonedDateTime newStartTime = date.atTime(time).atZone(this.clock.getZone());
+			Vet vet = this.appointmentManagementService.requireVet(form.getVetId());
+			this.appointmentManagementService.staffReschedule(appointment, actor(principal), form.getReason(),
+					newStartTime, form.getDurationMinutes(), vet);
+			redirectAttributes.addFlashAttribute("message", "appointmentRescheduled");
+		}
+		catch (RuntimeException ex) {
+			redirectAttributes.addFlashAttribute("error", errorKey(form.getReason()));
+		}
 		return "redirect:/staff/calendar";
 	}
 
 	@PostMapping("/staff/appointments/{appointmentId}/cancel")
 	public String cancelAppointment(@PathVariable("appointmentId") Integer appointmentId,
-			@ModelAttribute("form") AppointmentActionForm form, RedirectAttributes redirectAttributes) {
-		redirectAttributes.addFlashAttribute("message", "appointmentCancelled");
+			@ModelAttribute("form") AppointmentActionForm form, Principal principal,
+			RedirectAttributes redirectAttributes) {
+		try {
+			Appointment appointment = this.appointmentManagementService.requireAppointment(appointmentId);
+			this.appointmentManagementService.staffCancel(appointment, actor(principal), form.getReason());
+			redirectAttributes.addFlashAttribute("message", "appointmentCancelled");
+		}
+		catch (RuntimeException ex) {
+			redirectAttributes.addFlashAttribute("error", errorKey(form.getReason()));
+		}
 		return "redirect:/staff/calendar";
 	}
 
@@ -62,6 +117,15 @@ public class StaffAppointmentController {
 			@ModelAttribute("form") AppointmentActionForm form, RedirectAttributes redirectAttributes) {
 		redirectAttributes.addFlashAttribute("message", "appointmentNoShow");
 		return "redirect:/staff/calendar";
+	}
+
+	private String actor(Principal principal) {
+		return principal == null || principal.getName() == null || principal.getName().isBlank() ? "staff"
+				: principal.getName();
+	}
+
+	private String errorKey(String reason) {
+		return reason == null || reason.isBlank() ? "reasonRequired" : "appointmentActionNotAllowed";
 	}
 
 }

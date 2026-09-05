@@ -53,6 +53,7 @@ public class AppointmentLifecycleService {
 		Objects.requireNonNull(pet, "pet must not be null");
 		Objects.requireNonNull(vet, "vet must not be null");
 		Objects.requireNonNull(startTime, "startTime must not be null");
+		requireStaffReason(reason);
 
 		ZonedDateTime now = ZonedDateTime.now(this.clock);
 		Appointment appointment = new Appointment();
@@ -70,6 +71,7 @@ public class AppointmentLifecycleService {
 		change.setAppointment(saved);
 		change.setActor(actor);
 		change.setAction("BOOK");
+		change.setReason(reason.trim());
 		change.setTimestamp(now);
 		this.appointmentChangeRepository.save(change);
 
@@ -80,23 +82,28 @@ public class AppointmentLifecycleService {
 		validateConfirmed(appointment, "owner cancel");
 		validateBeforeStart(appointment, "owner cancel");
 
-		return applyStatusChange(appointment, AppointmentStatus.CANCELLED_BY_OWNER, actor, "CANCEL_BY_OWNER", null);
+		return applyStatusChange(appointment, AppointmentStatus.CANCELLED_BY_OWNER, actor, "CANCEL_BY_OWNER", null,
+				null);
 	}
 
 	public Appointment staffCancel(Appointment appointment, String actor, String reason) {
 		validateConfirmed(appointment, "staff cancel");
 		validateBeforeStart(appointment, "staff cancel");
+		requireStaffReason(reason);
 
-		return applyStatusChange(appointment, AppointmentStatus.CANCELLED_BY_STAFF, actor, "CANCEL_BY_STAFF", reason);
+		return applyStatusChange(appointment, AppointmentStatus.CANCELLED_BY_STAFF, actor, "CANCEL_BY_STAFF",
+				reason.trim(), appointment.getStartTime());
 	}
 
 	public Appointment staffReschedule(Appointment appointment, String actor, String reason, ZonedDateTime newStartTime,
 			int newDuration, Vet newVet) {
 		validateConfirmed(appointment, "staff reschedule");
 		validateBeforeStart(appointment, "staff reschedule");
+		requireStaffReason(reason);
 
 		Objects.requireNonNull(newStartTime, "newStartTime must not be null");
 		ZonedDateTime now = ZonedDateTime.now(this.clock);
+		ZonedDateTime originalStartTime = appointment.getStartTime();
 
 		appointment.setStartTime(newStartTime);
 		if (newDuration > 0) {
@@ -112,8 +119,9 @@ public class AppointmentLifecycleService {
 		change.setAppointment(saved);
 		change.setActor(actor);
 		change.setAction("RESCHEDULE");
-		change.setReason(reason);
+		change.setReason(reason.trim());
 		change.setTimestamp(now);
+		change.setOriginalStartTime(originalStartTime);
 		this.appointmentChangeRepository.save(change);
 
 		return saved;
@@ -123,7 +131,8 @@ public class AppointmentLifecycleService {
 		validateConfirmed(appointment, "mark completed");
 		validateAtOrAfterStart(appointment, "mark completed");
 
-		Appointment saved = applyStatusChange(appointment, AppointmentStatus.COMPLETED, actor, "MARK_COMPLETED", null);
+		Appointment saved = applyStatusChange(appointment, AppointmentStatus.COMPLETED, actor, "MARK_COMPLETED", null,
+				null);
 
 		Visit visit = new Visit();
 		visit.setDate(saved.getStartTime().toLocalDate());
@@ -140,7 +149,7 @@ public class AppointmentLifecycleService {
 		validateConfirmed(appointment, "mark no-show");
 		validateAtOrAfterStart(appointment, "mark no-show");
 
-		return applyStatusChange(appointment, AppointmentStatus.NO_SHOW, actor, "MARK_NO_SHOW", reason);
+		return applyStatusChange(appointment, AppointmentStatus.NO_SHOW, actor, "MARK_NO_SHOW", reason, null);
 	}
 
 	private void validateConfirmed(Appointment appointment, String action) {
@@ -169,7 +178,7 @@ public class AppointmentLifecycleService {
 	}
 
 	private Appointment applyStatusChange(Appointment appointment, AppointmentStatus targetStatus, String actor,
-			String action, String reason) {
+			String action, String reason, ZonedDateTime originalStartTime) {
 		ZonedDateTime now = ZonedDateTime.now(this.clock);
 		appointment.setStatus(targetStatus);
 
@@ -181,9 +190,16 @@ public class AppointmentLifecycleService {
 		change.setAction(action);
 		change.setReason(reason);
 		change.setTimestamp(now);
+		change.setOriginalStartTime(originalStartTime);
 		this.appointmentChangeRepository.save(change);
 
 		return saved;
+	}
+
+	private void requireStaffReason(String reason) {
+		if (reason == null || reason.isBlank()) {
+			throw new IllegalArgumentException("Staff action reason is required");
+		}
 	}
 
 }

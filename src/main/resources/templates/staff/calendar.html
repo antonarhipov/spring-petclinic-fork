@@ -43,6 +43,12 @@
 		<tr th:each="row : ${calendarView.gridRows}">
 			<td class="time-cell" th:text="${row.timeLabel}">09:00</td>
 			<td th:each="cell : ${row.cells}" th:class="${cell.state}">
+				<a th:if="${pickingRequestId == null and cell.state == 'booked'}"
+				   th:href="@{/staff/appointments/{id}/reschedule(id=${cell.appointmentId})}"
+				   th:text="${cell.label}">Booked</a>
+				<span th:if="${pickingRequestId != null and cell.state == 'booked'}" th:text="${cell.label}">Booked</span>
+				<span th:if="${cell.state == 'booked' and appointmentChanges[cell.appointmentId] != null}"
+				      class="audit-reason" th:text="${appointmentChanges[cell.appointmentId].reason}">Audit reason</span>
 				<form th:if="${pickingRequestId != null and cell.state == 'free'}" th:action="@{/staff/calendar/pick/{requestId}(requestId=${pickingRequestId})}" method="post">
 					<input type="hidden" name="vetId" th:value="${cell.vetId}" />
 					<input type="hidden" name="appointmentDate" th:value="${calendarView.dateIso}" />
@@ -53,7 +59,7 @@
 				<a th:if="${pickingRequestId == null and cell.state == 'free'}"
 				   th:href="@{/staff/appointments/new(vetId=${cell.vetId},start=${calendarView.dateIso + 'T' + cell.timeLabel})}"
 				   th:text="${cell.label}">Free</a>
-				<span th:if="${cell.state != 'free'}" th:text="${cell.label}">Unavailable</span>
+				<span th:if="${cell.state != 'free' and cell.state != 'booked'}" th:text="${cell.label}">Unavailable</span>
 			</td>
 		</tr>
 	</tbody>

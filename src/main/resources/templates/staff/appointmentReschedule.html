@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body>
+<h2 th:text="#{rescheduleAppointment}">Reschedule appointment</h2>
+
+<dl class="dl-horizontal">
+	<dt th:text="#{pet}">Pet</dt>
+	<dd th:text="${appointment.pet.name}">Pet</dd>
+	<dt th:text="#{originalTime}">Current time</dt>
+	<dd th:text="${appointment.startTime}">Time</dd>
+</dl>
+
+<form th:action="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" th:object="${form}" method="post" class="form-horizontal">
+	<div class="form-group">
+		<label class="col-sm-2 control-label" th:text="#{selectVet}">Veterinarian</label>
+		<div class="col-sm-10">
+			<select th:field="*{vetId}" class="form-control" required="required">
+				<option th:each="vet : ${vets}" th:value="${vet.id}" th:text="${vet.firstName + ' ' + vet.lastName}">Vet</option>
+			</select>
+		</div>
+	</div>
+	<div class="form-group">
+		<label class="col-sm-2 control-label" th:text="#{appointmentDate}">Date</label>
+		<div class="col-sm-10"><input type="date" th:field="*{appointmentDate}" class="form-control" required="required" /></div>
+	</div>
+	<div class="form-group">
+		<label class="col-sm-2 control-label" th:text="#{startTime}">Start time</label>
+		<div class="col-sm-10"><input type="time" th:field="*{startTime}" class="form-control" required="required" /></div>
+	</div>
+	<div class="form-group">
+		<label class="col-sm-2 control-label" th:text="#{duration}">Duration</label>
+		<div class="col-sm-10"><input type="number" th:field="*{durationMinutes}" class="form-control" required="required" /></div>
+	</div>
+	<div class="form-group">
+		<label class="col-sm-2 control-label" th:text="#{auditReason}">Reason</label>
+		<div class="col-sm-10"><input type="text" th:field="*{reason}" class="form-control" required="required" /></div>
+	</div>
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10"><button type="submit" class="btn btn-primary" th:text="#{reschedule}">Reschedule</button></div>
+	</div>
+</form>
+
+<form th:action="@{/staff/appointments/{id}/cancel(id=${appointment.id})}" method="post" class="form-horizontal">
+	<div class="form-group">
+		<label class="col-sm-2 control-label" for="cancel-reason" th:text="#{auditReason}">Reason</label>
+		<div class="col-sm-10"><input id="cancel-reason" type="text" name="reason" class="form-control" required="required" /></div>
+	</div>
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10"><button type="submit" class="btn btn-danger" th:text="#{cancelAppointment}">Cancel appointment</button></div>
+	</div>
+</form>
+
+<table class="table table-striped" th:unless="${#lists.isEmpty(changes)}">
+	<thead><tr><th th:text="#{status}">Action</th><th th:text="#{auditReason}">Reason</th><th th:text="#{date}">Time</th></tr></thead>
+	<tbody><tr th:each="change : ${changes}"><td th:text="${change.action}">Action</td><td th:text="${change.reason}">Reason</td><td th:text="${change.timestamp}">Time</td></tr></tbody>
+</table>
+</body>
+</html>

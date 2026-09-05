@@ -10,12 +10,17 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentChange;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentChangeRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
@@ -32,11 +37,14 @@ public class OwnerSchedulingAccessService {
 
 	private final AppointmentRepository appointmentRepository;
 
+	private final AppointmentChangeRepository appointmentChangeRepository;
+
 	public OwnerSchedulingAccessService(OwnerRepository ownerRepository, SchedulingRequestRepository requestRepository,
-			AppointmentRepository appointmentRepository) {
+			AppointmentRepository appointmentRepository, AppointmentChangeRepository appointmentChangeRepository) {
 		this.ownerRepository = ownerRepository;
 		this.requestRepository = requestRepository;
 		this.appointmentRepository = appointmentRepository;
+		this.appointmentChangeRepository = appointmentChangeRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -69,6 +77,20 @@ public class OwnerSchedulingAccessService {
 	public List<Appointment> findAppointments(Integer ownerId) {
 		requireOwner(ownerId);
 		return this.appointmentRepository.findAllOwnedBy(ownerId);
+	}
+
+	@Transactional(readOnly = true)
+	public Map<Integer, AppointmentChange> findLatestStaffChanges(Integer ownerId) {
+		Map<Integer, AppointmentChange> changes = new LinkedHashMap<>();
+		for (Appointment appointment : findAppointments(ownerId)) {
+			this.appointmentChangeRepository.findByAppointmentIdOrderByTimestampAsc(appointment.getId())
+				.stream()
+				.filter(change -> "RESCHEDULE".equals(change.getAction())
+						|| "CANCEL_BY_STAFF".equals(change.getAction()))
+				.max(Comparator.comparing(AppointmentChange::getId))
+				.ifPresent(change -> changes.put(appointment.getId(), change));
+		}
+		return changes;
 	}
 
 	@Transactional(readOnly = true)

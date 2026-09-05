@@ -74,6 +74,10 @@ public class StaffBookingController {
 			redirectAttributes.addFlashAttribute("error", "Missing required booking fields");
 			return "redirect:/staff/appointments/new";
 		}
+		if (form.getReason() == null || form.getReason().isBlank()) {
+			redirectAttributes.addFlashAttribute("error", "reasonRequired");
+			return "redirect:/staff/appointments/new";
+		}
 		this.staffBookingService.directBook(form, "staff");
 		redirectAttributes.addFlashAttribute("message", "appointmentBooked");
 		return "redirect:/staff/calendar";

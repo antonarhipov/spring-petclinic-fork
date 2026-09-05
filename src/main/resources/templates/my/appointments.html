@@ -2,11 +2,17 @@
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'myAppointments')}">
 <body>
   <h2 th:text="#{myAppointments}">My Appointments</h2>
-  <p th:if="${#lists.isEmpty(appointments)}" th:text="#{noAppointments}">No appointments</p>
-  <table th:unless="${#lists.isEmpty(appointments)}" class="table table-striped">
-    <thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{date}">Date</th><th th:text="#{status}">Status</th></tr></thead>
-    <tbody><tr th:each="appointment : ${appointments}"><td th:text="${appointment.pet.name}"></td><td th:text="${appointment.startTime}"></td><td th:text="${appointment.status}"></td></tr></tbody>
-  </table>
+	  <p th:if="${#lists.isEmpty(appointments)}" th:text="#{noAppointments}">No appointments</p>
+	  <h3 th:text="#{upcomingAppointments}">Upcoming</h3>
+	  <table id="upcoming-appointments" th:unless="${#lists.isEmpty(upcomingAppointments)}" class="table table-striped">
+	    <thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{date}">Date</th><th th:text="#{status}">Status</th></tr></thead>
+	    <tbody><tr th:each="appointment : ${upcomingAppointments}"><td th:text="${appointment.pet.name}"></td><td th:text="${appointment.startTime}"></td><td><span th:text="${appointment.status}"></span><div th:if="${latestStaffChanges[appointment.id] != null}" class="clinic-change"><span th:text="#{changedByClinic}">Changed by the clinic</span>: <span th:text="${latestStaffChanges[appointment.id].reason}">Reason</span>; <span th:text="#{originalTime}">Original time</span>: <span th:text="${latestStaffChanges[appointment.id].originalStartTime}">Original</span></div></td></tr></tbody>
+	  </table>
+	  <h3 th:text="#{pastAppointments}">Past</h3>
+	  <table id="past-appointments" th:unless="${#lists.isEmpty(pastAppointments)}" class="table table-striped">
+	    <thead><tr><th th:text="#{pet}">Pet</th><th th:text="#{date}">Date</th><th th:text="#{status}">Status</th></tr></thead>
+	    <tbody><tr th:each="appointment : ${pastAppointments}"><td th:text="${appointment.pet.name}"></td><td th:text="${appointment.startTime}"></td><td><span th:text="${appointment.status}"></span><div th:if="${latestStaffChanges[appointment.id] != null}" class="clinic-change"><span th:text="#{changedByClinic}">Changed by the clinic</span>: <span th:text="${latestStaffChanges[appointment.id].reason}">Reason</span>; <span th:text="#{originalTime}">Original time</span>: <span th:text="${latestStaffChanges[appointment.id].originalStartTime}">Original</span></div></td></tr></tbody>
+	  </table>
   <a class="btn btn-primary" th:href="@{/my/requests/new}" th:text="#{startRequest}">Start a request</a>
 </body>
 </html>

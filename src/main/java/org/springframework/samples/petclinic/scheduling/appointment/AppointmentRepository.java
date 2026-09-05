@@ -30,6 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
 
+	@Transactional(readOnly = true)
+	@Query("SELECT a FROM Appointment a JOIN FETCH a.pet JOIN FETCH a.vet WHERE a.id = :appointmentId")
+	Optional<Appointment> findDetailedById(@Param("appointmentId") Integer appointmentId);
+
 	/**
 	 * Owner-scoped read models: fetch-join pet and vet so the owner pages can render the
 	 * detached entities with {@code spring.jpa.open-in-view=false}.

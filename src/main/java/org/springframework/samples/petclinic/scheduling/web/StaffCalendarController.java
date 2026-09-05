@@ -18,7 +18,9 @@ package org.springframework.samples.petclinic.scheduling.web;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentManagementService;
 import org.springframework.samples.petclinic.scheduling.calendar.CalendarDayService;
 import org.springframework.samples.petclinic.scheduling.calendar.CalendarDayView;
 import org.springframework.stereotype.Controller;
@@ -34,8 +36,12 @@ public class StaffCalendarController {
 
 	private final CalendarDayService calendarDayService;
 
-	public StaffCalendarController(CalendarDayService calendarDayService) {
+	private final AppointmentManagementService appointmentManagementService;
+
+	public StaffCalendarController(CalendarDayService calendarDayService,
+			AppointmentManagementService appointmentManagementService) {
 		this.calendarDayService = calendarDayService;
+		this.appointmentManagementService = appointmentManagementService;
 	}
 
 	@GetMapping("/staff/calendar")
@@ -51,6 +57,14 @@ public class StaffCalendarController {
 
 		CalendarDayView dayView = this.calendarDayService.getDayView(targetDate);
 		model.addAttribute("calendarView", dayView);
+		List<Integer> appointmentIds = dayView.gridRows()
+			.stream()
+			.flatMap(row -> row.cells().stream())
+			.map(CalendarDayView.Cell::appointmentId)
+			.filter(java.util.Objects::nonNull)
+			.distinct()
+			.toList();
+		model.addAttribute("appointmentChanges", this.appointmentManagementService.latestChanges(appointmentIds));
 		return "staff/calendar";
 	}
 

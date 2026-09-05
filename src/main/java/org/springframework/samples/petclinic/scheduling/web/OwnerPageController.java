@@ -10,7 +10,13 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
+import java.util.List;
+
 import org.springframework.samples.petclinic.security.SecurityUtils;
+import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,8 +26,11 @@ public class OwnerPageController {
 
 	private final OwnerSchedulingAccessService accessService;
 
-	public OwnerPageController(OwnerSchedulingAccessService accessService) {
+	private final Clock clock;
+
+	public OwnerPageController(OwnerSchedulingAccessService accessService, Clock clock) {
 		this.accessService = accessService;
+		this.clock = clock;
 	}
 
 	@GetMapping("/my/pets")
@@ -34,7 +43,20 @@ public class OwnerPageController {
 	@GetMapping("/my/appointments")
 	public String appointments(Model model) {
 		Integer ownerId = currentOwnerId();
-		model.addAttribute("appointments", this.accessService.findAppointments(ownerId));
+		List<Appointment> appointments = this.accessService.findAppointments(ownerId);
+		ZonedDateTime now = ZonedDateTime.now(this.clock);
+		model.addAttribute("appointments", appointments);
+		model.addAttribute("upcomingAppointments",
+				appointments.stream()
+					.filter(appointment -> appointment.getStatus() == AppointmentStatus.CONFIRMED)
+					.filter(appointment -> !appointment.getStartTime().isBefore(now))
+					.toList());
+		model.addAttribute("pastAppointments",
+				appointments.stream()
+					.filter(appointment -> appointment.getStatus() != AppointmentStatus.CONFIRMED
+							|| appointment.getStartTime().isBefore(now))
+					.toList());
+		model.addAttribute("latestStaffChanges", this.accessService.findLatestStaffChanges(ownerId));
 		return "my/appointments";
 	}
 

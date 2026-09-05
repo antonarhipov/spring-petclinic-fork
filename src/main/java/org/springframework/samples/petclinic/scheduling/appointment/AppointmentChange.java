@@ -49,6 +49,9 @@ public class AppointmentChange extends BaseEntity {
 	@Column(name = "timestamp", nullable = false)
 	private ZonedDateTime timestamp;
 
+	@Column(name = "original_start_time")
+	private ZonedDateTime originalStartTime;
+
 	public Appointment getAppointment() {
 		return this.appointment;
 	}
@@ -87,6 +90,14 @@ public class AppointmentChange extends BaseEntity {
 
 	public void setTimestamp(ZonedDateTime timestamp) {
 		this.timestamp = timestamp;
+	}
+
+	public ZonedDateTime getOriginalStartTime() {
+		return this.originalStartTime;
+	}
+
+	public void setOriginalStartTime(ZonedDateTime originalStartTime) {
+		this.originalStartTime = originalStartTime;
 	}
 
 }
