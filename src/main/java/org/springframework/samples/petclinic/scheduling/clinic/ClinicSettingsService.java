@@ -16,7 +16,12 @@
 
 package org.springframework.samples.petclinic.scheduling.clinic;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.samples.petclinic.scheduling.web.ClinicSettingsForm;
 import org.springframework.stereotype.Service;
@@ -29,8 +34,11 @@ public class ClinicSettingsService {
 
 	private final ClinicConfigService configService;
 
-	public ClinicSettingsService(ClinicConfigService configService) {
+	private final AvailabilityConflictService conflictService;
+
+	public ClinicSettingsService(ClinicConfigService configService, AvailabilityConflictService conflictService) {
 		this.configService = configService;
+		this.conflictService = conflictService;
 	}
 
 	public ClinicConfig current() {
@@ -45,12 +53,39 @@ public class ClinicSettingsService {
 		return this.configService.allPartsOfDay();
 	}
 
-	public void updateSettings(ClinicSettingsForm form, String actor) {
-		this.configService.updateSettings(form, actor);
+	public AvailabilityConflictService.EditResult<Void> updateSettings(ClinicSettingsForm form, String actor) {
+		List<AvailabilityConflictService.OpeningHoursEdit> edits = openingHoursEdits(form.getOpeningHours());
+		return this.conflictService.apply(edits, actor, () -> {
+			this.configService.updateSettings(form, actor);
+			return null;
+		});
 	}
 
 	public List<ClinicConfigService.ConfigAuditRecord> getAuditLog() {
 		return this.configService.getAuditLog();
+	}
+
+	private List<AvailabilityConflictService.OpeningHoursEdit> openingHoursEdits(Map<String, String> submitted) {
+		if (submitted == null) {
+			return List.of();
+		}
+		List<AvailabilityConflictService.OpeningHoursEdit> edits = new ArrayList<>();
+		for (ClinicOpeningHour current : allOpeningHours()) {
+			DayOfWeek day = current.getDayOfWeek();
+			String prefix = day.name();
+			if (!submitted.containsKey(prefix + "_closed") && !submitted.containsKey(prefix + "_open")
+					&& !submitted.containsKey(prefix + "_close")) {
+				continue;
+			}
+			boolean closed = "true".equalsIgnoreCase(submitted.get(prefix + "_closed"));
+			LocalTime open = closed ? null : LocalTime.parse(submitted.get(prefix + "_open"));
+			LocalTime close = closed ? null : LocalTime.parse(submitted.get(prefix + "_close"));
+			if (closed != current.isClosed() || !Objects.equals(open, current.getOpenTime())
+					|| !Objects.equals(close, current.getCloseTime())) {
+				edits.add(new AvailabilityConflictService.OpeningHoursEdit(day, closed, open, close));
+			}
+		}
+		return edits;
 	}
 
 }

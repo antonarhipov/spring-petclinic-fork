@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import java.security.Principal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicClosure;
+import org.springframework.samples.petclinic.scheduling.clinic.EffectiveAvailabilityService;
 import org.springframework.samples.petclinic.scheduling.clinic.VetAvailabilityService;
 import org.springframework.samples.petclinic.scheduling.clinic.VetException;
 import org.springframework.samples.petclinic.scheduling.clinic.VetLeave;
@@ -47,9 +49,9 @@ public class VetAvailabilityController {
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-	private final VetAvailabilityService availabilityService;
+	private final EffectiveAvailabilityService availabilityService;
 
-	public VetAvailabilityController(VetAvailabilityService availabilityService) {
+	public VetAvailabilityController(EffectiveAvailabilityService availabilityService) {
 		this.availabilityService = availabilityService;
 	}
 
@@ -76,7 +78,7 @@ public class VetAvailabilityController {
 			@RequestParam(name = "newLeaveEndDate", required = false) String leaveEnd,
 			@RequestParam(name = "newLeaveReason", required = false) String leaveReason,
 			@RequestParam(name = "newClosureDate", required = false) String closureDate,
-			@RequestParam(name = "newClosureReason", required = false) String closureReason,
+			@RequestParam(name = "newClosureReason", required = false) String closureReason, Principal principal,
 			RedirectAttributes redirectAttributes) {
 		VetAvailabilityService.VetAvailabilityData current = this.availabilityService.getAvailabilityData(vetId);
 		Map<DayOfWeek, List<VetAvailabilityService.TimeInterval>> schedule = parseSchedule(form.getWeeklySchedule());
@@ -103,10 +105,20 @@ public class VetAvailabilityController {
 			closures.add(new VetAvailabilityService.ClinicClosureDto(LocalDate.parse(closureDate), closureReason));
 		}
 
-		VetAvailabilityService.AvailabilityUpdateResult result = this.availabilityService.saveSchedule(vetId, schedule,
-				exceptions, leaves, closures);
+		String actor = principal == null || principal.getName() == null || principal.getName().isBlank() ? "staff"
+				: principal.getName();
+		EffectiveAvailabilityService.AvailabilityUpdateResult result = this.availabilityService.saveSchedule(vetId,
+				schedule, exceptions, leaves, closures, actor);
+		if (!result.success()) {
+			redirectAttributes.addFlashAttribute("error", "confirmedConflictWarning");
+			redirectAttributes.addFlashAttribute("conflicts", result.conflicts());
+			return "redirect:/staff/vets/" + vetId + "/availability";
+		}
 		if (result.outOfHoursWarning()) {
 			redirectAttributes.addFlashAttribute("warning", "outOfHoursWarning");
+		}
+		if (result.holdsInvalidated()) {
+			redirectAttributes.addFlashAttribute("notice", "holdConflictNotice");
 		}
 		redirectAttributes.addFlashAttribute("message", "availabilitySaved");
 		return "redirect:/staff/vets/" + vetId + "/availability";

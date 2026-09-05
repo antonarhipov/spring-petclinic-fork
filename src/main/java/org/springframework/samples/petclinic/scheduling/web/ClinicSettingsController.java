@@ -187,7 +187,15 @@ public class ClinicSettingsController {
 
 		String actor = (principal != null && principal.getName() != null && !principal.getName().isBlank())
 				? principal.getName() : "staff";
-		this.settingsService.updateSettings(form, actor);
+		var result = this.settingsService.updateSettings(form, actor);
+		if (!result.applied()) {
+			redirectAttributes.addFlashAttribute("error", "confirmedConflictWarning");
+			redirectAttributes.addFlashAttribute("conflicts", result.conflicts());
+			return "redirect:/staff/settings";
+		}
+		if (result.holdsInvalidated()) {
+			redirectAttributes.addFlashAttribute("notice", "holdConflictNotice");
+		}
 
 		redirectAttributes.addFlashAttribute("message", "settingsSaved");
 		return "redirect:/staff/settings";
