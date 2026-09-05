@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
@@ -62,6 +63,9 @@ class AppointmentLifecycleRefusalTests {
 
 	@Autowired
 	private Clock clock;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	private Pet testPet;
 
@@ -178,7 +182,9 @@ class AppointmentLifecycleRefusalTests {
 		Appointment completed = this.lifecycleService.markCompleted(app, "staff_1");
 		assertThat(completed.getStatus()).isEqualTo(AppointmentStatus.COMPLETED);
 
-		assertThat(this.testPet.getVisits()).anyMatch(v -> v.getDescription().equals("Annual wellness exam"));
+		assertThat(this.jdbcTemplate.queryForObject("SELECT description FROM visits WHERE appointment_id = ?",
+				String.class, app.getId()))
+			.isEqualTo("Annual wellness exam");
 	}
 
 }

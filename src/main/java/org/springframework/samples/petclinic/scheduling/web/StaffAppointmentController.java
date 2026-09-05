@@ -23,6 +23,7 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentManagementService;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.stereotype.Controller;
@@ -42,10 +43,14 @@ public class StaffAppointmentController {
 
 	private final AppointmentManagementService appointmentManagementService;
 
+	private final AppointmentLifecycleService appointmentLifecycleService;
+
 	private final Clock clock;
 
-	public StaffAppointmentController(AppointmentManagementService appointmentManagementService, Clock clock) {
+	public StaffAppointmentController(AppointmentManagementService appointmentManagementService,
+			AppointmentLifecycleService appointmentLifecycleService, Clock clock) {
 		this.appointmentManagementService = appointmentManagementService;
+		this.appointmentLifecycleService = appointmentLifecycleService;
 		this.clock = clock;
 	}
 
@@ -107,15 +112,31 @@ public class StaffAppointmentController {
 
 	@PostMapping("/staff/appointments/{appointmentId}/complete")
 	public String completeAppointment(@PathVariable("appointmentId") Integer appointmentId,
-			@ModelAttribute("form") AppointmentActionForm form, RedirectAttributes redirectAttributes) {
-		redirectAttributes.addFlashAttribute("message", "appointmentCompleted");
+			@ModelAttribute("form") AppointmentActionForm form, Principal principal,
+			RedirectAttributes redirectAttributes) {
+		try {
+			Appointment appointment = this.appointmentManagementService.requireAppointment(appointmentId);
+			this.appointmentLifecycleService.markCompleted(appointment, actor(principal));
+			redirectAttributes.addFlashAttribute("message", "appointmentCompleted");
+		}
+		catch (RuntimeException ex) {
+			redirectAttributes.addFlashAttribute("error", "appointmentActionNotAllowed");
+		}
 		return "redirect:/staff/calendar";
 	}
 
 	@PostMapping("/staff/appointments/{appointmentId}/no-show")
 	public String noShowAppointment(@PathVariable("appointmentId") Integer appointmentId,
-			@ModelAttribute("form") AppointmentActionForm form, RedirectAttributes redirectAttributes) {
-		redirectAttributes.addFlashAttribute("message", "appointmentNoShow");
+			@ModelAttribute("form") AppointmentActionForm form, Principal principal,
+			RedirectAttributes redirectAttributes) {
+		try {
+			Appointment appointment = this.appointmentManagementService.requireAppointment(appointmentId);
+			this.appointmentLifecycleService.markNoShow(appointment, actor(principal), form.getReason());
+			redirectAttributes.addFlashAttribute("message", "appointmentNoShow");
+		}
+		catch (RuntimeException ex) {
+			redirectAttributes.addFlashAttribute("error", "appointmentActionNotAllowed");
+		}
 		return "redirect:/staff/calendar";
 	}
 

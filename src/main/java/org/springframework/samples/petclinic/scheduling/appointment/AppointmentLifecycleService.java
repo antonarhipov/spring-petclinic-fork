@@ -21,7 +21,6 @@ import java.time.ZonedDateTime;
 import java.util.Objects;
 
 import org.springframework.samples.petclinic.owner.Pet;
-import org.springframework.samples.petclinic.owner.Visit;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.stereotype.Service;
@@ -39,12 +38,16 @@ public class AppointmentLifecycleService {
 
 	private final AppointmentChangeRepository appointmentChangeRepository;
 
+	private final AppointmentVisitService appointmentVisitService;
+
 	private final Clock clock;
 
 	public AppointmentLifecycleService(AppointmentRepository appointmentRepository,
-			AppointmentChangeRepository appointmentChangeRepository, Clock clock) {
+			AppointmentChangeRepository appointmentChangeRepository, AppointmentVisitService appointmentVisitService,
+			Clock clock) {
 		this.appointmentRepository = appointmentRepository;
 		this.appointmentChangeRepository = appointmentChangeRepository;
+		this.appointmentVisitService = appointmentVisitService;
 		this.clock = clock;
 	}
 
@@ -134,13 +137,7 @@ public class AppointmentLifecycleService {
 		Appointment saved = applyStatusChange(appointment, AppointmentStatus.COMPLETED, actor, "MARK_COMPLETED", null,
 				null);
 
-		Visit visit = new Visit();
-		visit.setDate(saved.getStartTime().toLocalDate());
-		visit.setDescription(saved.getReason() != null ? saved.getReason() : "Completed appointment");
-		visit.setAppointmentId(saved.getId());
-		if (saved.getPet() != null) {
-			saved.getPet().addVisit(visit);
-		}
+		this.appointmentVisitService.createLinkedVisit(saved);
 
 		return saved;
 	}

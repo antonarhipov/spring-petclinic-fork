@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.scheduling.web;
 
+import org.springframework.samples.petclinic.scheduling.appointment.AppointmentVisitService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,15 +31,23 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class StaffVisitController {
 
+	private final AppointmentVisitService appointmentVisitService;
+
+	public StaffVisitController(AppointmentVisitService appointmentVisitService) {
+		this.appointmentVisitService = appointmentVisitService;
+	}
+
 	@GetMapping("/staff/visits/{visitId}/edit")
 	public String showVisitEditForm(@PathVariable("visitId") Integer visitId, Model model) {
-		return "staff/calendar";
+		model.addAttribute("visit", this.appointmentVisitService.requireVisit(visitId));
+		return "staff/visitEdit";
 	}
 
 	@PostMapping("/staff/visits/{visitId}/edit")
 	public String updateVisit(@PathVariable("visitId") Integer visitId,
 			@RequestParam(name = "description", required = false) String description,
 			RedirectAttributes redirectAttributes) {
+		this.appointmentVisitService.updateDescription(visitId, description);
 		redirectAttributes.addFlashAttribute("message", "visitUpdated");
 		return "redirect:/staff/calendar";
 	}
