@@ -94,6 +94,16 @@ public class OwnerSchedulingAccessService {
 	}
 
 	@Transactional(readOnly = true)
+	public AppointmentChange findLatestStaffChange(Integer ownerId, Integer appointmentId) {
+		requireAppointment(ownerId, appointmentId);
+		return this.appointmentChangeRepository.findByAppointmentIdOrderByTimestampAsc(appointmentId)
+			.stream()
+			.filter(change -> "RESCHEDULE".equals(change.getAction()) || "CANCEL_BY_STAFF".equals(change.getAction()))
+			.max(Comparator.comparing(AppointmentChange::getId))
+			.orElse(null);
+	}
+
+	@Transactional(readOnly = true)
 	public List<Pet> findPetsWithoutActiveRequest(Integer ownerId) {
 		return requireOwner(ownerId).getPets()
 			.stream()

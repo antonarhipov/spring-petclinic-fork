@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'myAppointments')}">
+<body>
+  <h2 th:text="#{appointmentDetails}">Appointment details</h2>
+  <div th:if="${appointmentActionNotAllowed}" class="alert alert-danger" th:text="#{appointmentActionNotAllowed}"></div>
+  <div th:if="${appointmentCancelled}" class="alert alert-info" th:text="#{appointmentCancelled}"></div>
+  <dl>
+    <dt th:text="#{pet}">Pet</dt>
+    <dd th:text="${appointment.pet.name}"></dd>
+    <dt th:text="#{veterinarian}">Veterinarian</dt>
+    <dd th:text="${appointment.vet.firstName + ' ' + appointment.vet.lastName}"></dd>
+    <dt th:text="#{date}">Date</dt>
+    <dd th:text="${appointment.startTime}"></dd>
+    <dt th:text="#{estimatedMinutes}">Estimated minutes</dt>
+    <dd th:text="${appointment.duration}"></dd>
+    <dt th:text="#{status}">Status</dt>
+    <dd th:text="${appointment.status}"></dd>
+    <dt th:if="${appointment.reason != null}" th:text="#{reason}">Reason</dt>
+    <dd th:if="${appointment.reason != null}" th:text="${appointment.reason}"></dd>
+  </dl>
+  <div th:if="${latestStaffChange != null}" class="clinic-change">
+    <h3 th:text="#{changedByClinic}">Changed by the clinic</h3>
+    <dl>
+      <dt th:text="#{auditReason}">Audit reason</dt>
+      <dd th:text="${latestStaffChange.reason}">Reason</dd>
+      <dt th:text="#{originalTime}">Original time</dt>
+      <dd th:text="${latestStaffChange.originalStartTime}">Original time</dd>
+    </dl>
+  </div>
+  <div th:if="${canCancel}">
+    <form th:action="@{/my/appointments/{id}/cancel(id=${appointment.id})}" method="post">
+      <button class="btn btn-danger" type="submit" th:text="#{cancelAppointment}">Cancel appointment</button>
+    </form>
+  </div>
+  <p>
+    <a th:href="@{/my/appointments}" th:text="#{backToAppointments}">Back to appointments</a>
+  </p>
+</body>
+</html>

@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: cp-4
-- Status: COMPLETE (awaiting convergence)
+- Task: task-5.1
+- Status: IN_PROGRESS
 
 ## Completed
 
@@ -50,6 +50,7 @@
 - task-4.7
 - task-4.8
 - task-4.9
+- task-5.1
 
 ## Phase Approvals
 
@@ -78,6 +79,7 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+- task-5.1: base commit `2eb5719`. Gate 1: Artifacts exist at exact declared paths (`OwnerAppointmentController.java`, `appointmentDetail.html`, `OwnerAppointmentRouteTests.java`). Gate 2: Scope clean (`git diff --name-only 2eb5719` matches exact declared artifacts and modifies). Gate 3: AC citations present (AC-116 at `OwnerAppointmentRouteTests.java:94`, AC-118 at `OwnerAppointmentRouteTests.java:126`). Gate 4: Validation bullets verified (`detailAndCancelResolveForOwner` at `OwnerAppointmentRouteTests.java:95-123`; `anonymousWrongRoleAndOtherOwnerDeniedWithoutDisclosureOrMutation_AC118` at `OwnerAppointmentRouteTests.java:127-184`). Gate 5: Rules verified (RULE-12 at `SecurityConfiguration.java:76-77` and `OwnerAppointmentRouteTests.java:140-153`; RULE-13 at `OwnerAppointmentController.java:59-90` and `OwnerAppointmentRouteTests.java:107-184`; RULE-36 at `SecurityConfiguration.java:61` and `OwnerAppointmentRouteTests.java:111-119`). Gate 6: Routes GET `/my/appointments/{appointmentId}` and POST `/my/appointments/{appointmentId}/cancel` mapped and verified via `RouteInventoryTest`. Gate 7: Plan guard tests pass (`RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest`). Gate 8: Full test suite green, tree attributable.
 - cp-4 regeneration: the ordered phase history is `bbd218f` (task-4.1), `481d6a8` (task-4.2), `5d8b6a3` (task-4.3), `8123fe5` (task-4.4), `6845215` (task-4.5), `e2a7a8a` (task-4.6), `9a8616e` (task-4.7), `841e860` (task-4.8), and `5f03679` (task-4.9). The final Java 21 suite passes 294/0/0/0, all three plan guards pass, formatter validation and `git diff --check` pass, and the working tree remained clean after validation.
 - task-4.7 runtime closure correction: the first live walkthrough exposed detached lazy access on GET `/staff/appointments/{id}/reschedule`. The staff appointment read now fetches pet and vet at `AppointmentRepository.java:33-35` and enters through `AppointmentManagementService.java:51-54`; `AppointmentManagementTests.rescheduleMutatesInPlaceAndRecordsOldTime_AC109` runs outside the test transaction and proves the detached form renders exact pet/date/time/duration values before its authenticated CSRF reschedule assertions at `AppointmentManagementTests.java:104-144`. The focused test and final full suite pass, and the corrected live GET returned 200.
 - task-4.9: base commit `841e860`. Gate 1: exact artifact `StaffManageAppointmentE2eTests.java` exists with all three declared methods. Gate 2: `git diff --name-only 841e860` plus untracked files contains only the declared E2E artifact and `status.md`; no production or checkpoint file is included. Gate 3: task-4.9 directly covers no phase AC; supporting AC-138 is tagged at `StaffManageAppointmentE2eTests.java:137`. Gate 4: `staffManageAppointmentSteps1Through4` opens the dated calendar and asserts rendered appointment state, reschedules and cancels with exact audit fields, advances the mutable Clock, completes/no-shows, then verifies and edits the linked visit over authenticated CSRF HTTP at `StaffManageAppointmentE2eTests.java:139-219`; `confirmedAvailabilityConflictExtension` posts an unavailable exception, asserts the complete conflict id list, and proves appointment/exception/audit/event state unchanged at `:223-244`; `holdOnlyConflictExtension` posts the same edit shape and proves hold clearing, WITH_STAFF transition, every invalidation event field, timestamp, and persisted unavailable exception at `:248-276`. Gate 5: RULE-44 is satisfied by isolated transactional H2, the real `SecurityFilterChain`, staff form login/session, CSRF on every POST, persisted state assertions after each step, and the deterministic mutable Clock at `StaffManageAppointmentE2eTests.java:126-133,139-219,223-276,374-417`. Gate 6: the E2E resolves GET `/staff/calendar`, POST appointment reschedule/cancel/complete/no-show, GET/POST visit edit, and POST vet availability; `RouteInventoryTest` passes. Gate 7: `ArtifactInventoryTest`, `RouteInventoryTest`, and `AcTagCoverageTest` pass after task completion. Gate 8: the three-method focused E2E passes 3/0/0/0; formatter and `git diff --check` pass; the escalated Java 21 full suite passes 294/0/0/0 with no tracked file outside task scope modified by the run.

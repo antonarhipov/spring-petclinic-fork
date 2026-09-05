@@ -73,6 +73,8 @@ public class SecurityConfiguration {
 				.hasRole("STAFF")
 				.requestMatchers("/my/requests/**")
 				.hasRole("OWNER")
+				.requestMatchers("/my/appointments/**")
+				.hasRole("OWNER")
 				.requestMatchers("/my/**")
 				.hasRole("OWNER")
 				.anyRequest()
