@@ -1,4 +1,124 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'clinicSettings')}">
-<body><h2 th:text="#{clinicSettings}">Clinic settings</h2><p th:text="#{settingsLater}">Settings are available in the clinic configuration phase.</p></body>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'settings')}">
+<body>
+<h2 th:text="#{settingsSaved}">Clinic settings</h2>
+
+<div th:if="${message != null}" class="alert alert-info" th:text="#{${message}}"></div>
+<div th:if="${#fields.hasErrors('form.*')}" class="alert alert-danger">
+	<ul>
+		<li th:each="err : ${#fields.errors('form.*')}" th:text="${err}">Error</li>
+	</ul>
+</div>
+
+<form th:action="@{/staff/settings}" th:object="${form}" method="post" class="form-horizontal">
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{dayCapacity}">Opening hours</b></div>
+		<div class="panel-body">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th th:text="#{weeklySchedule}">Day</th>
+						<th th:text="#{startTime}">Open time</th>
+						<th th:text="#{startTime}">Close time</th>
+						<th th:text="#{clinicClosures}">Closed</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="oh : ${openingHoursList}">
+						<td th:text="${oh.dayOfWeek}">MONDAY</td>
+						<td>
+							<input type="time" th:name="'openingHours[' + ${oh.dayOfWeek} + '_open]'"
+							       th:value="${form.openingHours[oh.dayOfWeek.name() + '_open']}" class="form-control" />
+						</td>
+						<td>
+							<input type="time" th:name="'openingHours[' + ${oh.dayOfWeek} + '_close]'"
+							       th:value="${form.openingHours[oh.dayOfWeek.name() + '_close']}" class="form-control" />
+						</td>
+						<td>
+							<input type="checkbox" th:name="'openingHours[' + ${oh.dayOfWeek} + '_closed]'" value="true"
+							       th:checked="${form.openingHours[oh.dayOfWeek.name() + '_closed'] == 'true'}" />
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{duration}">Duration bounds & horizon</b></div>
+		<div class="panel-body">
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{duration}">Min duration (min)</label>
+				<div class="col-sm-4">
+					<input type="number" th:field="*{minDurationMinutes}" class="form-control" />
+				</div>
+				<label class="col-sm-2 control-label" th:text="#{duration}">Max duration (min)</label>
+				<div class="col-sm-4">
+					<input type="number" th:field="*{maxDurationMinutes}" class="form-control" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{duration}">Default duration (min)</label>
+				<div class="col-sm-4">
+					<input type="number" th:field="*{defaultDurationMinutes}" class="form-control" />
+				</div>
+				<label class="col-sm-2 control-label" th:text="#{duration}">Horizon (days)</label>
+				<div class="col-sm-4">
+					<input type="number" th:field="*{horizonDays}" class="form-control" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{actions}">Emergency phone</label>
+				<div class="col-sm-4">
+					<input type="text" th:field="*{emergencyPhone}" class="form-control" />
+				</div>
+				<label class="col-sm-2 control-label" th:text="#{actions}">Time zone</label>
+				<div class="col-sm-4">
+					<input type="text" th:field="*{timeZone}" class="form-control" />
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="panel panel-default">
+		<div class="panel-heading"><b th:text="#{dayCapacity}">Parts of day</b></div>
+		<div class="panel-body">
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{startTime}">Morning</label>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{morningStart}" class="form-control" />
+				</div>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{morningEnd}" class="form-control" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{startTime}">Afternoon</label>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{afternoonStart}" class="form-control" />
+				</div>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{afternoonEnd}" class="form-control" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label" th:text="#{startTime}">Evening</label>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{eveningStart}" class="form-control" />
+				</div>
+				<div class="col-sm-4">
+					<input type="time" th:field="*{eveningEnd}" class="form-control" />
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10">
+			<button type="submit" class="btn btn-primary" th:text="#{settingsSaved}">Save settings</button>
+		</div>
+	</div>
+</form>
+
+</body>
 </html>

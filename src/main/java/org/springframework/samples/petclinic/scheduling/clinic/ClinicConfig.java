@@ -6,6 +6,12 @@
  * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.springframework.samples.petclinic.scheduling.clinic;
@@ -44,28 +50,56 @@ public class ClinicConfig extends BaseEntity {
 		return this.bookingHorizonDays;
 	}
 
+	public void setBookingHorizonDays(int bookingHorizonDays) {
+		this.bookingHorizonDays = bookingHorizonDays;
+	}
+
 	public int getMinDurationMinutes() {
 		return this.minDurationMinutes;
+	}
+
+	public void setMinDurationMinutes(int minDurationMinutes) {
+		this.minDurationMinutes = minDurationMinutes;
 	}
 
 	public int getMaxDurationMinutes() {
 		return this.maxDurationMinutes;
 	}
 
+	public void setMaxDurationMinutes(int maxDurationMinutes) {
+		this.maxDurationMinutes = maxDurationMinutes;
+	}
+
 	public int getDefaultDurationMinutes() {
 		return this.defaultDurationMinutes;
+	}
+
+	public void setDefaultDurationMinutes(int defaultDurationMinutes) {
+		this.defaultDurationMinutes = defaultDurationMinutes;
 	}
 
 	public int getGridIntervalMinutes() {
 		return this.gridIntervalMinutes;
 	}
 
+	public void setGridIntervalMinutes(int gridIntervalMinutes) {
+		this.gridIntervalMinutes = gridIntervalMinutes;
+	}
+
 	public String getTimeZone() {
 		return this.timeZone;
 	}
 
+	public void setTimeZone(String timeZone) {
+		this.timeZone = timeZone;
+	}
+
 	public String getEmergencyPhone() {
 		return this.emergencyPhone;
+	}
+
+	public void setEmergencyPhone(String emergencyPhone) {
+		this.emergencyPhone = emergencyPhone;
 	}
 
 }

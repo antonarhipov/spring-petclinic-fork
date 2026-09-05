@@ -2,7 +2,7 @@
 
 ## Current
 
-- Task: task-4.4
+- Task: task-4.5
 - Status: NOT_STARTED
 
 ## Completed
@@ -44,6 +44,7 @@
 - task-4.1
 - task-4.2
 - task-4.3
+- task-4.4
 
 ## Phase Approvals
 
@@ -72,6 +73,8 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+- task-4.4: base commit `5d8b6a3`. Gate 1: exact artifacts `ClinicSettingsService.java` and `ClinicSettingsTests.java` exist. Gate 2: scope contains only the declared artifacts, `ClinicSettingsController`, `ClockConfig`, the settings template, domain accessors/services required to persist and reload every settings field, and `status.md`. Gate 3: AC-99 is tagged at `ClinicSettingsTests.java:71,118,182`. Gate 4: every seeded default is pinned and rendered by value at `ClinicSettingsTests.java:72-114`; every submitted field and the live Clock zone are reloaded at `:119-178`; the complete invalid-edit database snapshot is compared at `:183-209`. Gate 5: RULE-37 is implemented by the configured-zone Clock at `ClockConfig.java:34-65`, all UI fields at `ClinicSettingsController.java:53-190` and `staff/settings.html:13-121`, and atomic persistence at `ClinicConfigService.java:81-155`. Gate 6: GET/POST `/staff/settings` map at `ClinicSettingsController.java:53,97` and resolve in `StaffManagementRouteTests`. Gate 7: plan guards pass. Gate 8: focused settings, route, and architecture tests pass 11/0/0/0; Java 21 full suite passes 277/0/0/0 and formatter passes with no tracked source changed by the run.
+
 - task-4.3: base commit `481d6a8`. Gate 1: exact artifacts `CalendarPickController.java` and `CalendarPickingTests.java` exist. Gate 2: `git diff --name-only 481d6a8` is limited to task-4.3 artifacts, declared supporting files, the calendar view/query boundary needed by its rendering and architecture checks, and `status.md`. Gate 3: AC-90 is tagged at `CalendarPickingTests.java:119,145,227`; AC-97 at `:272`; supporting AC-138 remains in `StaffResolveRequestE2eTests.java`. Gate 4: picking-mode form rendering is asserted at `CalendarPickingTests.java:130-141`; equivalent pick/suggest state, hold tuple, and STAFF event at `:158-223`; rejected non-free mutation snapshot at `:250-268`; normal-mode prefill URL at `:278-283`; UC-4 calendar branch state at `StaffResolveRequestE2eTests.java:212-254`. Gate 5: RULE-31 service-boundary placement is in `CalendarPickController.java:60-66,98-148` and `StaffOperationsQueryService.java:56-91`; RULE-33 calendar state/action rendering is in `staff/calendar.html:6-61`. Gate 6: GET and POST `/staff/calendar/pick/{requestId}` map at `CalendarPickController.java:69-93`. Gate 7: `RouteInventoryTest`, `ArtifactInventoryTest`, and `AcTagCoverageTest` pass. Gate 8: Java 21 full suite with Byte Buddy agent passes 307/0/0/0; `spring-javaformat:validate` passes; the run changed no tracked source.
 
 - task-4.2: base commit `bbd218f`. Gate 1: all 3 declared artifacts exist at exact paths (`CalendarDayService.java`, `CalendarDayView.java`, `CalendarRenderingTests.java`). Gate 2 scope: declared artifacts, modified `StaffCalendarController.java` and `templates/staff/calendar.html`, and `status.md`. Gate 3: AC-96 and AC-98 tagged in `CalendarRenderingTests.java:92,142`. Gate 4: `CalendarRenderingTests.dayGridHasVetColumnsRowsFiveCellStatesAndNavigation_AC96` (`CalendarRenderingTests.java:93-139`) proves exact columns for all veterinarians, 15-minute grid rows, all five cell state classes (`closed`, `off-shift`, `free`, `booked`, `held`), previous/next/today navigation links, and bounded date picker; `CalendarRenderingTests.eachVetDayShowsAllFiveCapacityLayers_AC98` (`CalendarRenderingTests.java:143-186`) proves all five capacity layers (opening hours/closure, effective working blocks, booked appointments, holds, and remaining free capacity) compared per veterinarian. Gate 5: RULE-33 satisfied. Gate 6: `GET /staff/calendar` mapped and tested. Gate 7: `RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest` PASS. Gate 8: suite green.

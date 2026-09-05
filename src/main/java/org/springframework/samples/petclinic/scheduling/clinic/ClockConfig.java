@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.scheduling.clinic;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.ZoneId;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -35,10 +36,35 @@ public class ClockConfig {
 	@Bean
 	@ConditionalOnMissingBean
 	public Clock clock(ClinicConfigRepository clinicConfigRepository) {
-		String configuredZone = clinicConfigRepository.findById(1)
-			.map(ClinicConfig::getTimeZone)
-			.orElse(DEFAULT_CLINIC_TIME_ZONE);
-		return Clock.system(ZoneId.of(configuredZone));
+		return new ConfiguredClinicClock(clinicConfigRepository);
+	}
+
+	private static final class ConfiguredClinicClock extends Clock {
+
+		private final ClinicConfigRepository clinicConfigRepository;
+
+		private ConfiguredClinicClock(ClinicConfigRepository clinicConfigRepository) {
+			this.clinicConfigRepository = clinicConfigRepository;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return this.clinicConfigRepository.findById(1)
+				.map(ClinicConfig::getTimeZone)
+				.map(ZoneId::of)
+				.orElseGet(() -> ZoneId.of(DEFAULT_CLINIC_TIME_ZONE));
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return Clock.system(zone);
+		}
+
+		@Override
+		public Instant instant() {
+			return Clock.systemUTC().instant();
+		}
+
 	}
 
 }
