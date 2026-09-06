@@ -19,6 +19,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigRepository;
 import org.springframework.samples.petclinic.scheduling.request.RequestLifecycleService;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
@@ -31,6 +33,8 @@ import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class RequestInterpretationService {
+
+	private static final Logger logger = LoggerFactory.getLogger(RequestInterpretationService.class);
 
 	private final RequestInterpreter interpreter;
 
@@ -82,9 +86,14 @@ public class RequestInterpretationService {
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public Optional<Interpretation> applyResult(Integer requestId, InterpretationResult result, String actor) {
-		return this.requestRepository.findById(requestId)
-			.filter(request -> request.getState() == RequestState.INTERPRETING)
-			.map(request -> persist(request, result, actor));
+		Optional<SchedulingRequest> request = this.requestRepository.findById(requestId)
+			.filter(candidate -> candidate.getState() == RequestState.INTERPRETING);
+		if (request.isEmpty()) {
+			logger.info("Discarding interpretation result requestId={}; request is missing or no longer INTERPRETING",
+					requestId);
+			return Optional.empty();
+		}
+		return Optional.of(persist(request.orElseThrow(), result, actor));
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -95,7 +104,9 @@ public class RequestInterpretationService {
 	}
 
 	private Interpretation persist(SchedulingRequest request, InterpretationResult result, String actor) {
+		logger.debug("Mapping interpretation result to domain requestId={} modelResult={}", request.getId(), result);
 		result = this.normalizer.normalize(result);
+		logger.debug("Normalized interpretation requestId={} normalizedResult={}", request.getId(), result);
 		Interpretation interpretation = new Interpretation();
 		interpretation.setRequest(request);
 		interpretation
@@ -126,15 +137,29 @@ public class RequestInterpretationService {
 			interpretation.addWindow(persisted);
 		}
 		Interpretation saved = this.interpretationRepository.save(interpretation);
+		logger.debug(
+				"Persisted interpretation domain object requestId={} interpretationId={} version={} provenance={} reasonSummary={} estimatedMinutes={} careType={} specialty={} preferredVetId={} cannotInterpret={} windows={}",
+				request.getId(), saved.getId(), saved.getVersion(), saved.getProvenance(), saved.getReasonSummary(),
+				saved.getEstimatedMinutes(), saved.getCareType(), saved.getSpecialty(),
+				saved.getPreferredVet() == null ? null : saved.getPreferredVet().getId(), saved.isCannotInterpret(),
+				result.windows());
 		if (isUnmatchedOtherSpecialty(result.specialty())) {
+			logger.info("Interpretation outcome requestId={} route=WITH_STAFF reason=unmatched-specialty specialty={}",
+					request.getId(), result.specialty());
 			this.lifecycleService.interpretationUnmatchedSpecialty(request, actor, result.specialty());
 		}
-		else if (result.cannotInterpret() || isContradictory(result.windows())) {
-			String reason = result.cannotInterpret() ? "cannotInterpret" : "contradictory windows";
-			this.lifecycleService.interpretationFailed(request, actor, reason);
-		}
 		else {
-			this.lifecycleService.interpretationUsable(request, actor);
+			boolean contradictory = !result.cannotInterpret() && isContradictory(result.windows());
+			if (result.cannotInterpret() || contradictory) {
+				String reason = result.cannotInterpret() ? "cannotInterpret" : "contradictory windows";
+				logger.info("Interpretation outcome requestId={} route=INTERPRETATION_FAILED reason={}",
+						request.getId(), reason);
+				this.lifecycleService.interpretationFailed(request, actor, reason);
+			}
+			else {
+				logger.info("Interpretation outcome requestId={} route=INTERPRETED", request.getId());
+				this.lifecycleService.interpretationUsable(request, actor);
+			}
 		}
 		return saved;
 	}

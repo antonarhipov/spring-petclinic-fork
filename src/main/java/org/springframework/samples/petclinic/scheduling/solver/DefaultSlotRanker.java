@@ -21,6 +21,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 import ai.timefold.solver.core.api.solver.SolverManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfig;
@@ -51,6 +53,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultSlotRanker implements SlotRanker {
 
 	private static final WindowMatcher WINDOW_MATCHER = new WindowMatcher();
+
+	private static final Logger logger = LoggerFactory.getLogger(DefaultSlotRanker.class);
 
 	private final VetRepository vetRepository;
 
@@ -113,9 +117,18 @@ public class DefaultSlotRanker implements SlotRanker {
 		int interpretationVersion = interpretation == null ? 0 : interpretation.getVersion();
 		List<SuggestionRejection> rejections = SuggestionRejection
 			.activeFor(this.eventRepository.findByRequestIdOrderByTimestampAsc(request.getId()), interpretationVersion);
+		logger.info(
+				"Preparing solver problem requestId={} interpretationId={} version={} duration={} specialty={} preferredVetId={} windows={} horizon={}..{}",
+				request.getId(), interpretation == null ? null : interpretation.getId(), interpretationVersion,
+				duration, interpretation == null ? null : interpretation.getSpecialty(),
+				interpretation == null || interpretation.getPreferredVet() == null ? null
+						: interpretation.getPreferredVet().getId(),
+				windows, now, horizonEnd);
 
 		for (Vet vet : vets) {
 			if (!hasRequiredSpecialty(vet, interpretation)) {
+				logger.debug("Excluded vet from solver requestId={} vetId={} reason=specialty-mismatch required={}",
+						request.getId(), vet.getId(), interpretation == null ? null : interpretation.getSpecialty());
 				continue;
 			}
 			List<VetWeeklyBlock> blocks = this.weeklyBlockRepository.findByVetId(vet.getId());
@@ -123,12 +136,17 @@ public class DefaultSlotRanker implements SlotRanker {
 			List<ZonedDateTime> candidates = enumerate(vet, clinicHours, blocks, config, now, duration, appointments,
 					holds, interpretation == null ? null : interpretation.getSpecialty(), windows, now, horizonEnd,
 					request.getOwner().getId(), request.getPet().getId());
+			logger.debug("Enumerated solver candidates requestId={} vetId={} count={} candidates={}", request.getId(),
+					vet.getId(), candidates.size(), candidates);
 			candidates.stream()
 				.filter(candidate -> rejections.stream()
 					.noneMatch(rejection -> rejection.excludes(vet.getId(), candidate, interpretationVersion)))
 				.forEach(candidate -> feasibleSlots.add(new AppointmentSlot(vet, candidate)));
 		}
 		if (feasibleSlots.isEmpty()) {
+			logger.info(
+					"Solver not invoked requestId={} reason=no-feasible-slots vets={} appointments={} activeHolds={} rejections={} windows={}",
+					request.getId(), vets.size(), appointments.size(), holds.size(), rejections.size(), windows);
 			return List.of();
 		}
 		AppointmentAssignment assignment = new AppointmentAssignment("request-" + request.getId(), request,
@@ -138,10 +156,17 @@ public class DefaultSlotRanker implements SlotRanker {
 		}
 		assignment.setClinicOpeningHours(clinicHours);
 		assignment.setVetWorkingBlocks(allBlocks);
+		logger.debug("Solver input requestId={} assignment={} feasibleSlots={} existingAppointments={} activeHolds={}",
+				request.getId(), assignmentSummary(assignment), slotSummaries(feasibleSlots),
+				appointmentSummaries(appointments), holdSummaries(holds));
 		ScheduleSolution solved = solve(new ScheduleSolution(feasibleSlots, assignment, appointments, holds));
 		AppointmentAssignment selected = solved.getAssignmentList().getFirst();
+		logger.info("Solver response requestId={} score={} selected={}", request.getId(), solved.getScore(),
+				assignmentSummary(selected));
 		if (selected.getVet() == null || selected.getStartTime() == null
 				|| solved.getScore() != null && solved.getScore().hardScore() < 0) {
+			logger.info("Solver result rejected requestId={} reason=unassigned-or-negative-hard-score",
+					request.getId());
 			return List.of();
 		}
 		return List.of(new RankedSlot(selected.getVet(), selected.getStartTime(), duration, "Timefold ranked",
@@ -149,8 +174,14 @@ public class DefaultSlotRanker implements SlotRanker {
 	}
 
 	private ScheduleSolution solve(ScheduleSolution problem) {
+		String problemId = UUID.randomUUID().toString();
 		try {
-			return this.solverManager.solve(UUID.randomUUID().toString(), problem).getFinalBestSolution();
+			logger.debug("Invoking Timefold problemId={} slots={} assignments={} appointments={} holds={}", problemId,
+					problem.getSlotList().size(), problem.getAssignmentList().size(),
+					problem.getExistingAppointments().size(), problem.getActiveHolds().size());
+			ScheduleSolution solution = this.solverManager.solve(problemId, problem).getFinalBestSolution();
+			logger.debug("Timefold completed problemId={} score={}", problemId, solution.getScore());
+			return solution;
 		}
 		catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
@@ -159,6 +190,34 @@ public class DefaultSlotRanker implements SlotRanker {
 		catch (java.util.concurrent.ExecutionException ex) {
 			throw new IllegalStateException("Timefold solve failed", ex.getCause());
 		}
+	}
+
+	private static String assignmentSummary(AppointmentAssignment assignment) {
+		return "{id=" + assignment.getId() + ",requestId=" + assignment.getRequestId() + ",petId="
+				+ assignment.getPetId() + ",ownerId=" + assignment.getOwnerId() + ",requiredSpecialty="
+				+ assignment.getRequiredSpecialty() + ",preferredVetId=" + assignment.getPreferredVetId() + ",duration="
+				+ assignment.getDuration() + ",windows=" + assignment.getPreferredWindows() + ",selectedVetId="
+				+ (assignment.getVet() == null ? null : assignment.getVet().getId()) + ",selectedStart="
+				+ assignment.getStartTime() + '}';
+	}
+
+	private static List<String> slotSummaries(List<AppointmentSlot> slots) {
+		return slots.stream().map(slot -> slot.vet().getId() + "@" + slot.startTime()).toList();
+	}
+
+	private static List<String> appointmentSummaries(List<Appointment> appointments) {
+		return appointments.stream()
+			.map(appointment -> appointment.getId() + ":vet="
+					+ (appointment.getVet() == null ? null : appointment.getVet().getId()) + "@"
+					+ appointment.getStartTime() + "/" + appointment.getDuration() + "m")
+			.toList();
+	}
+
+	private static List<String> holdSummaries(List<SchedulingRequest> holds) {
+		return holds.stream()
+			.map(hold -> hold.getId() + ":vet=" + (hold.getHeldVet() == null ? null : hold.getHeldVet().getId()) + "@"
+					+ hold.getHeldStart() + "/" + hold.getHeldDuration() + "m")
+			.toList();
 	}
 
 	private List<ZonedDateTime> enumerate(Vet vet, List<ClinicOpeningHour> clinicHours, List<VetWeeklyBlock> blocks,

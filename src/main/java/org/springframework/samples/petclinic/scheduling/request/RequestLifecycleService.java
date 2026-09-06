@@ -21,6 +21,8 @@ import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.vet.Vet;
@@ -34,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class RequestLifecycleService {
+
+	private static final Logger logger = LoggerFactory.getLogger(RequestLifecycleService.class);
 
 	private final SchedulingRequestRepository requestRepository;
 
@@ -269,6 +273,8 @@ public class RequestLifecycleService {
 			String action, String reason, String payload) {
 		RequestState fromState = request.getState();
 		ZonedDateTime now = ZonedDateTime.now(this.clock);
+		logger.info("Scheduling request transition requestId={} actor={} action={} state={} -> {} reason={} payload={}",
+				request.getId(), actor, action, fromState, targetState, reason, payload);
 
 		request.setState(targetState);
 		request.setUpdatedAt(now);

@@ -19,6 +19,9 @@ package org.springframework.samples.petclinic.scheduling.interpretation;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,8 @@ import static org.springframework.samples.petclinic.scheduling.config.Interpreta
 /** Dispatches one asynchronous interpretation job per request id. */
 @Service
 public class AsyncInterpretationService {
+
+	private static final Logger logger = LoggerFactory.getLogger(AsyncInterpretationService.class);
 
 	private final RequestInterpretationService interpretationService;
 
@@ -44,9 +49,11 @@ public class AsyncInterpretationService {
 	/** Claims the request synchronously before crossing the executor boundary. */
 	public boolean dispatch(Integer requestId, String actor) {
 		if (!this.inFlight.add(requestId)) {
+			logger.debug("Skipping duplicate interpretation dispatch requestId={} actor={}", requestId, actor);
 			return false;
 		}
 		try {
+			logger.info("Dispatching asynchronous interpretation requestId={} actor={}", requestId, actor);
 			this.selfProvider.getObject().interpret(requestId, actor);
 			return true;
 		}
@@ -61,15 +68,27 @@ public class AsyncInterpretationService {
 	 */
 	@Async(EXECUTOR_NAME)
 	public void interpret(Integer requestId, String actor) {
-		try {
+		try (MDC.MDCCloseable ignored = MDC.putCloseable("schedulingRequestId", String.valueOf(requestId))) {
+			logger.info("Starting asynchronous interpretation requestId={} actor={}", requestId, actor);
 			try {
-				this.interpretationService.inputFor(requestId).ifPresent(input -> {
+				this.interpretationService.inputFor(requestId).ifPresentOrElse(input -> {
+					logger.debug("Loaded interpretation input requestId={} reasonText={} availabilityText={}",
+							requestId, input.reasonText(), input.availabilityText());
 					InterpretationResult result = this.interpretationService.interpret(input);
-					this.interpretationService.applyResult(requestId, result, actor);
-				});
+					boolean applied = this.interpretationService.applyResult(requestId, result, actor).isPresent();
+					logger.info("Completed asynchronous interpretation requestId={} resultApplied={}", requestId,
+							applied);
+				}, () -> logger.info(
+						"Skipping asynchronous interpretation requestId={}; request is missing or no longer INTERPRETING",
+						requestId));
 			}
 			catch (ModelUnavailableException ex) {
+				logger.warn("Scheduling model unavailable requestId={} reason={}", requestId, ex.getMessage(), ex);
 				this.interpretationService.applyModelUnavailable(requestId, ex.getMessage(), actor);
+			}
+			catch (RuntimeException ex) {
+				logger.error("Unexpected asynchronous interpretation failure requestId={}", requestId, ex);
+				throw ex;
 			}
 		}
 		finally {

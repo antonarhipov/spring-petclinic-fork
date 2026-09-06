@@ -55,14 +55,14 @@ class PromptAndWindowTests {
 		String prompt = this.promptFactory.create("Dental pain", "Monday morning");
 
 		assertThat(prompt).contains("currentDateTime=2026-09-07T09:00+02:00[Europe/Amsterdam]",
-				"horizonEnd=2026-10-07T23:59:59.999999999+02:00[Europe/Amsterdam]", "MONDAY=09:00-17:00",
-				"TUESDAY=09:00-17:00", "WEDNESDAY=09:00-18:00", "THURSDAY=09:00-17:00", "FRIDAY=10:00-16:00",
-				"SATURDAY=CLOSED", "SUNDAY=CLOSED", "MORNING=09:00-12:00", "AFTERNOON=12:00-17:00",
-				"EVENING=17:00-18:00", "1=James Carter specialties=[]", "2=Helen Leary specialties=[radiology]",
-				"3=Linda Douglas specialties=[dentistry, surgery]", "4=Rafael Ortega specialties=[surgery]",
-				"5=Henry Stevens specialties=[radiology]", "6=Sharon Jenkins specialties=[]",
-				"offeredSpecialties=[radiology, surgery, dentistry]", "reason=Dental pain",
-				"availability=Monday morning");
+				"currentDayOfWeek=MONDAY", "horizonEnd=2026-10-07T23:59:59.999999999+02:00[Europe/Amsterdam]",
+				"MONDAY=09:00-17:00", "TUESDAY=09:00-17:00", "WEDNESDAY=09:00-18:00", "THURSDAY=09:00-17:00",
+				"FRIDAY=10:00-16:00", "SATURDAY=CLOSED", "SUNDAY=CLOSED", "MORNING=09:00-12:00",
+				"AFTERNOON=12:00-17:00", "EVENING=17:00-18:00", "1=James Carter specialties=[]",
+				"2=Helen Leary specialties=[radiology]", "3=Linda Douglas specialties=[dentistry, surgery]",
+				"4=Rafael Ortega specialties=[surgery]", "5=Henry Stevens specialties=[radiology]",
+				"6=Sharon Jenkins specialties=[]", "offeredSpecialties=[radiology, surgery, dentistry]",
+				"reason=Dental pain", "availability=Monday morning");
 	}
 
 	@Test

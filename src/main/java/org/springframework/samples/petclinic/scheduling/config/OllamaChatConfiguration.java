@@ -13,6 +13,7 @@ package org.springframework.samples.petclinic.scheduling.config;
 import java.time.Duration;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
@@ -30,7 +31,9 @@ public class OllamaChatConfiguration {
 
 	@Bean
 	ChatClient schedulingOllamaChatClient(ChatClient.Builder builder) {
-		return builder.build();
+		// The advisor observes the raw ChatResponse before typed conversion, so malformed
+		// structured output remains diagnosable.
+		return builder.defaultAdvisors(new SimpleLoggerAdvisor()).build();
 	}
 
 	@Bean

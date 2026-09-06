@@ -21,6 +21,8 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
@@ -44,6 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class SuggestionService {
+
+	private static final Logger logger = LoggerFactory.getLogger(SuggestionService.class);
 
 	private final RequestLifecycleService requestLifecycleService;
 
@@ -101,10 +105,15 @@ public class SuggestionService {
 		Interpretation interpretation = this.interpretationRepository
 			.findTopByRequestIdOrderByVersionDesc(request.getId())
 			.orElse(null);
+		logger.info("Starting suggestion requestId={} state={} actor={} interpretationId={} version={}",
+				request.getId(), request.getState(), actor, interpretation == null ? null : interpretation.getId(),
+				interpretation == null ? null : interpretation.getVersion());
 
 		List<SlotRanker.RankedSlot> rankedSlots = this.slotRanker.rankSlots(request, interpretation);
+		logger.debug("Ranked solver response requestId={} candidates={}", request.getId(), rankedSlots);
 
 		if (rankedSlots.isEmpty()) {
+			logger.info("Suggestion outcome requestId={} route=WITH_STAFF reason=no-feasible-slots", request.getId());
 			return this.holdService.exhausted(request, actor, "No feasible slots available");
 		}
 
@@ -120,11 +129,19 @@ public class SuggestionService {
 						request.getId())) {
 					SlotRanker.RankedSlot lockedCandidate = new SlotRanker.RankedSlot(lockedVet, candidate.startTime(),
 							candidate.duration(), candidate.explanation(), candidate.score());
+					logger.info(
+							"Suggestion outcome requestId={} route=SUGGESTION_OFFERED vetId={} start={} duration={} score={}",
+							request.getId(), lockedVet.getId(), candidate.startTime(), candidate.duration(),
+							candidate.score());
 					return this.holdService.offer(request, actor, lockedCandidate);
 				}
+				logger.debug("Rejected ranked candidate after lock requestId={} vetId={} start={} reason=conflict",
+						request.getId(), vet.getId(), candidate.startTime());
 			}
 		}
 
+		logger.info("Suggestion outcome requestId={} route=WITH_STAFF reason=all-ranked-candidates-conflicted",
+				request.getId());
 		return this.holdService.exhausted(request, actor, "All candidate slots conflicted");
 	}
 

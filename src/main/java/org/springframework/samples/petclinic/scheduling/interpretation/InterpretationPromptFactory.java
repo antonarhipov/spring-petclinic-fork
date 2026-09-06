@@ -57,6 +57,7 @@ public class InterpretationPromptFactory {
 			.atZone(this.clock.getZone());
 		StringBuilder prompt = new StringBuilder();
 		prompt.append("currentDateTime=").append(now).append('\n');
+		prompt.append("currentDayOfWeek=").append(now.getDayOfWeek()).append('\n');
 		prompt.append("horizonEnd=").append(horizonEnd).append('\n');
 		prompt.append("openingHours:\n");
 		this.openingHourRepository.findAll()
