@@ -17,12 +17,18 @@
 package org.springframework.samples.petclinic.security;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
@@ -39,7 +45,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
@@ -60,34 +69,107 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class SecurityMatrixWebTests {
 
-	private static final List<String> ANONYMOUS_GET_ROUTES = List.of("/", "/403", "/oups", "/owners/new",
-			"/owners/find", "/owners", "/owners/1", "/owners/1/edit", "/owners/1/pets/new", "/owners/1/pets/1/edit",
-			"/owners/1/pets/1/visits/new", "/vets", "/vets.html", "/staff/queue", "/staff/calendar", "/staff/settings",
-			"/my/pets", "/my/appointments", "/my/requests/new", "/my/requests/999999", "/actuator/health");
+	enum RouteScope {
 
-	private static final List<String> ANONYMOUS_POST_ROUTES = List.of("/logout", "/owners/new", "/owners/1/edit",
-			"/owners/1/pets/new", "/owners/1/pets/1/edit", "/owners/1/pets/1/visits/new", "/my/requests",
-			"/my/requests/999999/consent", "/my/requests/999999/decline", "/my/requests/999999/confirm",
-			"/my/requests/999999/accept");
+		PUBLIC, AUTHENTICATED, STAFF, OWNER
 
-	private static final List<String> STAFF_GET_ROUTES = List.of("/oups", "/owners/new", "/owners/find", "/owners",
-			"/owners/1", "/owners/1/edit", "/owners/1/pets/new", "/owners/1/pets/1/edit", "/owners/1/pets/1/visits/new",
-			"/vets", "/vets.html", "/staff/queue", "/staff/calendar", "/staff/settings", "/actuator/health");
+	}
 
-	private static final List<String> STAFF_POST_ROUTES = List.of("/owners/new", "/owners/1/edit", "/owners/1/pets/new",
-			"/owners/1/pets/1/edit", "/owners/1/pets/1/visits/new");
+	record FinalRoute(String method, String pattern, String testPath, RouteScope scope) {
+	}
 
-	private static final List<String> OWNER_GET_ROUTES = List.of("/my/pets", "/my/appointments", "/my/requests/new",
-			"/my/requests/999999");
+	private static final List<FinalRoute> FINAL_ROUTES = List.of(
+			// Public routes
+			new FinalRoute("GET", "/login", "/login", RouteScope.PUBLIC),
+			new FinalRoute("POST", "/login", "/login", RouteScope.PUBLIC),
+			new FinalRoute("GET", "/error", "/error", RouteScope.PUBLIC),
 
-	private static final List<String> OWNER_POST_ROUTES = List.of("/my/requests", "/my/requests/999999/consent",
-			"/my/requests/999999/decline", "/my/requests/999999/confirm", "/my/requests/999999/accept");
+			// Authenticated routes
+			new FinalRoute("GET", "/", "/", RouteScope.AUTHENTICATED),
+			new FinalRoute("GET", "/403", "/403", RouteScope.AUTHENTICATED),
+			new FinalRoute("POST", "/logout", "/logout", RouteScope.AUTHENTICATED),
+
+			// Staff-only routes
+			new FinalRoute("GET", "/oups", "/oups", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/new", "/owners/new", RouteScope.STAFF),
+			new FinalRoute("POST", "/owners/new", "/owners/new", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/find", "/owners/find", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners", "/owners", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/{ownerId}", "/owners/1", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/{ownerId}/edit", "/owners/1/edit", RouteScope.STAFF),
+			new FinalRoute("POST", "/owners/{ownerId}/edit", "/owners/1/edit", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/{ownerId}/pets/new", "/owners/1/pets/new", RouteScope.STAFF),
+			new FinalRoute("POST", "/owners/{ownerId}/pets/new", "/owners/1/pets/new", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/{ownerId}/pets/{petId}/edit", "/owners/1/pets/1/edit", RouteScope.STAFF),
+			new FinalRoute("POST", "/owners/{ownerId}/pets/{petId}/edit", "/owners/1/pets/1/edit", RouteScope.STAFF),
+			new FinalRoute("GET", "/owners/{ownerId}/pets/{petId}/visits/new", "/owners/1/pets/1/visits/new",
+					RouteScope.STAFF),
+			new FinalRoute("POST", "/owners/{ownerId}/pets/{petId}/visits/new", "/owners/1/pets/1/visits/new",
+					RouteScope.STAFF),
+			new FinalRoute("GET", "/vets", "/vets", RouteScope.STAFF),
+			new FinalRoute("GET", "/vets.html", "/vets.html", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/queue", "/staff/queue", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/requests/{requestId}", "/staff/requests/999999", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/requests/{requestId}/interpretation", "/staff/requests/999999/interpretation",
+					RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/requests/{requestId}/interpretation",
+					"/staff/requests/999999/interpretation", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/requests/{requestId}/suggest", "/staff/requests/999999/suggest",
+					RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/requests/{requestId}/release-hold", "/staff/requests/999999/release-hold",
+					RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/appointments/new", "/staff/appointments/new", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/appointments", "/staff/appointments", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/calendar", "/staff/calendar", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/calendar/pick/{requestId}", "/staff/calendar/pick/999999", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/calendar/pick/{requestId}", "/staff/calendar/pick/999999", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/appointments/{appointmentId}/reschedule",
+					"/staff/appointments/999999/reschedule", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/appointments/{appointmentId}/reschedule",
+					"/staff/appointments/999999/reschedule", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/appointments/{appointmentId}/cancel", "/staff/appointments/999999/cancel",
+					RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/appointments/{appointmentId}/complete",
+					"/staff/appointments/999999/complete", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/appointments/{appointmentId}/no-show", "/staff/appointments/999999/no-show",
+					RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/visits/{visitId}/edit", "/staff/visits/999999/edit", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/visits/{visitId}/edit", "/staff/visits/999999/edit", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/settings", "/staff/settings", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/settings", "/staff/settings", RouteScope.STAFF),
+			new FinalRoute("GET", "/staff/vets/{vetId}/availability", "/staff/vets/1/availability", RouteScope.STAFF),
+			new FinalRoute("POST", "/staff/vets/{vetId}/availability", "/staff/vets/1/availability", RouteScope.STAFF),
+
+			// Owner-only routes
+			new FinalRoute("GET", "/my/pets", "/my/pets", RouteScope.OWNER),
+			new FinalRoute("GET", "/my/appointments", "/my/appointments", RouteScope.OWNER),
+			new FinalRoute("GET", "/my/appointments/{appointmentId}", "/my/appointments/999999", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/appointments/{appointmentId}/cancel", "/my/appointments/999999/cancel",
+					RouteScope.OWNER),
+			new FinalRoute("GET", "/my/requests/new", "/my/requests/new", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests", "/my/requests", RouteScope.OWNER),
+			new FinalRoute("GET", "/my/requests/{requestId}", "/my/requests/999999", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/consent", "/my/requests/999999/consent", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/decline", "/my/requests/999999/decline", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/confirm", "/my/requests/999999/confirm", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/accept", "/my/requests/999999/accept", RouteScope.OWNER),
+			new FinalRoute("GET", "/my/requests/{requestId}/edit", "/my/requests/999999/edit", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/edit", "/my/requests/999999/edit", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/abandon", "/my/requests/999999/abandon", RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/route-to-staff", "/my/requests/999999/route-to-staff",
+					RouteScope.OWNER),
+			new FinalRoute("POST", "/my/requests/{requestId}/another", "/my/requests/999999/another",
+					RouteScope.OWNER));
 
 	private static final List<String> MUTABLE_TABLES = List.of("owners", "pets", "visits", "scheduling_request",
 			"scheduling_request_event", "interpretation", "interpretation_window", "appointment", "appointment_change");
 
 	@Autowired
 	private WebApplicationContext context;
+
+	@Autowired
+	@Qualifier("requestMappingHandlerMapping")
+	private RequestMappingHandlerMapping handlerMapping;
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -112,47 +194,90 @@ class SecurityMatrixWebTests {
 	}
 
 	@Test
-	@org.junit.jupiter.api.DisplayName("AC-1 AC-2: anonymous protected surface redirects without disclosure or mutation")
-	void anonymousProtectedSurfaceRedirectsWithoutDisclosureOrMutation() throws Exception {
-		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
-		for (String route : ANONYMOUS_GET_ROUTES) {
-			assertAnonymousDenied(get(route), route);
+	@Tag("AC-1")
+	void finalRouteTableCoversEveryMappedHandler() {
+		Set<String> mappedHandlers = new LinkedHashSet<>();
+		for (RequestMappingInfo info : this.handlerMapping.getHandlerMethods().keySet()) {
+			Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
+			for (String pattern : info.getPatternValues()) {
+				if (methods.isEmpty()) {
+					mappedHandlers.add("GET " + pattern);
+				}
+				else {
+					methods.forEach(method -> mappedHandlers.add(method.name() + " " + pattern));
+				}
+			}
 		}
-		for (String route : ANONYMOUS_POST_ROUTES) {
-			assertAnonymousDenied(post(route).with(csrf()), route);
-		}
-		assertThat(databaseSnapshot()).isEqualTo(before);
+		mappedHandlers.add("POST /login");
+		mappedHandlers.add("POST /logout");
+
+		Set<String> tableRoutes = FINAL_ROUTES.stream()
+			.map(r -> r.method() + " " + r.pattern())
+			.collect(Collectors.toCollection(LinkedHashSet::new));
+
+		Set<String> extraInTable = new TreeSet<>(tableRoutes);
+		extraInTable.removeAll(mappedHandlers);
+		Set<String> missingInTable = new TreeSet<>(mappedHandlers);
+		missingInTable.removeAll(tableRoutes);
+
+		assertThat(extraInTable).as("Extra routes in table: " + extraInTable).isEmpty();
+		assertThat(missingInTable).as("Missing routes in table: " + missingInTable).isEmpty();
+		assertThat(tableRoutes).as("Final route table must cover every mapped handler").isEqualTo(mappedHandlers);
 	}
 
 	@Test
-	@org.junit.jupiter.api.DisplayName("AC-8 AC-9: owner cannot reach staff surface or mutate staff data")
-	void ownerCannotReachAnyStaffSurfaceOrMutateStaffData() throws Exception {
-		MockHttpSession owner = login("george", "george123");
+	@Tag("AC-1")
+	@Tag("AC-2")
+	@Tag("AC-8")
+	@Tag("AC-9")
+	@Tag("AC-10")
+	void everyFinalRouteDeniedForAnonymousWrongRoleAndOtherOwner() throws Exception {
 		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
-		for (String route : STAFF_GET_ROUTES) {
-			assertWrongRoleDenied(get(route).session(owner), route);
+
+		MockHttpSession ownerSession = login("george", "george123");
+		MockHttpSession staffSession = login("staff", "staff123");
+		MockHttpSession otherOwnerSession = login("betty", "betty123");
+
+		for (FinalRoute route : FINAL_ROUTES) {
+			// 1. Anonymous principal: protected routes must 302 -> /login
+			if (route.scope() != RouteScope.PUBLIC) {
+				MockHttpServletRequestBuilder req = "GET".equals(route.method()) ? get(route.testPath())
+						: post(route.testPath()).with(csrf());
+				assertAnonymousDenied(req, route.testPath());
+			}
+
+			// 2. Wrong-role principal:
+			if (route.scope() == RouteScope.STAFF) {
+				MockHttpServletRequestBuilder req = "GET".equals(route.method())
+						? get(route.testPath()).session(ownerSession)
+						: post(route.testPath()).session(ownerSession).with(csrf());
+				assertWrongRoleDenied(req, route.testPath());
+			}
+			else if (route.scope() == RouteScope.OWNER) {
+				MockHttpServletRequestBuilder req = "GET".equals(route.method())
+						? get(route.testPath()).session(staffSession)
+						: post(route.testPath()).session(staffSession).with(csrf());
+				assertWrongRoleDenied(req, route.testPath());
+			}
+
+			// 3. Other-owner principal on owner-scoped parameterized routes: must return
+			// identical 404 with no disclosure
+			if (route.scope() == RouteScope.OWNER && route.pattern().contains("{")) {
+				MockHttpServletRequestBuilder otherReq = "GET".equals(route.method())
+						? get(route.testPath()).session(otherOwnerSession)
+						: post(route.testPath()).session(otherOwnerSession).with(csrf());
+				this.mockMvc.perform(otherReq)
+					.andExpect(status().isNotFound())
+					.andExpect(content().string(noProtectedData()));
+			}
 		}
-		for (String route : STAFF_POST_ROUTES) {
-			assertWrongRoleDenied(post(route).session(owner).with(csrf()), route);
-		}
-		assertThat(databaseSnapshot()).isEqualTo(before);
+
+		assertThat(databaseSnapshot()).as("Whole security surface denial must produce 0 mutations").isEqualTo(before);
 	}
 
 	@Test
-	void staffCannotReachOwnerSurfaceOrMutateOwnerData() throws Exception {
-		MockHttpSession staff = login("staff", "staff123");
-		Map<String, List<Map<String, Object>>> before = databaseSnapshot();
-		for (String route : OWNER_GET_ROUTES) {
-			assertWrongRoleDenied(get(route).session(staff), route);
-		}
-		for (String route : OWNER_POST_ROUTES) {
-			assertWrongRoleDenied(post(route).session(staff).with(csrf()), route);
-		}
-		assertThat(databaseSnapshot()).isEqualTo(before);
-	}
-
-	@Test
-	@org.junit.jupiter.api.DisplayName("AC-11 AC-12: other-owner and missing requests are identical and immutable")
+	@Tag("AC-11")
+	@Tag("AC-12")
 	void otherOwnerAndMissingRequestAreIdenticalAndCannotBeMutated() throws Exception {
 		Owner betty = this.ownerRepository.findById(2).orElseThrow();
 		Pet bettysPet = betty.getPets().stream().findFirst().orElseThrow();
