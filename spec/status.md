@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-5.5
-- Status: COMPLETE
+- Task: cp-5
+- Status: COMPLETE (awaiting convergence)
 
 ## Completed
 
