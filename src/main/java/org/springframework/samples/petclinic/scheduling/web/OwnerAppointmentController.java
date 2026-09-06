@@ -21,9 +21,9 @@ import java.time.ZonedDateTime;
 
 import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentChange;
-import org.springframework.samples.petclinic.scheduling.appointment.AppointmentLifecycleService;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentStatus;
 import org.springframework.samples.petclinic.scheduling.appointment.IllegalAppointmentTransitionException;
+import org.springframework.samples.petclinic.scheduling.appointment.OwnerCancelService;
 import org.springframework.samples.petclinic.scheduling.clinic.ClinicConfigService;
 import org.springframework.samples.petclinic.security.SecurityUtils;
 import org.springframework.stereotype.Controller;
@@ -40,17 +40,16 @@ public class OwnerAppointmentController {
 
 	private final OwnerSchedulingAccessService accessService;
 
-	private final AppointmentLifecycleService appointmentLifecycleService;
+	private final OwnerCancelService ownerCancelService;
 
 	private final ClinicConfigService clinicConfigService;
 
 	private final Clock clock;
 
-	public OwnerAppointmentController(OwnerSchedulingAccessService accessService,
-			AppointmentLifecycleService appointmentLifecycleService, ClinicConfigService clinicConfigService,
-			Clock clock) {
+	public OwnerAppointmentController(OwnerSchedulingAccessService accessService, OwnerCancelService ownerCancelService,
+			ClinicConfigService clinicConfigService, Clock clock) {
 		this.accessService = accessService;
-		this.appointmentLifecycleService = appointmentLifecycleService;
+		this.ownerCancelService = ownerCancelService;
 		this.clinicConfigService = clinicConfigService;
 		this.clock = clock;
 	}
@@ -74,11 +73,10 @@ public class OwnerAppointmentController {
 	@PostMapping("/{appointmentId}/cancel")
 	public String cancelAppointment(@PathVariable Integer appointmentId, RedirectAttributes redirectAttributes) {
 		Integer ownerId = SecurityUtils.getCurrentOwnerId().orElseThrow(OwnerResourceNotFoundException::new);
-		Appointment appointment = this.accessService.requireAppointment(ownerId, appointmentId);
 		String username = SecurityUtils.getCurrentUsername().orElseThrow(OwnerResourceNotFoundException::new);
 
 		try {
-			this.appointmentLifecycleService.ownerCancel(appointment, username);
+			this.ownerCancelService.cancel(ownerId, appointmentId, username);
 			redirectAttributes.addFlashAttribute("appointmentCancelled", true);
 		}
 		catch (IllegalAppointmentTransitionException ex) {
