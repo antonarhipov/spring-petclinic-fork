@@ -62,7 +62,7 @@
 - phase-2: APPROVED
 - phase-3: APPROVED
 - phase-4: PENDING
-- phase-5: PENDING
+- phase-5: PENDING (awaiting walkthrough confirmation; cp-5 independently verified as APPROVE PENDING WALKTHROUGH on 2026-09-06, convergence/cp-5.md)
 
 ## Blockers
 

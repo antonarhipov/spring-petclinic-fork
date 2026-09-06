@@ -912,3 +912,16 @@ accepted as built. The following defects and evidence gaps remain open:
   and no event, while the delivered test expects a same-state event.
 - **Checkpoint traceability (upstream: tasks/execute):** phase-3 covers 11 ACs, but the checkpoint report additionally
   claims AC-90, AC-95, and AC-138 and substitutes a 19-test focused run for the required full suite.
+
+## As-built convergence (cp-5)
+
+Checkpoint cp-5 was independently verified on 2026-09-06 as **APPROVE PENDING WALKTHROUGH** (`convergence/cp-5.md`).
+The implementation satisfies all phase-5 acceptance criteria (AC-95, AC-116, AC-117, AC-118, AC-138, AC-140, AC-141) with
+STRONG evidence across the automated suite and live walkthrough reproduction. Zero critical defects, zero gaps, zero
+protocol violations, zero drift, and zero cosmetic issues were found.
+
+- **F-21 (cp-1/G-4) — CLOSED at cp-5 by `434fa0a`, `2acd58e`, `fc3bb38`, `02ddd25`:** AC-118 owner appointment view/cancel routes
+  are fully implemented (`GET /my/appointments/{id}`, `POST /my/appointments/{id}/cancel`), cross-owner access returns identical 404
+  without disclosure or database mutations, and is verified at route, service, E2E, and whole-surface security matrix levels.
+- **F-18 (cp-1/G-1, ex F-7) — CLOSED at cp-5 by `24f4fba`:** AC-138 full interleaved owner/staff lifecycle is implemented in
+  `FullSchedulingLifecycleE2eTests` with separate owner/staff sessions, real filter chain, CSRF, and mutable clock progression.
