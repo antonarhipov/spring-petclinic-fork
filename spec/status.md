@@ -2,8 +2,8 @@
 
 ## Current
 
-- Task: task-5.2
-- Status: IN_PROGRESS
+- Task: task-5.3
+- Status: COMPLETE
 
 ## Completed
 
@@ -52,6 +52,7 @@
 - task-4.9
 - task-5.1
 - task-5.2
+- task-5.3
 
 ## Phase Approvals
 
@@ -80,6 +81,7 @@
 - Re-plan (2026-09-04): `tasks.yaml` regenerated in re-plan mode after cp-1.1 — phase-1 kept as `as_built` (33 STRONG ACs; AC-138/AC-118/WEAK ACs moved; AC-139 deferred under the waiver), phases 2–5 regenerated (41 tasks). Plan review round 1 FAILed (5 blockers, 4 majors); resolved by: Δ D-4 model tag `ministral-3:14b` (commit 9aa650c, user decision) recorded in `spec.md`/`rules.md`, `/403` added to the rules' Security Surface, RULE-44 item 2 waiting-step clarification, plan fixes (task-2.1 property sync, task-3.1/4.1 mapping transfer, task-4.3 calendar picking, task-5.5 final security matrix + localization manifest). Round 2: PASS. The suite is red at HEAD by one test (`SchedulingProviderPinningTests`, stale test property copy) until task-2.1 closes.
 
 ## Notes
+- task-5.3: base commit `2acd58e`. Gate 1: Exact artifact `OwnerCancelsAppointmentE2eTests.java` exists with all three declared methods. Gate 2: Scope clean (`git diff --name-only 2acd58e` matches exact declared artifact and `status.md`). Gate 3: Task covers no direct ACs; supporting AC-138 and AC-116/117/118 are tagged at `OwnerCancelsAppointmentE2eTests.java:105-106,178,225`. Gate 4: Validation bullet verified (`OwnerCancelsAppointmentE2eTests.ownerCancelsUpcomingSteps1And2` at `OwnerCancelsAppointmentE2eTests.java:107-175` drives UC-6 steps 1..2 and extensions over HTTP with state and rendered history after each step). Gate 5: RULE-44 verified (isolated H2, real `SecurityFilterChain`, formLogin, CSRF, and state assertions at `OwnerCancelsAppointmentE2eTests.java:99-175,178-222,225-269`). Gate 6: Routes verified. Gate 7: Plan guard tests pass (`RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest`). Gate 8: Full test suite green, tree attributable.
 - task-5.2: base commit `434fa0a`. Gate 1: Artifacts exist at exact declared paths (`OwnerCancelService.java`, `OwnerCancelTests.java`). Gate 2: Scope clean (`git diff --name-only 434fa0a` matches exact declared artifacts and modifies). Gate 3: AC citations present (AC-95 at `OwnerCancelTests.java:112`, AC-116 at `OwnerCancelTests.java:151`, AC-117 at `OwnerCancelTests.java:188`, AC-118 at `OwnerCancelTests.java:241`). Gate 4: Validation bullets verified (`directBookedAppointmentVisibleAndCancellable_AC95` at `OwnerCancelTests.java:112-148`; `upcomingOwnedAppointmentCancelsAndRequestStaysClosed_AC116` at `OwnerCancelTests.java:151-185`; `pastCompletedAndNoShowRefusedWithoutSideEffect_AC117` at `OwnerCancelTests.java:188-238`; `otherOwnerAndMissingViewCancelAreIdentical_AC118` at `OwnerCancelTests.java:241-285`). Gate 5: Rules verified (RULE-13 at `OwnerAppointmentController.java:58-76` and `OwnerCancelTests.java:241-285`; RULE-16 at `OwnerCancelService.java:57-77` and `OwnerCancelTests.java:188-238`; RULE-32 at `OwnerCancelService.java:71-74` and `OwnerCancelTests.java:151-185`; RULE-36 at `SecurityConfiguration.java:61` and `OwnerCancelTests.java:132-137`; RULE-44 at `OwnerCancelTests.java:106-148,220-235,258-282`). Gate 6: Routes mapped and verified via `RouteInventoryTest`. Gate 7: Plan guard tests pass (`RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest`). Gate 8: Full test suite green, tree attributable.
 - task-5.1: base commit `2eb5719`. Gate 1: Artifacts exist at exact declared paths (`OwnerAppointmentController.java`, `appointmentDetail.html`, `OwnerAppointmentRouteTests.java`). Gate 2: Scope clean (`git diff --name-only 2eb5719` matches exact declared artifacts and modifies). Gate 3: AC citations present (AC-116 at `OwnerAppointmentRouteTests.java:94`, AC-118 at `OwnerAppointmentRouteTests.java:126`). Gate 4: Validation bullets verified (`detailAndCancelResolveForOwner` at `OwnerAppointmentRouteTests.java:95-123`; `anonymousWrongRoleAndOtherOwnerDeniedWithoutDisclosureOrMutation_AC118` at `OwnerAppointmentRouteTests.java:127-184`). Gate 5: Rules verified (RULE-12 at `SecurityConfiguration.java:76-77` and `OwnerAppointmentRouteTests.java:140-153`; RULE-13 at `OwnerAppointmentController.java:59-90` and `OwnerAppointmentRouteTests.java:107-184`; RULE-36 at `SecurityConfiguration.java:61` and `OwnerAppointmentRouteTests.java:111-119`). Gate 6: Routes GET `/my/appointments/{appointmentId}` and POST `/my/appointments/{appointmentId}/cancel` mapped and verified via `RouteInventoryTest`. Gate 7: Plan guard tests pass (`RouteInventoryTest`, `ArtifactInventoryTest`, `AcTagCoverageTest`). Gate 8: Full test suite green, tree attributable.
 - cp-4 regeneration: the ordered phase history is `bbd218f` (task-4.1), `481d6a8` (task-4.2), `5d8b6a3` (task-4.3), `8123fe5` (task-4.4), `6845215` (task-4.5), `e2a7a8a` (task-4.6), `9a8616e` (task-4.7), `841e860` (task-4.8), and `5f03679` (task-4.9). The final Java 21 suite passes 294/0/0/0, all three plan guards pass, formatter validation and `git diff --check` pass, and the working tree remained clean after validation.
