@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.owner.Visit;
+import org.springframework.samples.petclinic.scheduling.request.OwnerResourceNotFoundException;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
@@ -108,11 +109,25 @@ public class AppointmentService {
 	@Transactional
 	public Appointment cancelByOwner(int appointmentId) {
 		Appointment appointment = requireInStatus(appointmentId, "OWNER_CANCEL", AppointmentStatus.CONFIRMED);
+		return cancelByOwner(appointment);
+	}
+
+	@Transactional
+	public Appointment cancelByOwner(int ownerId, int appointmentId) {
+		Appointment appointment = this.appointments.findByIdAndPetOwnerId(appointmentId, ownerId)
+			.orElseThrow(OwnerResourceNotFoundException::new);
+		if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+			throw new IllegalAppointmentTransitionException(appointment.getStatus(), "OWNER_CANCEL");
+		}
+		return cancelByOwner(appointment);
+	}
+
+	private Appointment cancelByOwner(Appointment appointment) {
 		if (!isBeforeStart(appointment)) {
 			throw new IllegalAppointmentTransitionException(appointment.getStatus(), "OWNER_CANCEL_AFTER_START");
 		}
 		appointment.cancel(CancelledBy.OWNER, null, null, today(), now());
-		return this.appointments.save(appointment);
+		return this.appointments.saveAndFlush(appointment);
 	}
 
 	@Transactional

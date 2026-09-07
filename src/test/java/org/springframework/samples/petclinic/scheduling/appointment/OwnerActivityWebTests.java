@@ -19,8 +19,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -105,9 +108,49 @@ class OwnerActivityWebTests {
 	}
 
 	@Test
+	void uc2MainCancellationBoundaryIsPrincipalScopedStateValidAndConsequential() throws Exception {
+		int eligible = insertAppointment(1, 2, TODAY.plusDays(1), LocalTime.of(9, 15), "CONFIRMED", null);
+		DatabaseSnapshot before = snapshot();
+
+		this.mvc.perform(post("/my/appointments/{id}/cancel", eligible).with(user("george").roles("OWNER")))
+			.andExpect(status().isForbidden());
+		assertThat(snapshot()).isEqualTo(before);
+
+		this.mvc
+			.perform(post("/my/appointments/{id}/cancel", eligible).with(user("george").roles("OWNER")).with(csrf()))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/my/appointments"));
+
+		Map<String, Object> cancelled = this.jdbc.queryForMap("select * from appointments where id = ?", eligible);
+		assertThat(cancelled).containsEntry("STATUS", "CANCELLED")
+			.containsEntry("CANCELLED_BY", "OWNER")
+			.containsEntry("CANCELLED_DATE", Date.valueOf(TODAY))
+			.containsEntry("CANCELLED_TIME", Time.valueOf(LocalTime.of(9, 0)));
+		DatabaseSnapshot after = snapshot();
+		assertThat(after.owners()).isEqualTo(before.owners());
+		assertThat(after.pets()).isEqualTo(before.pets());
+		assertThat(after.requests()).isEqualTo(before.requests());
+		assertThat(after.interpretations()).isEqualTo(before.interpretations());
+		assertThat(after.visits()).isEqualTo(before.visits());
+		assertThat(after.appointments()).hasSameSizeAs(before.appointments());
+	}
+
+	@Test
+	void uc2MainCancellationBoundaryRefusesAnAppointmentThatHasStartedWithoutSideEffect() throws Exception {
+		int started = insertAppointment(1, 2, TODAY, LocalTime.of(9, 0), "CONFIRMED", null);
+		DatabaseSnapshot before = snapshot();
+
+		this.mvc.perform(post("/my/appointments/{id}/cancel", started).with(user("george").roles("OWNER")).with(csrf()))
+			.andExpect(status().isConflict());
+
+		assertThat(snapshot()).isEqualTo(before);
+	}
+
+	@Test
 	void uc2ExtensionForeignAndUnknownIdentifiersAreIndistinguishableAndChangeNothing() throws Exception {
 		int foreignRequest = insertAwaitingRequest(2, "Betty private request");
-		insertAppointment(2, 2, TODAY.plusDays(1), LocalTime.of(14, 0), "CONFIRMED", "Betty private reason");
+		int foreignAppointment = insertAppointment(2, 2, TODAY.plusDays(1), LocalTime.of(14, 0), "CONFIRMED",
+				"Betty private reason");
 		DatabaseSnapshot before = snapshot();
 
 		MockHttpServletResponse foreignPet = response("/my/requests/new?petId=2", "george", 404);
@@ -121,6 +164,14 @@ class OwnerActivityWebTests {
 			.isEqualTo(normalizeCsrf(unknownRequestResponse.getContentAsString()))
 			.doesNotContain("Betty private request", "Basil", "Betty");
 
+		MockHttpServletResponse foreignAppointmentResponse = postResponse(
+				"/my/appointments/" + foreignAppointment + "/cancel", "george", 404);
+		MockHttpServletResponse unknownAppointmentResponse = postResponse("/my/appointments/999999/cancel", "george",
+				404);
+		assertThat(normalizeCsrf(foreignAppointmentResponse.getContentAsString()))
+			.isEqualTo(normalizeCsrf(unknownAppointmentResponse.getContentAsString()))
+			.doesNotContain("Betty private reason", "Basil", "Betty");
+
 		String activity = render("/my/appointments", "george");
 		assertThat(activity).doesNotContain("Betty private request", "Betty private reason", "Basil", "Betty");
 		assertThat(snapshot()).isEqualTo(before);
@@ -132,6 +183,13 @@ class OwnerActivityWebTests {
 
 	private MockHttpServletResponse response(String path, String username, int expectedStatus) throws Exception {
 		return this.mvc.perform(get(path).with(user(username).roles("OWNER")))
+			.andExpect(status().is(expectedStatus))
+			.andReturn()
+			.getResponse();
+	}
+
+	private MockHttpServletResponse postResponse(String path, String username, int expectedStatus) throws Exception {
+		return this.mvc.perform(post(path).with(user(username).roles("OWNER")).with(csrf()))
 			.andExpect(status().is(expectedStatus))
 			.andReturn()
 			.getResponse();

@@ -86,6 +86,37 @@ class OwnerActivityE2ETests {
 	}
 
 	@Test
+	void uc2MainOwnerCancelsDisplayedUpcomingAppointmentThroughRealHttp() throws Exception {
+		int appointmentId = insertAppointment(1, 2, TODAY.plusDays(1), LocalTime.of(11, 15), "CONFIRMED", null);
+		DatabaseSnapshot before = snapshot();
+		this.browser.login("george", "george123", "/my/appointments");
+
+		HttpResponse<String> page = this.browser.get("/my/appointments");
+		assertThat(page.body()).contains("/my/appointments/" + appointmentId + "/cancel", "method=\"post\"");
+		HttpResponse<String> cancelled = this.browser.post("/my/appointments/" + appointmentId + "/cancel", page,
+				Map.of());
+		assertThat(cancelled.statusCode()).isEqualTo(302);
+		assertThat(cancelled.headers().firstValue("Location"))
+			.hasValue("http://localhost:" + this.port + "/my/appointments");
+
+		Map<String, Object> row = this.jdbc.queryForMap("select * from appointments where id = ?", appointmentId);
+		assertThat(row).containsEntry("STATUS", "CANCELLED")
+			.containsEntry("CANCELLED_BY", "OWNER")
+			.containsEntry("CANCELLED_DATE", Date.valueOf(TODAY))
+			.containsEntry("CANCELLED_TIME", Time.valueOf(LocalTime.of(9, 0)));
+		DatabaseSnapshot after = snapshot();
+		assertThat(after.owners()).isEqualTo(before.owners());
+		assertThat(after.pets()).isEqualTo(before.pets());
+		assertThat(after.requests()).isEqualTo(before.requests());
+		assertThat(after.interpretations()).isEqualTo(before.interpretations());
+		assertThat(after.visits()).isEqualTo(before.visits());
+		assertThat(after.appointments()).hasSameSizeAs(before.appointments());
+		assertThat(this.browser.get("/my/appointments").body())
+			.contains("data-appointment-id=\"" + appointmentId + "\"", "Cancelled")
+			.doesNotContain("/my/appointments/" + appointmentId + "/cancel");
+	}
+
+	@Test
 	void uc2ExtensionOwnerWithoutPetsSeesReadOnlyEmptyStatesThroughRealHttp() throws Exception {
 		int ownerId = insertOwnerWithoutPets();
 		this.browser.login("nopets", "george123", "/my/appointments");
@@ -103,7 +134,8 @@ class OwnerActivityE2ETests {
 	@Test
 	void uc2ExtensionForeignAndUnknownOwnerActivityHaveTheSame404AndNoSideEffect() throws Exception {
 		int foreignRequest = insertAwaitingRequest(2, "Betty private request");
-		insertAppointment(2, 2, TODAY.plusDays(1), LocalTime.of(14, 0), "CONFIRMED", "Betty private reason");
+		int foreignAppointment = insertAppointment(2, 2, TODAY.plusDays(1), LocalTime.of(14, 0), "CONFIRMED",
+				"Betty private reason");
 		DatabaseSnapshot before = snapshot();
 		this.browser.login("george", "george123", "/my/appointments");
 
@@ -119,6 +151,16 @@ class OwnerActivityE2ETests {
 		assertThat(unknown.statusCode()).isEqualTo(404);
 		assertThat(normalizeCsrf(foreign.body())).isEqualTo(normalizeCsrf(unknown.body()))
 			.doesNotContain("Betty private request", "Betty private reason", "Basil", "Betty");
+		HttpResponse<String> appointmentsPage = this.browser.get("/my/appointments");
+		HttpResponse<String> foreignAppointmentResponse = this.browser
+			.post("/my/appointments/" + foreignAppointment + "/cancel", appointmentsPage, Map.of());
+		HttpResponse<String> unknownAppointmentResponse = this.browser.post("/my/appointments/999999/cancel",
+				appointmentsPage, Map.of());
+		assertThat(foreignAppointmentResponse.statusCode()).isEqualTo(404);
+		assertThat(unknownAppointmentResponse.statusCode()).isEqualTo(404);
+		assertThat(normalizeCsrf(foreignAppointmentResponse.body()))
+			.isEqualTo(normalizeCsrf(unknownAppointmentResponse.body()))
+			.doesNotContain("Betty private reason", "Basil", "Betty");
 		assertThat(this.browser.get("/my/appointments").body()).doesNotContain("Betty private request",
 				"Betty private reason", "Basil", "Betty");
 		assertThat(snapshot()).isEqualTo(before);
