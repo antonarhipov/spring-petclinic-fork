@@ -77,12 +77,12 @@ class OwnerController {
 	@PostMapping("/owners/new")
 	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in creating the owner.");
+			redirectAttributes.addFlashAttribute("error", "scheduling.owner.create.error");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
 		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "New Owner Created");
+		redirectAttributes.addFlashAttribute("message", "scheduling.owner.created");
 		return "redirect:/owners/" + owner.getId();
 	}
 
@@ -107,7 +107,7 @@ class OwnerController {
 		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
 		if (ownersResults.isEmpty()) {
 			// no owners found
-			result.rejectValue("lastName", "notFound", "not found");
+			result.rejectValue("lastName", "notFound");
 			return "owners/findOwners";
 		}
 
@@ -145,19 +145,19 @@ class OwnerController {
 	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
 			RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
+			redirectAttributes.addFlashAttribute("error", "scheduling.owner.update.error");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
 		if (!Objects.equals(owner.getId(), ownerId)) {
-			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
-			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
+			result.rejectValue("id", "scheduling.owner.id.mismatch");
+			redirectAttributes.addFlashAttribute("error", "scheduling.owner.id.mismatch");
 			return "redirect:/owners/{ownerId}/edit";
 		}
 
 		owner.setId(ownerId);
 		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
+		redirectAttributes.addFlashAttribute("message", "scheduling.owner.updated");
 		return "redirect:/owners/{ownerId}";
 	}
 

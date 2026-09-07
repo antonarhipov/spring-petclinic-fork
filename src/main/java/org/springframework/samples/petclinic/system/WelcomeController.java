@@ -17,14 +17,18 @@
 package org.springframework.samples.petclinic.system;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
-class WelcomeController {
+public class WelcomeController {
 
 	@GetMapping("/")
-	public String welcome() {
-		return "welcome";
+	public String welcome(Authentication authentication) {
+		boolean owner = authentication.getAuthorities()
+			.stream()
+			.anyMatch(authority -> authority.getAuthority().equals("ROLE_OWNER"));
+		return owner ? "redirect:/my/appointments" : "redirect:/staff/queue";
 	}
 
 }

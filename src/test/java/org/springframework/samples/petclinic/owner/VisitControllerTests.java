@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.owner;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -30,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -44,6 +46,7 @@ import java.util.Optional;
 @WebMvcTest(VisitController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
+@WithMockUser(roles = "STAFF")
 class VisitControllerTests {
 
 	private static final int TEST_OWNER_ID = 1;
@@ -80,6 +83,7 @@ class VisitControllerTests {
 				.param("date", LocalDate.now().plusDays(1).toString())
 				.param("description", "Visit Description"))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.visit.created"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 

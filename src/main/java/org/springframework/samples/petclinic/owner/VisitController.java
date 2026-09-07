@@ -107,7 +107,7 @@ class VisitController {
 
 		owner.addVisit(petId, visit);
 		this.owners.save(owner);
-		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
+		redirectAttributes.addFlashAttribute("message", "scheduling.visit.created");
 		return "redirect:/owners/{ownerId}";
 	}
 

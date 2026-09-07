@@ -109,7 +109,7 @@ class PetController {
 			RedirectAttributes redirectAttributes) {
 
 		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
-			result.rejectValue("name", "duplicate", "already exists");
+			result.rejectValue("name", "duplicate");
 		}
 
 		LocalDate currentDate = LocalDate.now();
@@ -129,10 +129,10 @@ class PetController {
 			if (!isDuplicatePetNameViolation(ex)) {
 				throw ex;
 			}
-			result.rejectValue("name", "duplicate", "already exists");
+			result.rejectValue("name", "duplicate");
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
-		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
+		redirectAttributes.addFlashAttribute("message", "scheduling.pet.created");
 		return "redirect:/owners/{ownerId}";
 	}
 
@@ -151,7 +151,7 @@ class PetController {
 		if (StringUtils.hasText(petName)) {
 			Pet existingPet = owner.getPet(petName, false);
 			if (existingPet != null && !Objects.equals(existingPet.getId(), pet.getId())) {
-				result.rejectValue("name", "duplicate", "already exists");
+				result.rejectValue("name", "duplicate");
 			}
 		}
 
@@ -171,10 +171,10 @@ class PetController {
 			if (!isDuplicatePetNameViolation(ex)) {
 				throw ex;
 			}
-			result.rejectValue("name", "duplicate", "already exists");
+			result.rejectValue("name", "duplicate");
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
-		redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
+		redirectAttributes.addFlashAttribute("message", "scheduling.pet.updated");
 		return "redirect:/owners/{ownerId}";
 	}
 

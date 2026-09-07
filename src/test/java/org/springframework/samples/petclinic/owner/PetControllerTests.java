@@ -26,6 +26,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -52,6 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
 @DisabledInNativeImage
 @DisabledInAotMode
+@WithMockUser(roles = "STAFF")
 class PetControllerTests {
 
 	private static final int TEST_OWNER_ID = 1;
@@ -101,6 +104,7 @@ class PetControllerTests {
 				.param("type", "hamster")
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.pet.created"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
@@ -195,6 +199,7 @@ class PetControllerTests {
 				.param("type", "hamster")
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.pet.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
@@ -208,6 +213,7 @@ class PetControllerTests {
 			.param("type", "hamster")
 			.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.pet.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 

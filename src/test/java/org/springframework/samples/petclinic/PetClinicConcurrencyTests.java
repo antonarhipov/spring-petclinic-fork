@@ -2,55 +2,50 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Optional;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.restclient.RestTemplateBuilder;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.samples.petclinic.owner.Owner;
-import org.springframework.samples.petclinic.owner.OwnerRepository;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = PetClinicApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 public class PetClinicConcurrencyTests {
+
+	private static final Pattern CSRF = Pattern.compile(
+			"name=[\"']_csrf[\"'][^>]*value=[\"']([^\"']+)[\"']|value=[\"']([^\"']+)[\"'][^>]*name=[\"']_csrf[\"']");
 
 	@LocalServerPort
 	private int port;
 
 	@Autowired
-	private OwnerRepository ownerRepository;
-
-	@Autowired
-	private RestTemplateBuilder restTemplateBuilder;
+	private JdbcTemplate jdbc;
 
 	@Test
 	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
 		int ownerId = 1;
-		Optional<Owner> initialOwnerOpt = ownerRepository.findById(ownerId);
-		assertThat(initialOwnerOpt).isPresent();
-		Owner owner = initialOwnerOpt.get();
-
-		int initialPetCount = owner.getPets().size();
 		String duplicatePetName = "ConcurrencyTestPet";
-
-		// Ensure duplicate pet name does not exist yet
-		assertThat(owner.getPet(duplicatePetName)).isNull();
-
-		RestTemplate template = restTemplateBuilder.baseUri("http://localhost:" + port).build();
+		this.jdbc.update("delete from pets where owner_id = ? and lower(name) = lower(?)", ownerId, duplicatePetName);
+		int initialPetCount = petCount(ownerId);
 
 		int threadCount = 2;
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -63,31 +58,21 @@ public class PetClinicConcurrencyTests {
 
 		for (int i = 0; i < threadCount; i++) {
 			executorService.submit(() -> {
-				readyLatch.countDown();
 				try {
+					Browser browser = new Browser(this.port);
+					browser.login("staff", "staff123");
+					HttpResponse<String> form = browser.get("/owners/" + ownerId + "/pets/new");
+					readyLatch.countDown();
 					startLatch.await(); // Wait to start simultaneously
+					HttpResponse<String> response = browser.post("/owners/" + ownerId + "/pets/new", form,
+							Map.of("name", duplicatePetName, "birthDate", "2020-01-01", "type", "cat"));
 
-					HttpHeaders headers = new HttpHeaders();
-					headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-					MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-					map.add("name", duplicatePetName);
-					map.add("birthDate", "2020-01-01");
-					map.add("type", "cat");
-
-					HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
-
-					ResponseEntity<String> response = template.postForEntity("/owners/" + ownerId + "/pets/new",
-							request, String.class);
-
-					String body = response.getBody();
-					// If the response page contains the duplicate validation error, it
-					// was blocked
-					if (response.getStatusCode().is2xxSuccessful()
-							&& (body == null || !body.contains("is already in use"))) {
+					if (response.statusCode() == 302) {
 						successCount.incrementAndGet();
 					}
 					else {
+						assertThat(response.statusCode()).isEqualTo(200);
+						assertThat(response.body()).contains("is already in use");
 						failureCount.incrementAndGet();
 					}
 				}
@@ -102,33 +87,90 @@ public class PetClinicConcurrencyTests {
 
 		try {
 			boolean ready = readyLatch.await(10, TimeUnit.SECONDS);
-			assertThat(ready).isTrue();
 			startLatch.countDown();
+			assertThat(ready).isTrue();
 			boolean completed = doneLatch.await(10, TimeUnit.SECONDS);
 			assertThat(completed).isTrue();
 		}
 		finally {
-			executorService.shutdown();
+			startLatch.countDown();
+			executorService.shutdownNow();
 		}
 
-		Owner updatedOwner = ownerRepository.findById(ownerId).get();
-		int newPetCount = updatedOwner.getPets().size();
+		try {
+			assertThat(successCount.get()).isEqualTo(1);
+			assertThat(failureCount.get()).isEqualTo(1);
+			assertThat(petCount(ownerId)).isEqualTo(initialPetCount + 1);
+			assertThat(
+					this.jdbc.queryForObject("select count(*) from pets where owner_id = ? and lower(name) = lower(?)",
+							Integer.class, ownerId, duplicatePetName))
+				.isOne();
+		}
+		finally {
+			this.jdbc.update("delete from pets where owner_id = ? and lower(name) = lower(?)", ownerId,
+					duplicatePetName);
+		}
+	}
 
-		System.out.println("--- Concurrency Test Assertions ---");
-		System.out.println("Successful additions: " + successCount.get());
-		System.out.println("Failed additions: " + failureCount.get());
-		System.out.println("Original Pet Count: " + initialPetCount);
-		System.out.println("Final Pet Count: " + newPetCount);
+	private int petCount(int ownerId) {
+		return this.jdbc.queryForObject("select count(*) from pets where owner_id = ?", Integer.class, ownerId);
+	}
 
-		// With the fix, exactly ONE concurrent request must succeed
-		assertThat(successCount.get()).isEqualTo(1);
-		assertThat(newPetCount).isEqualTo(initialPetCount + 1);
+	private static final class Browser {
 
-		long countWithDuplicateName = updatedOwner.getPets()
-			.stream()
-			.filter(p -> duplicatePetName.equalsIgnoreCase(p.getName()))
-			.count();
-		assertThat(countWithDuplicateName).isEqualTo(1);
+		private final URI baseUri;
+
+		private final HttpClient client;
+
+		private Browser(int port) {
+			this.baseUri = URI.create("http://localhost:" + port);
+			CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+			this.client = HttpClient.newBuilder()
+				.cookieHandler(cookies)
+				.followRedirects(HttpClient.Redirect.NEVER)
+				.build();
+		}
+
+		private HttpResponse<String> get(String path) throws Exception {
+			return this.client.send(HttpRequest.newBuilder(this.baseUri.resolve(path)).GET().build(),
+					HttpResponse.BodyHandlers.ofString());
+		}
+
+		private void login(String username, String password) throws Exception {
+			HttpResponse<String> loginPage = get("/login");
+			HttpResponse<String> response = post("/login", loginPage,
+					Map.of("username", username, "password", password));
+			assertThat(response.statusCode()).isEqualTo(302);
+		}
+
+		private HttpResponse<String> post(String path, HttpResponse<String> page, Map<String, String> values)
+				throws Exception {
+			Map<String, String> form = new LinkedHashMap<>(values);
+			form.put("_csrf", csrf(page.body()));
+			String body = form.entrySet()
+				.stream()
+				.map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
+				.reduce((left, right) -> left + "&" + right)
+				.orElse("");
+			HttpRequest request = HttpRequest.newBuilder(this.baseUri.resolve(path))
+				.header("Content-Type", "application/x-www-form-urlencoded")
+				.POST(HttpRequest.BodyPublishers.ofString(body))
+				.build();
+			return this.client.send(request, HttpResponse.BodyHandlers.ofString());
+		}
+
+		private String csrf(String html) {
+			var matcher = CSRF.matcher(html);
+			if (!matcher.find()) {
+				throw new IllegalStateException("No CSRF token in page");
+			}
+			return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+		}
+
+		private String encode(String value) {
+			return URLEncoder.encode(value, StandardCharsets.UTF_8);
+		}
+
 	}
 
 }

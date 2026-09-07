@@ -16,32 +16,38 @@
 
 package org.springframework.samples.petclinic;
 
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "logging.level.sql=DEBUG")
+@ActiveProfiles("test")
 public class PetClinicIntegrationTests {
+
+	private static final Pattern CSRF = Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"");
 
 	@LocalServerPort
 	int port;
 
 	@Autowired
 	private VetRepository vets;
-
-	@Autowired
-	private RestTemplateBuilder builder;
 
 	@Test
 	void findAll() {
@@ -50,17 +56,39 @@ public class PetClinicIntegrationTests {
 	}
 
 	@Test
-	void ownerDetails() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void ownerDetails() throws Exception {
+		HttpResponse<String> result = staffClient().send(request("/owners/1").GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(result.statusCode()).isEqualTo(200);
 	}
 
 	@Test
-	void ownerList() {
-		RestTemplate template = builder.baseUri("http://localhost:" + port).build();
-		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners?lastName=").build(), String.class);
-		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	void ownerList() throws Exception {
+		HttpResponse<String> result = staffClient().send(request("/owners?lastName=").GET().build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(result.statusCode()).isEqualTo(200);
+	}
+
+	private HttpClient staffClient() throws Exception {
+		CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+		HttpClient client = HttpClient.newBuilder()
+			.cookieHandler(cookies)
+			.followRedirects(HttpClient.Redirect.NEVER)
+			.build();
+		HttpResponse<String> login = client.send(request("/login").GET().build(), HttpResponse.BodyHandlers.ofString());
+		var matcher = CSRF.matcher(login.body());
+		assertThat(matcher.find()).isTrue();
+		String form = "username=staff&password=staff123&_csrf="
+				+ URLEncoder.encode(matcher.group(1), StandardCharsets.UTF_8);
+		HttpRequest submit = request("/login").header("Content-Type", "application/x-www-form-urlencoded")
+			.POST(HttpRequest.BodyPublishers.ofString(form))
+			.build();
+		assertThat(client.send(submit, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(302);
+		return client;
+	}
+
+	private HttpRequest.Builder request(String path) {
+		return HttpRequest.newBuilder(URI.create("http://localhost:" + this.port + path));
 	}
 
 	public static void main(String[] args) {

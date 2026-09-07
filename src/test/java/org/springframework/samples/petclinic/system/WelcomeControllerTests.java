@@ -20,12 +20,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(WelcomeController.class)
 @DisabledInNativeImage
@@ -37,7 +38,9 @@ class WelcomeControllerTests {
 
 	@Test
 	void welcome() throws Exception {
-		mockMvc.perform(get("/")).andExpect(status().isOk()).andExpect(view().name("welcome"));
+		mockMvc.perform(get("/").principal(new TestingAuthenticationToken("staff", null, "ROLE_STAFF")))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/staff/queue"));
 	}
 
 }

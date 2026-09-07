@@ -19,27 +19,23 @@ package org.springframework.samples.petclinic.system;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
-import java.util.List;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.samples.petclinic.PetClinicApplication;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration Test for {@link CrashController}.
@@ -47,54 +43,95 @@ import org.springframework.http.ResponseEntity;
  * @author Alex Lutz
  */
 // NOT Waiting https://github.com/spring-projects/spring-boot/issues/5574
-@SpringBootTest(webEnvironment = RANDOM_PORT,
-		properties = { "spring.web.error.include-message=ALWAYS", "management.endpoints.access.default=none" })
-@AutoConfigureTestRestTemplate
+@SpringBootTest(classes = PetClinicApplication.class, webEnvironment = RANDOM_PORT,
+		properties = "management.endpoints.access.default=none")
+@ActiveProfiles("test")
 class CrashControllerIntegrationTests {
 
-	@Value("${local.server.port}")
+	private static final Pattern CSRF = Pattern.compile(
+			"name=[\"']_csrf[\"'][^>]*value=[\"']([^\"']+)[\"']|value=[\"']([^\"']+)[\"'][^>]*name=[\"']_csrf[\"']");
+
+	@LocalServerPort
 	private int port;
 
-	@Autowired
-	private TestRestTemplate rest;
-
 	@Test
-	void triggerExceptionJson() {
-		ResponseEntity<Map<String, Object>> resp = rest.exchange(
-				RequestEntity.get("http://localhost:" + port + "/oups").build(),
-				new ParameterizedTypeReference<Map<String, Object>>() {
-				});
-		assertThat(resp).isNotNull();
-		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-		assertThat(resp.getBody()).containsKey("timestamp");
-		assertThat(resp.getBody()).containsKey("status");
-		assertThat(resp.getBody()).containsKey("error");
-		assertThat(resp.getBody()).containsEntry("message",
-				"Expected: controller used to showcase what happens when an exception is thrown");
-		assertThat(resp.getBody()).containsEntry("path", "/oups");
+	void triggerExceptionJsonDoesNotDiscloseExceptionDetails() throws Exception {
+		Browser staff = browser();
+		staff.login("staff", "staff123");
+		HttpResponse<String> response = staff.get("/oups", "application/json");
+
+		assertThat(response.statusCode()).isEqualTo(500);
+		assertThat(response.body()).contains("\"status\":500", "\"error\":\"Internal Server Error\"")
+			.doesNotContain("Expected: controller used", "java.lang.RuntimeException");
 	}
 
 	@Test
-	void triggerExceptionHtml() {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setAccept(List.of(MediaType.TEXT_HTML));
-		ResponseEntity<String> resp = rest.exchange("http://localhost:" + port + "/oups", HttpMethod.GET,
-				new HttpEntity<>(headers), String.class);
-		assertThat(resp).isNotNull();
-		assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-		assertThat(resp.getBody()).isNotNull();
-		// html:
-		assertThat(resp.getBody()).containsSubsequence("<body>", "<h2>", "Something happened...", "</h2>", "<p>",
-				"Expected:", "controller", "used", "to", "showcase", "what", "happens", "when", "an", "exception", "is",
-				"thrown", "</p>", "</body>");
-		// Not the whitelabel error page:
-		assertThat(resp.getBody()).doesNotContain("Whitelabel Error Page",
-				"This application has no explicit mapping for");
+	void triggerExceptionHtmlUsesLocalizedApplicationLayoutWithoutDetails() throws Exception {
+		Browser staff = browser();
+		staff.login("staff", "staff123");
+		HttpResponse<String> response = staff.get("/oups", "text/html");
+
+		assertThat(response.statusCode()).isEqualTo(500);
+		assertThat(response.body())
+			.contains("<nav", "<main", "Something happened...", "An internal server error occurred.")
+			.doesNotContain("Expected: controller used", "java.lang.RuntimeException", "Whitelabel Error Page",
+					"This application has no explicit mapping for");
 	}
 
-	@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class,
-			DataSourceTransactionManagerAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
-	static class TestConfiguration {
+	private Browser browser() {
+		return new Browser(this.port);
+	}
+
+	private static final class Browser {
+
+		private final URI baseUri;
+
+		private final HttpClient client;
+
+		private Browser(int port) {
+			this.baseUri = URI.create("http://localhost:" + port);
+			CookieManager cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+			this.client = HttpClient.newBuilder()
+				.cookieHandler(cookies)
+				.followRedirects(HttpClient.Redirect.NEVER)
+				.build();
+		}
+
+		private HttpResponse<String> get(String path, String accept) throws Exception {
+			return this.client.send(
+					HttpRequest.newBuilder(this.baseUri.resolve(path)).header("Accept", accept).GET().build(),
+					HttpResponse.BodyHandlers.ofString());
+		}
+
+		private void login(String username, String password) throws Exception {
+			HttpResponse<String> loginPage = get("/login", "text/html");
+			Map<String, String> form = new LinkedHashMap<>();
+			form.put("username", username);
+			form.put("password", password);
+			form.put("_csrf", csrf(loginPage.body()));
+			String body = form.entrySet()
+				.stream()
+				.map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
+				.reduce((left, right) -> left + "&" + right)
+				.orElse("");
+			HttpRequest request = HttpRequest.newBuilder(this.baseUri.resolve("/login"))
+				.header("Content-Type", "application/x-www-form-urlencoded")
+				.POST(HttpRequest.BodyPublishers.ofString(body))
+				.build();
+			assertThat(this.client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(302);
+		}
+
+		private String csrf(String html) {
+			var matcher = CSRF.matcher(html);
+			if (!matcher.find()) {
+				throw new IllegalStateException("No CSRF token in page");
+			}
+			return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+		}
+
+		private String encode(String value) {
+			return URLEncoder.encode(value, StandardCharsets.UTF_8);
+		}
 
 	}
 

@@ -27,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
@@ -60,6 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
+@WithMockUser(roles = "STAFF")
 class OwnerControllerTests {
 
 	private static final int TEST_OWNER_ID = 1;
@@ -119,7 +121,8 @@ class OwnerControllerTests {
 				.param("address", "123 Caramel Street")
 				.param("city", "London")
 				.param("telephone", "1316761638"))
-			.andExpect(status().is3xxRedirection());
+			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.owner.created"));
 	}
 
 	@Test
@@ -217,6 +220,7 @@ class OwnerControllerTests {
 				.param("city", "London")
 				.param("telephone", "1616291589"))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.owner.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
@@ -224,6 +228,7 @@ class OwnerControllerTests {
 	void processUpdateOwnerFormUnchangedSuccess() throws Exception {
 		mockMvc.perform(post("/owners/{ownerId}/edit", TEST_OWNER_ID))
 			.andExpect(status().is3xxRedirection())
+			.andExpect(flash().attribute("message", "scheduling.owner.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
 	}
 
@@ -273,7 +278,7 @@ class OwnerControllerTests {
 		mockMvc.perform(MockMvcRequestBuilders.post("/owners/{ownerId}/edit", pathOwnerId).flashAttr("owner", owner))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
-			.andExpect(flash().attributeExists("error"));
+			.andExpect(flash().attribute("error", "scheduling.owner.id.mismatch"));
 	}
 
 }
