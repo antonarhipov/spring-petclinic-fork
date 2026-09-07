@@ -3,7 +3,7 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-3.md` at `4477d22ab11ac5632f22e8682f857beebf090bf9`
-- Verdict: PENDING WALKTHROUGH
+- Verdict: APPROVE
 - Findings: 0 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
 - Suite: 315 run, 0 failed, 0 errors, 0 skipped
 - Working tree impact from verification: none
@@ -112,7 +112,7 @@ The first sandboxed real-server rerun produced 14 application-context errors bec
 | RULE-13 | One asynchronous job, two-worker capacity, no retry, exact outcomes and recovery. | Latch, timeout/transport, semantic-failure, late-result, and startup-recovery suites. | PASS |
 | RULE-14 | Exact state-only scoped JSON plus external polling and Refresh. | Byte-for-byte JSON, owner-isolation, DOM, and static-resource tests. | PASS |
 | RULE-15 | Current time comes only from injected `Clock`. | Static scan and fixed/mutable-clock exception, horizon, and DST tests. | PASS |
-| RULE-16 | One PetClinic layout with exact state/role actions. | Template inspection and rendered-page DOM suite; automated portion passed, walkthrough pending. | PASS |
+| RULE-16 | One PetClinic layout with exact state/role actions. | Template inspection, rendered-page DOM suite, and the user-confirmed walkthrough below. | PASS |
 | RULE-17 | All visible text is keyed in all eleven bundles. | Exact bundle parity and Java/template hard-coded-visible-text scans. | PASS |
 | RULE-18 | Real-server and direct evidence cover the complete UC without repository impact. | Evidence ledger, 14-test dynamic-port suite, 315-test full suite, clean Git state, unchanged runtime database. | PASS |
 | RULE-20 | One effective-availability calculation serves all consumers. | Shared `AvailabilityService` inspection and cross-boundary fixture parity tests. | PASS |
@@ -132,7 +132,7 @@ None.
 
 ## Walkthrough
 
-User result: pending at the automated convergence gate.
+User result: PASS.
 
 1. Start the application with `./mvnw spring-boot:run`, sign in as `george` / `george123`, open My pets, and start scheduling for one of George's pets. Confirm the shared PetClinic layout shows `george`, Logout, and the urgent-care instruction to call.
 2. Enter an English description with a reason, preferred days/times, and an optional veterinarian. Confirm the review page shows the exact text, the English-input expectation, the precise AI disclosure, Edit, Continue with AI, Continue without AI, and Abandon.
@@ -145,8 +145,8 @@ User result: pending at the automated convergence gate.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no later use case is eligible until the walkthrough result is recorded.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-2 and UC-4 through UC-8 are now eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: Perform the UC-3 owner-guided scheduling walkthrough above and report PASS or the failing step.
+APPROVED
