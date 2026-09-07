@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+<h2 th:text="#{scheduling.consent.title}">Consent</h2>
+<p th:text="#{scheduling.consent.summary}">Review how the request will be interpreted.</p>
+
+<div class="card mb-3">
+  <div class="card-body">
+	    <p th:text="#{scheduling.consent.categories}">Data sent to the interpretation model</p>
+    <ul>
+      <li><strong th:text="#{scheduling.request.text}">Describe the appointment you need</strong>: <span th:text="${request.requestText}">Free text</span></li>
+	      <li><strong th:text="#{scheduling.consent.specialties}">Specialties</strong>: <span th:text="${disclosure.specialties}">radiology,surgery,dentistry</span></li>
+	      <li><strong th:text="#{scheduling.consent.veterinarian}">Veterinarians</strong>: <span th:text="${disclosure.veterinarians}">Veterinarians</span></li>
+	      <li><strong th:text="#{scheduling.consent.opening}">Opening hours</strong>: <span th:text="${disclosure.openingHours}">Opening hours</span></li>
+	      <li><strong th:text="#{scheduling.consent.partOfDay}">Parts of day</strong>: <span th:text="${disclosure.partsOfDay}">Parts of day</span></li>
+	      <li><strong th:text="#{scheduling.consent.zone}">Clinic time zone</strong>: <span th:text="${disclosure.zone}">Europe/Amsterdam</span></li>
+	      <li><strong th:text="#{scheduling.consent.date}">Clinic-local date</strong>: <span th:text="${disclosure.today}">2026-09-07</span></li>
+		      <li><strong th:text="#{scheduling.settings.duration}">Appointment duration</strong>: <span th:text="${disclosure.durationBounds}">min:15,default:30,max:60</span></li>
+    </ul>
+    <div class="alert alert-info">
+      <strong th:text="#{scheduling.consent.noIdentifiers}">No owner or pet identifiers are sent.</strong>
+    </div>
+  </div>
+</div>
+
+<p th:if="${actionErrorKey}" th:text="#{${actionErrorKey}}">Unavailable</p>
+
+<div class="btn-toolbar gap-2 mb-3">
+  <form th:action="@{/my/requests/{id}/consent(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-primary" th:text="#{scheduling.consent}">Consent</button>
+  </form>
+  <form th:action="@{/my/requests/{id}/decline(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-secondary" th:text="#{scheduling.decline}">Decline</button>
+  </form>
+</div>
+
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
+</body>
+</html>

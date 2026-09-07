@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+<h2 th:text="#{scheduling.with-staff}">With clinic staff</h2>
+<p th:if="${actionErrorKey}" th:text="#{${actionErrorKey}}">Unavailable</p>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div th:if="${request.withStaffReason != null}" class="alert alert-info">
+      <div th:if="${request.withStaffReason.name() == 'UNMATCHED_SPECIALTY'}">
+        <strong th:text="#{scheduling.interpretation.other}">Other specialty note</strong>:
+	        <span th:text="#{scheduling.withStaff.unmatchedSpecialty}">Clinic staff will review the requested specialty.</span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'NO_SLOTS'}">
+        <strong th:text="#{scheduling.slot.none}">No matching slots are available.</strong>
+	        <span th:text="#{scheduling.withStaff.noSlots}">Clinic staff will find another opening.</span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'DECLINED_CONSENT'}">
+	        <span th:text="#{scheduling.withStaff.declinedConsent}">Clinic staff will process this request.</span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'OWNER_CHOICE'}">
+	        <span th:text="#{scheduling.withStaff.ownerChoice}">Clinic staff assistance was requested.</span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'AI_UNAVAILABLE'}">
+	        <span th:text="#{scheduling.withStaff.aiUnavailable}">Clinic staff will assist while interpretation is unavailable.</span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'HOLD_RELEASED'}">
+	        <span th:text="#{scheduling.withStaff.holdReleased}">The held slot was released.</span>
+	        <span th:if="${request.staffReason != null}"><span th:text="#{scheduling.appointment.reason}">Reason</span>: <span th:text="${request.staffReason}">Reason</span></span>
+      </div>
+      <div th:if="${request.withStaffReason.name() == 'SCHEDULE_CHANGED'}">
+	        <span th:text="#{scheduling.withStaff.scheduleChanged}">A schedule change affected this request.</span>
+      </div>
+    </div>
+
+    <div th:if="${review != null}">
+      <h4 th:text="#{scheduling.review}">Review interpretation</h4>
+      <p th:if="${review.specialty != null}">
+        <strong th:text="#{scheduling.interpretation.specialty}">Specialty</strong>:
+        <span th:text="${review.specialty}">surgery</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="btn-toolbar gap-2 mb-3">
+  <form th:action="@{/my/requests/{id}/abandon(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-danger" th:text="#{scheduling.cancel}">Cancel</button>
+  </form>
+</div>
+
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
+</body>
+</html>

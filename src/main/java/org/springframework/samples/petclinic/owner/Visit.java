@@ -19,9 +19,13 @@ import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.samples.petclinic.model.BaseEntity;
+import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 
@@ -41,6 +45,10 @@ public class Visit extends BaseEntity {
 
 	@NotBlank
 	private String description;
+
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "appointment_id", unique = true)
+	private Appointment appointment;
 
 	/**
 	 * Creates a new instance of Visit for tomorrow
@@ -63,6 +71,14 @@ public class Visit extends BaseEntity {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public Appointment getAppointment() {
+		return this.appointment;
+	}
+
+	public void setAppointment(Appointment appointment) {
+		this.appointment = appointment;
 	}
 
 }

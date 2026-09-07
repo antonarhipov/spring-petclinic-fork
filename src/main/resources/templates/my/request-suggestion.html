@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+<h2 th:text="#{scheduling.suggestion}">Suggested appointment</h2>
+<p th:if="${actionErrorKey}" th:text="#{${actionErrorKey}}">Unavailable</p>
+
+	<div th:if="${suggestion != null}" class="card mb-3" th:attr="data-slot-date=${held.date},data-slot-start=${held.startTime},data-slot-end=${held.endTime},data-rank-reason=${held.rankReason}">
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-3" th:text="#{scheduling.slot.veterinarian}">Veterinarian</dt>
+	      <dd class="col-sm-9" id="suggestion-vet" th:text="${suggestion.veterinarianName}">Veterinarian</dd>
+
+	      <dt class="col-sm-3" th:text="#{scheduling.interpretation.specialty}">Specialty</dt>
+	      <dd class="col-sm-9" id="suggestion-specialty">
+	        <span th:if="${!#strings.isEmpty(suggestion.specialties)}" th:text="${suggestion.specialties}">Specialties</span>
+	        <span th:if="${#strings.isEmpty(suggestion.specialties)}" th:text="#{none}">none</span>
+	      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.slot.date}">Date</dt>
+	      <dd class="col-sm-9" id="suggestion-date" th:text="${suggestion.date}">Date</dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.slot.time}">Time</dt>
+      <dd class="col-sm-9" id="suggestion-time">
+	        <span th:text="|${suggestion.startTime}-${suggestion.endTime}|">09:00-09:30</span>
+      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.slot.duration}">Duration</dt>
+		      <dd class="col-sm-9" id="suggestion-duration" th:text="#{scheduling.unit.minutes(${suggestion.durationMinutes})}">30 minutes</dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.slot.rank}">Why this slot</dt>
+      <dd class="col-sm-9" id="suggestion-rank-reason">
+	        <span th:text="#{${suggestion.rankReasonMessageKey}}">Matches all preferences</span>
+      </dd>
+    </dl>
+  </div>
+</div>
+
+<div class="alert alert-warning" th:text="#{scheduling.suggestion.irreversible}">
+  Accepting confirms this appointment and ends the request.
+</div>
+
+<div class="btn-toolbar gap-2 mb-3">
+  <form th:action="@{/my/requests/{id}/accept(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-primary" th:text="#{scheduling.accept}">Accept</button>
+  </form>
+  <form th:action="@{/my/requests/{id}/another-option(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-secondary" th:text="#{scheduling.another}">Another option</button>
+  </form>
+  <form th:action="@{/my/requests/{id}/staff-assistance(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-secondary" th:text="#{scheduling.with-staff}">With clinic staff</button>
+  </form>
+  <form th:action="@{/my/requests/{id}/abandon(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-danger" th:text="#{scheduling.cancel}">Cancel</button>
+  </form>
+</div>
+
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
+</body>
+</html>

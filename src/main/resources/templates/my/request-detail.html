@@ -1,0 +1,4 @@
+<!DOCTYPE html><html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'pets')}"><body>
+<h2 th:text="#{scheduling.request.title}">Request</h2><p><span th:text="#{scheduling.request.state}">State</span>: <span th:text="#{${requestStateMessageKey}}">State</span></p><p th:text="${request.requestText}">Text</p><p th:if="${actionErrorKey}" th:text="#{${actionErrorKey}}">Action unavailable</p>
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
+</body></html>

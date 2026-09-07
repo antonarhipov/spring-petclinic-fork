@@ -58,12 +58,14 @@ class RepositoryScopeTests {
 
 		assertThat(dependencies).contains("com.h2database:h2", "org.flywaydb:flyway-core",
 				"org.springframework.boot:spring-boot-starter-security",
-				"org.springframework.security:spring-security-test");
+				"org.springframework.security:spring-security-test",
+				"org.springframework.ai:spring-ai-starter-model-ollama");
 		assertThat(dependencies).noneMatch(this::isForbiddenDependency);
 		assertThat(repositoryPaths).noneMatch(this::isForbiddenRepositoryPath);
 		assertThat(Files.readString(Path.of("src/main/resources/application.properties")))
-			.contains("jdbc:h2:file:./data/petclinic")
-			.doesNotContain("spring.sql.init", "spring.ai.");
+			.contains("jdbc:h2:file:./data/petclinic", "spring.ai.ollama.chat.model",
+					"spring.ai.ollama.chat.temperature=0", "spring.ai.retry.max-attempts=0")
+			.doesNotContain("spring.sql.init");
 		assertThat(Files.readString(Path.of("src/test/resources/application-test.properties")))
 			.contains("jdbc:h2:mem:petclinic-${random.uuid}", "spring.flyway.enabled=true")
 			.doesNotContain("spring.sql.init", "spring.ai.");
@@ -102,9 +104,9 @@ class RepositoryScopeTests {
 	private boolean isForbiddenDependency(String coordinate) {
 		String normalized = coordinate.toLowerCase();
 		return normalized.contains("mysql") || normalized.contains("postgres") || normalized.contains("testcontainers")
-				|| normalized.contains("docker-compose") || normalized.contains("spring-ai")
-				|| normalized.contains("spring-batch") || normalized.contains("spring-retry")
-				|| normalized.contains("resilience4j") || normalized.contains("quartz");
+				|| normalized.contains("docker-compose") || normalized.contains("spring-batch")
+				|| normalized.contains("spring-retry") || normalized.contains("resilience4j")
+				|| normalized.contains("quartz");
 	}
 
 	private List<String> repositoryPaths() throws IOException {

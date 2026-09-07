@@ -1,4 +1,20 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}"><body>
 <h2 th:text="#{scheduling.my.appointments}">My appointments</h2>
+<p data-empty-state th:if="${#lists.isEmpty(pets)}" th:text="#{scheduling.pets.empty}">No pets</p>
+<section class="card" th:each="petAppointments : ${pets}" th:attr="data-pet-id=${petAppointments.pet.id}">
+  <h3 th:text="${petAppointments.pet.name}">Pet</h3>
+  <p th:if="${#lists.isEmpty(petAppointments.appointments)}" th:text="#{scheduling.appointments.empty}">No appointments</p>
+  <table class="table table-striped" th:unless="${#lists.isEmpty(petAppointments.appointments)}">
+    <thead><tr><th th:text="#{date}">Date</th><th th:text="#{scheduling.appointment.time}">Time</th><th th:text="#{scheduling.appointment.status}">Status</th></tr></thead>
+    <tbody><tr th:each="appointment : ${petAppointments.appointments}" th:attr="data-appointment-id=${appointment.id}">
+      <td th:text="${appointment.date}">Date</td>
+      <td th:text="|${appointment.startTime}-${appointment.endTime}|">Time</td>
+      <td th:text="#{${petAppointments.statusMessageKey(appointment)}}">Status</td>
+    </tr></tbody>
+  </table>
+	  <p th:if="${petAppointments.activeRequest != null}" data-request-action="resume"><span th:text="#{scheduling.request.state}">Status</span>: <span th:text="#{${petAppointments.requestStateMessageKey()}}">State</span> <a th:href="@{/my/requests/{id}(id=${petAppointments.activeRequest.id})}" th:text="#{scheduling.request.resume}">Resume</a></p>
+  <p th:unless="${petAppointments.activeRequest != null}" data-request-action="start"><a th:href="@{/my/requests/new(petId=${petAppointments.pet.id})}" th:text="#{scheduling.request.start}">Start a request</a></p>
+</section>
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
 </body></html>

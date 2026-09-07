@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+<h2 th:text="#{scheduling.review}">Review interpretation</h2>
+<p th:if="${actionErrorKey}" th:text="#{${actionErrorKey}}">Unavailable</p>
+
+<div th:if="${review != null}" class="card mb-3">
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.care}">Care need</dt>
+	      <dd class="col-sm-9" id="review-care-type" th:text="#{${review.careTypeMessageKey}}">General care</dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.specialty}">Specialty</dt>
+      <dd class="col-sm-9" id="review-specialty">
+        <span th:if="${review.specialty != null}" th:text="${review.specialty}">none</span>
+        <span th:unless="${review.specialty != null}" th:text="#{none}">none</span>
+        <div th:if="${review.unmatchedSpecialty}" class="alert alert-warning mt-2" id="unmatched-specialty-note">
+          <strong th:text="#{scheduling.interpretation.other}">Other specialty note</strong>:
+          <span th:text="${review.specialtyLabel != null ? review.specialtyLabel : review.specialty}">Acupuncture</span>.
+	          <span th:text="#{scheduling.interpretation.unmatched}">Clinic staff will review this specialty.</span>
+        </div>
+      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.duration.requested}">Requested duration</dt>
+      <dd class="col-sm-9" id="review-requested-duration">
+	        <span th:if="${review.requestedDuration != null}" th:text="#{scheduling.unit.minutes(${review.requestedDuration})}">30 minutes</span>
+        <span th:unless="${review.requestedDuration != null}" th:text="#{none}">none</span>
+      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.duration.effective}">Effective duration</dt>
+      <dd class="col-sm-9" id="review-effective-duration">
+	        <span th:text="#{scheduling.unit.minutes(${review.effectiveDuration})}">30 minutes</span>
+        <span th:if="${review.clamped}" class="badge bg-warning text-dark ms-2" id="duration-clamped-note" th:text="#{scheduling.interpretation.duration.clamped}">Duration was adjusted to clinic limits.</span>
+      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.veterinarian}">Preferred veterinarian</dt>
+      <dd class="col-sm-9" id="review-vet">
+        <span th:if="${review.preferredVetName != null}" th:text="${review.preferredVetName}">none</span>
+        <span th:unless="${review.preferredVetName != null}" th:text="#{none}">none</span>
+      </dd>
+
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.origin}">Interpretation origin</dt>
+	      <dd class="col-sm-9" id="review-origin" th:text="#{${review.originMessageKey}}">AI interpretation</dd>
+    </dl>
+
+    <div class="mt-4">
+      <h4 th:text="#{scheduling.interpretation.window}">Availability window</h4>
+
+	      <h5 th:text="#{scheduling.interpretation.windows.preferred}">Preferred windows</h5>
+      <ul id="preferred-windows" class="list-group mb-3">
+        <li th:if="${#lists.isEmpty(review.preferredWindows)}" class="list-group-item text-muted" th:text="#{scheduling.empty}">No items</li>
+        <li th:each="w : ${review.preferredWindows}" class="list-group-item">
+          <span class="fw-bold" th:text="${w.dayOrDate}">Monday</span>:
+          <span th:text="${w.startTime}">09:00</span> - <span th:text="${w.endTime}">12:00</span>
+        </li>
+      </ul>
+
+	      <h5 th:text="#{scheduling.interpretation.windows.allowed}">Allowed windows</h5>
+      <ul id="allowed-windows" class="list-group mb-3">
+        <li th:if="${#lists.isEmpty(review.allowedWindows)}" class="list-group-item text-muted" th:text="#{scheduling.empty}">No items</li>
+        <li th:each="w : ${review.allowedWindows}" class="list-group-item">
+          <span class="fw-bold" th:text="${w.dayOrDate}">Wednesday</span>:
+          <span th:text="${w.startTime}">10:00</span> - <span th:text="${w.endTime}">13:00</span>
+        </li>
+      </ul>
+
+	      <h5 th:text="#{scheduling.interpretation.windows.excluded}">Excluded windows</h5>
+      <ul id="excluded-windows" class="list-group mb-3">
+        <li th:if="${#lists.isEmpty(review.excludedWindows)}" class="list-group-item text-muted" th:text="#{scheduling.empty}">No items</li>
+        <li th:each="w : ${review.excludedWindows}" class="list-group-item">
+          <span class="fw-bold" th:text="${w.dayOrDate}">Friday</span>:
+          <span th:text="${w.startTime}">13:00</span> - <span th:text="${w.endTime}">16:00</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="btn-toolbar gap-2 mb-3">
+  <form th:action="@{/my/requests/{id}/confirm(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-primary" th:text="#{scheduling.confirm}">Confirm</button>
+  </form>
+  <a th:href="@{/my/requests/{id}/edit(id=${request.id})}" class="btn btn-secondary" th:text="#{scheduling.edit}">Edit</a>
+  <form th:action="@{/my/requests/{id}/staff-assistance(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-secondary" th:text="#{scheduling.with-staff}">With clinic staff</button>
+  </form>
+  <form th:action="@{/my/requests/{id}/abandon(id=${request.id})}" method="post" class="d-inline">
+    <button type="submit" class="btn btn-danger" th:text="#{scheduling.cancel}">Cancel</button>
+  </form>
+</div>
+
+<div th:replace="~{fragments/urgent-care :: guidance}"></div>
+</body>
+</html>

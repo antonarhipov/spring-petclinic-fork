@@ -7,7 +7,7 @@ import org.springframework.data.repository.Repository;
 
 public interface UserAccountRepository extends Repository<UserAccount, Integer> {
 
-	@EntityGraph(attributePaths = "owner")
+	@EntityGraph(attributePaths = { "owner", "owner.pets", "owner.pets.type" })
 	Optional<UserAccount> findByUsername(String username);
 
 }
