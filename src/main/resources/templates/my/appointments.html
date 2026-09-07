@@ -3,18 +3,38 @@
 <h2 th:text="#{scheduling.my.appointments}">My appointments</h2>
 <p data-empty-state th:if="${#lists.isEmpty(pets)}" th:text="#{scheduling.pets.empty}">No pets</p>
 <section class="card" th:each="petAppointments : ${pets}" th:attr="data-pet-id=${petAppointments.pet.id}">
+  <div class="card-body">
   <h3 th:text="${petAppointments.pet.name}">Pet</h3>
+  <h4 th:text="#{scheduling.appointments.history}">Appointment history</h4>
   <p th:if="${#lists.isEmpty(petAppointments.appointments)}" th:text="#{scheduling.appointments.empty}">No appointments</p>
   <table class="table table-striped" th:unless="${#lists.isEmpty(petAppointments.appointments)}">
-    <thead><tr><th th:text="#{date}">Date</th><th th:text="#{scheduling.appointment.time}">Time</th><th th:text="#{scheduling.appointment.status}">Status</th></tr></thead>
+    <thead><tr><th th:text="#{date}">Date</th><th th:text="#{scheduling.appointment.time}">Time</th><th th:text="#{scheduling.slot.veterinarian}">Veterinarian</th><th th:text="#{specialties}">Specialties</th><th th:text="#{scheduling.appointment.status}">Status</th><th th:text="#{scheduling.appointment.reason}">Reason</th><th th:text="#{scheduling.actions}">Actions</th></tr></thead>
     <tbody><tr th:each="appointment : ${petAppointments.appointments}" th:attr="data-appointment-id=${appointment.id}">
       <td th:text="${appointment.date}">Date</td>
       <td th:text="|${appointment.startTime}-${appointment.endTime}|">Time</td>
-      <td th:text="#{${petAppointments.statusMessageKey(appointment)}}">Status</td>
+      <td th:text="${appointment.veterinarianName}">Veterinarian</td>
+      <td><span th:if="${!#lists.isEmpty(appointment.specialties)}" th:text="${#strings.listJoin(appointment.specialties, ', ')}">Specialties</span><span th:if="${#lists.isEmpty(appointment.specialties)}" th:text="#{none}">none</span></td>
+      <td th:text="#{${appointment.statusMessageKey}}">Status</td>
+      <td><span th:if="${appointment.staffReason != null}" th:text="${appointment.staffReason}">Reason</span><span th:if="${appointment.staffReason == null}" th:text="#{none}">none</span></td>
+      <td><a th:if="${appointment.cancelAvailable}" th:href="@{/my/appointments/{id}/cancel(id=${appointment.id})}" th:text="#{scheduling.appointment.cancel}" data-appointment-action="cancel">Cancel appointment</a><span th:unless="${appointment.cancelAvailable}" th:text="#{none}">none</span></td>
     </tr></tbody>
   </table>
-	  <p th:if="${petAppointments.activeRequest != null}" data-request-action="resume"><span th:text="#{scheduling.request.state}">Status</span>: <span th:text="#{${petAppointments.requestStateMessageKey()}}">State</span> <a th:href="@{/my/requests/{id}(id=${petAppointments.activeRequest.id})}" th:text="#{scheduling.request.resume}">Resume</a></p>
-  <p th:unless="${petAppointments.activeRequest != null}" data-request-action="start"><a th:href="@{/my/requests/new(petId=${petAppointments.pet.id})}" th:text="#{scheduling.request.start}">Start a request</a></p>
+  <div th:if="${petAppointments.activeRequest != null}" data-active-request>
+    <h4 th:text="#{scheduling.request.active}">Active scheduling request</h4>
+    <dl class="row">
+      <dt class="col-sm-3" th:text="#{scheduling.request.state}">Status</dt><dd class="col-sm-9" th:text="#{${petAppointments.activeRequest.stateMessageKey}}">State</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.origin}">Interpretation origin</dt><dd class="col-sm-9"><span th:if="${petAppointments.activeRequest.interpretationOriginMessageKey != null}" th:text="#{${petAppointments.activeRequest.interpretationOriginMessageKey}}">Origin</span><span th:if="${petAppointments.activeRequest.interpretationOriginMessageKey == null}" th:text="#{none}">none</span></dd>
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.specialty}">Specialty</dt><dd class="col-sm-9"><span th:if="${petAppointments.activeRequest.interpretedSpecialty != null}" th:text="${petAppointments.activeRequest.interpretedSpecialty}">Specialty</span><span th:if="${petAppointments.activeRequest.interpretedSpecialty == null}" th:text="#{none}">none</span></dd>
+      <dt class="col-sm-3" th:text="#{scheduling.slot.veterinarian}">Veterinarian</dt><dd class="col-sm-9"><span th:if="${petAppointments.activeRequest.veterinarianName != null}" th:text="${petAppointments.activeRequest.veterinarianName}">Veterinarian</span><span th:if="${petAppointments.activeRequest.veterinarianName == null}" th:text="#{none}">none</span></dd>
+      <dt class="col-sm-3" th:text="#{specialties}">Specialties</dt><dd class="col-sm-9"><span th:if="${!#lists.isEmpty(petAppointments.activeRequest.veterinarianSpecialties)}" th:text="${#strings.listJoin(petAppointments.activeRequest.veterinarianSpecialties, ', ')}">Specialties</span><span th:if="${#lists.isEmpty(petAppointments.activeRequest.veterinarianSpecialties)}" th:text="#{none}">none</span></dd>
+    </dl>
+    <p data-request-action="resume"><a th:href="@{/my/requests/{id}(id=${petAppointments.activeRequest.id})}" th:text="#{scheduling.request.resume}">Resume</a></p>
+  </div>
+  <div th:unless="${petAppointments.activeRequest != null}">
+    <p th:text="#{scheduling.request.none}">No active request</p>
+    <p data-request-action="start"><a th:href="@{/my/requests/new(petId=${petAppointments.pet.id})}" th:text="#{scheduling.request.start}">Start a request</a></p>
+  </div>
+  </div>
 </section>
 <div th:replace="~{fragments/urgent-care :: guidance}"></div>
 </body></html>

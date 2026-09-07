@@ -163,9 +163,7 @@ public class AppointmentService {
 	}
 
 	private boolean isBeforeStart(Appointment appointment) {
-		LocalDate currentDate = today();
-		return currentDate.isBefore(appointment.getDate())
-				|| (currentDate.isEqual(appointment.getDate()) && now().isBefore(appointment.getStartTime()));
+		return appointment.isCancellableByOwnerAt(today(), now());
 	}
 
 	private void requireAfterStart(Appointment appointment, String action) {

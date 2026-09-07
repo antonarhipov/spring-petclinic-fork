@@ -2,16 +2,16 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-2, UC-4, UC-5, UC-6, UC-7, UC-8
+- Use case: UC-2
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none
 
 ## Progress
 
 | Use case | Status | Depends on | Implementation | Convergence |
 |---|---|---|---|---|
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
-| UC-2 | NOT_STARTED | UC-1 | - | - |
+| UC-2 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | - |
 | UC-3 | APPROVED | UC-1 | `4477d22` | [APPROVED](convergence/UC-3.md) - walkthrough passed |
 | UC-4 | NOT_STARTED | UC-1 | - | - |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
@@ -74,6 +74,55 @@
 | RULE-17 | Exact bundle parity and hard-coded visible text/status/Thymeleaf-expression scans are enforced by `I18nPropertiesSyncTest.java:85`; all eleven bundles contain the new action keys. |
 | RULE-18 | Real-server UC-1 journey is `AuthenticationE2ETests.java:41`; final suite is 101/0/0/0; profile and runtime-data isolation guards are `TestDataIsolationTests.java:48`. |
 | RULE-24 | Maven/H2-only dependency, path, property, README, and permanent-deletion checks are in `RepositoryScopeTests.java:37`. |
+
+## UC-2 Evidence
+
+- Started: 2026-09-08T00:17:25+02:00
+- Started from: `0538d4fec3f2135d594cced02ac09fa374e9291f`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Read model and delegation: `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/OwnerActivityQueryService.java`, `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/MyAppointmentsController.java`, `src/main/java/org/springframework/samples/petclinic/scheduling/request/MyPetsController.java`.
+  - Shared owner-cancellation eligibility: `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/Appointment.java`, `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/AppointmentService.java`.
+  - Presentation and localization: `src/main/resources/templates/my/pets.html`, `src/main/resources/templates/my/appointments.html`, and all eleven files under `src/main/resources/messages/messages*.properties`.
+  - Verification: `src/test/java/org/springframework/samples/petclinic/scheduling/appointment/OwnerActivityWebTests.java`, `src/test/java/org/springframework/samples/petclinic/scheduling/appointment/OwnerActivityE2ETests.java`.
+- Commands and results:
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:apply` followed by `... ./mvnw -q -Dspring-javaformat.skip=true -DskipTests compile` - PASS.
+  - First focused attempt stopped during test compilation because the new test helper shadowed MockMvc's `get`; renaming it resolved the diagnostic.
+  - Second focused attempt ran 39 tests with one assertion failure caused by expecting capitalized `Pets` instead of the localized `My pets`/`No pets`; correcting the test expectation resolved it without production changes.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=OwnerActivityWebTests,I18nPropertiesSyncTest,AppointmentStateTransitionTests test` - PASS, 39 tests, 0 failures, 0 errors, 0 skipped.
+  - Same Maven/JDK/agent invocation with `-Dtest=OwnerActivityE2ETests` - PASS, 3 tests, 0 failures, 0 errors, 0 skipped; dynamic localhost binding was allowed for the real-server boundary.
+  - Same Maven/JDK/agent invocation without `-Dtest` - PASS, 322 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:validate` - PASS.
+  - `git diff --check` - PASS; `data/petclinic.mv.db` remained at `2026-09-07T22:56:54+0200`; `.agents/` remained excluded.
+
+| Contract element | Evidence |
+|---|---|
+| UC-2 main steps 1-2 | Real owner login and `/my/pets` rendering at `OwnerActivityE2ETests.java:58`; field-perfect owner/pet and absence-of-edit-action assertions at `OwnerActivityWebTests.java:41`; principal-derived read model at `OwnerActivityQueryService.java:44`. |
+| UC-2 main steps 3-4 | Real `/my/appointments` journey asserts every past/future/final appointment, active request, veterinarian, specialty, origin, and staff reason at `OwnerActivityE2ETests.java:73`; exact DOM/state evidence at `OwnerActivityWebTests.java:56`. |
+| UC-2 main step 5 | Start/resume mutual exclusion and cancel eligibility across Confirmed-before-start, started, Cancelled, Completed, No-show, and Held rows at `OwnerActivityWebTests.java:73` and `OwnerActivityWebTests.java:92`; the UI uses the same domain predicate as owner cancellation at `Appointment.java:203`. |
+| UC-2 extension 2a | A real authenticated owner with no pets sees the exact owner record and empty states without scheduling actions at `OwnerActivityE2ETests.java:88`; focused DOM and zero-pet persistence checks at `OwnerActivityWebTests.java:73`. |
+| UC-2 extension 4a | George's pet with no appointments/request renders both absences and exactly the new-request action at `OwnerActivityWebTests.java:86`. |
+| UC-2 extension 4b | Current rescheduled date/time and exact staff-entered reason are rendered through real HTTP at `OwnerActivityE2ETests.java:58` and focused DOM at `OwnerActivityWebTests.java:41`. |
+| UC-2 extension 1a | Foreign and unknown pet/request identifiers produce equal standard 404 pages; foreign appointments and all foreign activity are absent; complete tables are unchanged in `OwnerActivityE2ETests.java:103` and `OwnerActivityWebTests.java:107`. |
+| UC-2 G1 | Owner-scoped repositories plus full-page negative assertions exclude Betty's identity, contacts, pet, request, appointment, and reason; before/after database snapshots prove read-only behavior at `OwnerActivityE2ETests.java:58` and `OwnerActivityE2ETests.java:103`. |
+| UC-2 G2 | Appointment and active-request veterinarian names and exact specialty lists render without a veterinarian-directory link at `OwnerActivityWebTests.java:56` and the real-server journey at `OwnerActivityE2ETests.java:73`. |
+| UC-2 G3 | `/my/pets` renders immutable query records and contains no owner/pet create or edit action at `templates/my/pets.html:4` and `OwnerActivityE2ETests.java:67`. |
+| UC-2 G4 | The listing and request detail render the same AI origin, surgery specialty, and Helen Leary current interpretation at `OwnerActivityWebTests.java:56` and `OwnerActivityE2ETests.java:73`. |
+| UC-2 G5 | Both templates use the shared layout at `templates/my/pets.html:2` and `templates/my/appointments.html:2`; all new labels use message keys and exact eleven-bundle parity passes `I18nPropertiesSyncTest`. |
+| UC-2 success postcondition | The real-server main journey proves a complete principal-scoped view and table equality after all reads at `OwnerActivityE2ETests.java:58`. |
+| UC-2 minimal guarantee | Empty owners/pets/activities show explicit empty states, while foreign data is neither rendered nor mutated at `OwnerActivityE2ETests.java:88` and `OwnerActivityE2ETests.java:103`. |
+| UC-2 Requires UC-1 | All three real-server journeys authenticate through the approved form-login/cookie session; the 322-test suite re-passes UC-1 authentication, route, presentation, localization, and data guarantees. |
+| RULE-1 | `MyPetsController.java:19` and `MyAppointmentsController.java:17` only delegate; `OwnerActivityQueryService.java:24` assembles detached query records. |
+| RULE-4 | UC-2 adds no mutation path; the complete approved request transition matrix and its no-side-effect assertions pass in the 322-test suite. |
+| RULE-7 | Fresh Flyway, mapping, persistence, and restart suites pass unchanged; UC-2 reads the existing `LocalDate`, `LocalTime`, and immutable interpretation fields. |
+| RULE-8 | `SeedMigrationTests` passes exact normative set and credential comparisons in the 322-test suite. |
+| RULE-9 | Real login plus owner/staff/anonymous route-matrix tests pass; UC-2 remains under the single `/my/**` owner rule. |
+| RULE-10 | `OwnerActivityQueryService.java:44` and `OwnerActivityQueryService.java:50` derive owner identity from `Principal`; no owner id enters either URL; cross-owner equal-404 evidence is direct. |
+| RULE-16 | Shared layout, exact owner menu/identity/logout, read-only cards/tables, and state-valid actions are rendered and DOM-tested; human walkthrough remains for convergence. |
+| RULE-17 | Five new visible labels use message keys copied to all eleven bundles; hard-coded-template/Java and key-parity scans pass. |
+| RULE-18 | `OwnerActivityE2ETests` supplies real-server main, empty, and cross-owner journeys; all contract elements map to direct tests; full suite is 322/0/0/0 with no repository/runtime-data impact. |
+| RULE-24 | Repository-scope, H2 isolation, restart, README, and unsupported-stack absence tests pass within the 322-test suite. |
 
 ## UC-3 Evidence
 

@@ -1,4 +1,26 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'pets')}"><body>
 <h2 th:text="#{scheduling.my.pets}">My pets</h2>
+<section class="card mb-3" data-owner-record>
+  <div class="card-body">
+    <h3 th:text="#{scheduling.owner.details}">Owner details</h3>
+    <dl class="row">
+      <dt class="col-sm-3" th:text="#{firstName}">First name</dt><dd class="col-sm-9" th:text="${owner.firstName}">First name</dd>
+      <dt class="col-sm-3" th:text="#{lastName}">Last name</dt><dd class="col-sm-9" th:text="${owner.lastName}">Last name</dd>
+      <dt class="col-sm-3" th:text="#{address}">Address</dt><dd class="col-sm-9" th:text="${owner.address}">Address</dd>
+      <dt class="col-sm-3" th:text="#{city}">City</dt><dd class="col-sm-9" th:text="${owner.city}">City</dd>
+      <dt class="col-sm-3" th:text="#{telephone}">Telephone</dt><dd class="col-sm-9" th:text="${owner.telephone}">Telephone</dd>
+    </dl>
+  </div>
+</section>
+<p data-empty-state th:if="${#lists.isEmpty(owner.pets)}" th:text="#{scheduling.pets.empty}">No pets</p>
+<section class="card mb-3" th:each="pet : ${owner.pets}" th:attr="data-pet-id=${pet.id}">
+  <div class="card-body">
+    <h3 th:text="${pet.name}">Pet</h3>
+    <dl class="row">
+      <dt class="col-sm-3" th:text="#{birthDate}">Birth date</dt><dd class="col-sm-9" th:text="${pet.birthDate}">Date</dd>
+      <dt class="col-sm-3" th:text="#{type}">Type</dt><dd class="col-sm-9" th:text="${pet.type}">Type</dd>
+    </dl>
+  </div>
+</section>
 </body></html>

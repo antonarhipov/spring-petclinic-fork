@@ -200,6 +200,14 @@ public class Appointment extends BaseEntity {
 		return (int) java.time.Duration.between(this.startTime, this.endTime).toMinutes();
 	}
 
+	public boolean isCancellableByOwnerAt(LocalDate currentDate, LocalTime currentTime) {
+		if (this.status != AppointmentStatus.CONFIRMED) {
+			return false;
+		}
+		return currentDate.isBefore(this.date)
+				|| (currentDate.isEqual(this.date) && currentTime.isBefore(this.startTime));
+	}
+
 	void reschedule(Vet vet, LocalDate date, LocalTime startTime, LocalTime endTime, String reason, String changedBy) {
 		this.vet = vet;
 		this.date = date;
