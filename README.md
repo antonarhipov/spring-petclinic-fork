@@ -34,11 +34,11 @@ Open `localhost:8080` in a browser. The application creates its H2 database in
 ## Run the tests
 
 ```bash
-scripts/test-with-clean-tree-check.sh clean test
+./mvnw test
 ```
 
-The wrapper activates the isolated test profile and verifies that the Maven
-suite does not modify tracked files.
+Tests that load the database activate the isolated test profile and use a
+unique in-memory H2 database.
 
 ## License
 

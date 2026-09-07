@@ -3,14 +3,14 @@
 ## Current
 
 - Use case: UC-1
-- Status: NEEDS_REVISION
+- Status: READY_FOR_CONVERGENCE
 - Next eligible: none
 
 ## Progress
 
 | Use case | Status | Depends on | Implementation | Convergence |
 |---|---|---|---|---|
-| UC-1 | NEEDS_REVISION | none | `e0f330e` | [REJECT](convergence/UC-1.md) - C-1, K-1 |
+| UC-1 | READY_FOR_CONVERGENCE | none | HEAD at convergence | pending; prior [REJECT](convergence/UC-1.md) findings resolved |
 | UC-2 | NOT_STARTED | UC-1 | - | - |
 | UC-3 | NOT_STARTED | UC-1 | - | - |
 | UC-4 | NOT_STARTED | UC-1 | - | - |
@@ -23,6 +23,7 @@
 
 - Started: 2026-09-07T21:52:06+02:00
 - Started from: `2b8fe6fc52c133b9bdbc3a06026f2903ff00fc43`
+- Revision started from: `04e5d3b` for convergence findings C-1 and K-1
 - Pre-existing dirty files: none
 - Implementation submission: HEAD at convergence
 - Changed files:
@@ -38,6 +39,9 @@
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q clean -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=AuthenticationWebTests,SecurityMatrixWebTests,PresentationShellTests,OwnerHttpSurfaceTests,SeedMigrationTests,RepositoryScopeTests,I18nPropertiesSyncTest,TestDataIsolationTests test` - PASS, 30 tests, 0 failures, 0 errors, 0 skipped.
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=ClinicServiceTests,TestDataIsolationTests test` - PASS, 15 tests, 0 failures, 0 errors, 0 skipped; both contexts used unique in-memory H2 URLs.
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` - PASS, 101 tests, 0 failures, 0 errors, 0 skipped.
+  - Revision diagnostic `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -Dtest=I18nPropertiesSyncTest test` initially failed 1 of 3 tests because the new action message keys were absent; the keys were then added with English placeholder values to all eleven bundles and the same command passed 3 tests.
+  - Revision focused run: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q clean -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=AuthenticationWebTests,SecurityMatrixWebTests,PresentationShellTests,OwnerHttpSurfaceTests,SeedMigrationTests,RepositoryScopeTests,I18nPropertiesSyncTest,TestDataIsolationTests test` - PASS, 31 tests, 0 failures, 0 errors, 0 skipped.
+  - Revision full suite: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` - PASS, 102 tests, 0 failures, 0 errors, 0 skipped.
   - Surefire scan for `jdbc:h2:file` plus `find data -type f` - no runtime database reference and no runtime data file.
   - `git diff --check` - PASS; test execution created no tracked change.
 
@@ -55,7 +59,7 @@
 | UC-1 extension 5d | Authenticated staff reaches actuator and H2 console through the real server in `AuthenticationE2ETests.java:98`. |
 | UC-1 G1-G4 | Single security chain in `SecurityConfig.java:23`; whole-route denial and no-mutation evidence in `SecurityMatrixWebTests.java:56`; owner-derived status scope in `RequestStatusController.java:22`. |
 | UC-1 G5-G6 | Shared-layout, no-inline-style, identity, logout, and exact-menu assertions in `PresentationShellTests.java:31`; shared layout implementation in `templates/fragments/layout.html:13`. |
-| UC-1 G7 and G10 | Template/Java visible-string scan and exact eleven-bundle key parity in `I18nPropertiesSyncTest.java:72` and `I18nPropertiesSyncTest.java:103`. |
+| UC-1 G7 and G10 | Staff pet/visit labels and actions now resolve through message keys in `createOrUpdatePetForm.html:20` and `createOrUpdateVisitForm.html:32`; template/Java visible-string scanning, Thymeleaf-expression bypass fixtures, and exact eleven-bundle key parity are enforced in `I18nPropertiesSyncTest.java:85`, `I18nPropertiesSyncTest.java:116`, and `I18nPropertiesSyncTest.java:174`. |
 | UC-1 G8 | Full known route lists plus anonymous, owner, and staff matrix with response disclosure and database snapshots in `SecurityMatrixWebTests.java:34`. |
 | UC-1 G9 | Automated rendered-page evidence is complete in `PresentationShellTests.java:31`; human walkthrough remains for convergence. |
 | UC-1 success postcondition | Real form-login sessions land at the correct role workspace in `AuthenticationE2ETests.java:41`. |
@@ -67,7 +71,7 @@
 | RULE-10 | `/my/**` owner identity comes from the principal in `AuthenticatedOwnerService.java:20`; repository-scoped lookup and indistinguishable 404 evidence are in `OwnerHttpSurfaceTests.java:47`. |
 | RULE-14 | The owner-scoped endpoint returns exactly one `state` field in `RequestStatusController.java:22`, asserted byte-for-byte in `OwnerHttpSurfaceTests.java:37`. |
 | RULE-16 | One shared PetClinic layout with role menus, identity, and CSRF logout is implemented at `templates/fragments/layout.html:13` and rendered in `PresentationShellTests.java:31`. |
-| RULE-17 | Exact bundle parity and hard-coded visible text/status scans are enforced by `I18nPropertiesSyncTest.java:72`. |
+| RULE-17 | Exact bundle parity and hard-coded visible text/status/Thymeleaf-expression scans are enforced by `I18nPropertiesSyncTest.java:85`; all eleven bundles contain the new action keys. |
 | RULE-18 | Real-server UC-1 journey is `AuthenticationE2ETests.java:41`; final suite is 101/0/0/0; profile and runtime-data isolation guards are `TestDataIsolationTests.java:48`. |
 | RULE-24 | Maven/H2-only dependency, path, property, README, and permanent-deletion checks are in `RepositoryScopeTests.java:37`. |
 

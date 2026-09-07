@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * This test ensures that there are no hard-coded strings without internationalization in
@@ -52,6 +53,18 @@ public class I18nPropertiesSyncTest {
 			Pattern.CASE_INSENSITIVE);
 
 	private static final Pattern MESSAGE_REFERENCE = Pattern.compile("#\\{([A-Za-z][A-Za-z0-9_.-]*)");
+
+	private static final Pattern THYMELEAF_VISIBLE_EXPRESSION_ATTRIBUTE = Pattern.compile(
+			"\\bth:(text|utext|placeholder|title|alt|aria-label|with|replace)\\s*=\\s*([\\\"'])(.*?)\\2",
+			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+	private static final Pattern THYMELEAF_STRING_LITERAL = Pattern.compile("'([^']*)'");
+
+	private static final Pattern TEXTUAL_LOCAL_VARIABLE = Pattern
+		.compile("(?:^|,)\\s*(?:text|label|message|title|placeholder|alt)\\s*=", Pattern.CASE_INSENSITIVE);
+
+	private static final Pattern LABEL_FRAGMENT_LITERAL = Pattern.compile("::\\s*(?:input|select)\\s*\\(\\s*'([^']*)'",
+			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	private static final Pattern MESSAGE_KEY_LITERAL = Pattern.compile("\"(scheduling\\.[A-Za-z0-9_.-]+)\"");
 
@@ -158,6 +171,21 @@ public class I18nPropertiesSyncTest {
 		}
 	}
 
+	@Test
+	void uc1G10VisibleThymeleafExpressionLiteralsAreRejected() {
+		String source = """
+				<label th:text="'Direct copy'">Fallback</label>
+				<button th:with="text=${pet['new']} ? 'Add Pet' : 'Update Pet'" th:text="${text}">Fallback</button>
+				<input th:replace="~{fragments/inputField :: input ('Birth Date', 'birthDate', 'date')}" />
+				""";
+		StringBuilder report = new StringBuilder();
+
+		inspectHtml(Path.of("visible-expression-fixture.html"), source, Set.of(), report);
+
+		assertThat(report.toString()).contains("Direct copy", "Add Pet", "Update Pet", "Birth Date")
+			.doesNotContain(": new\n", ": birthDate\n", ": date\n");
+	}
+
 	private void inspectHtml(Path file, String source, Set<String> messageKeys, StringBuilder report) {
 		String visibleSource = SCRIPT_OR_STYLE.matcher(HTML_COMMENT.matcher(source).replaceAll("")).replaceAll("");
 		var textMatcher = HTML_TEXT_LITERAL.matcher(visibleSource);
@@ -187,6 +215,45 @@ public class I18nPropertiesSyncTest {
 				appendFinding(report, "Unknown template message key", file, source, messageMatcher.start(1), key);
 			}
 		}
+
+		inspectVisibleThymeleafExpressions(file, source, report);
+	}
+
+	private void inspectVisibleThymeleafExpressions(Path file, String source, StringBuilder report) {
+		var attributeMatcher = THYMELEAF_VISIBLE_EXPRESSION_ATTRIBUTE.matcher(source);
+		while (attributeMatcher.find()) {
+			String attribute = attributeMatcher.group(1);
+			String expression = attributeMatcher.group(3);
+			int expressionOffset = attributeMatcher.start(3);
+			if (attribute.equalsIgnoreCase("replace")) {
+				var labelMatcher = LABEL_FRAGMENT_LITERAL.matcher(expression);
+				while (labelMatcher.find()) {
+					appendVisibleExpressionLiteral(file, source, report, expressionOffset + labelMatcher.start(1),
+							labelMatcher.group(1));
+				}
+			}
+			else if (!attribute.equalsIgnoreCase("with") || TEXTUAL_LOCAL_VARIABLE.matcher(expression).find()) {
+				var literalMatcher = THYMELEAF_STRING_LITERAL.matcher(expression);
+				while (literalMatcher.find()) {
+					if (literalMatcher.start() > 0 && expression.charAt(literalMatcher.start() - 1) == '[') {
+						continue;
+					}
+					appendVisibleExpressionLiteral(file, source, report, expressionOffset + literalMatcher.start(1),
+							literalMatcher.group(1));
+				}
+			}
+		}
+	}
+
+	private void appendVisibleExpressionLiteral(Path file, String source, StringBuilder report, int offset,
+			String value) {
+		if (isUserVisibleLiteral(value) && !isTemporalFormat(value)) {
+			appendFinding(report, "Hard-coded Thymeleaf expression", file, source, offset, value);
+		}
+	}
+
+	private boolean isTemporalFormat(String value) {
+		return value.matches("(?=.*[yMdHhmsS])[-/.: yMdHhmsS]+");
 	}
 
 	private void inspectJava(Path file, String source, Set<String> messageKeys, StringBuilder report) {
