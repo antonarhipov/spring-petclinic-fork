@@ -2,15 +2,15 @@
 
 ## Current
 
-- Use case: UC-1
-- Status: PENDING_WALKTHROUGH
-- Next eligible: none
+- Use case: none
+- Status: APPROVED
+- Next eligible: UC-2, UC-3, UC-4, UC-5, UC-6, UC-7, UC-8
 
 ## Progress
 
 | Use case | Status | Depends on | Implementation | Convergence |
 |---|---|---|---|---|
-| UC-1 | PENDING_WALKTHROUGH | none | `0261b04` | [PENDING_WALKTHROUGH](convergence/UC-1.md) - automated convergence passed |
+| UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | NOT_STARTED | UC-1 | - | - |
 | UC-3 | NOT_STARTED | UC-1 | - | - |
 | UC-4 | NOT_STARTED | UC-1 | - | - |

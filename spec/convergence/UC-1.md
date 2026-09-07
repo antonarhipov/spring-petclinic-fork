@@ -3,7 +3,7 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-1.md` at `0261b04225b2a9242fad2195f5058443337c3c11`
-- Verdict: PENDING WALKTHROUGH
+- Verdict: APPROVE
 - Findings: 0 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
 - Suite: 102 run, 0 failed, 0 errors, 0 skipped
 - Working tree impact from verification: none
@@ -54,7 +54,7 @@
 | UC-1 G6 | Menus expose only the role's actions and every authenticated page has identity/Logout. | The shared layout selects the exact owner/staff menus and injects identity/CSRF logout for all templates; rendered landings verify both variants. | STRONG | yes |
 | UC-1 G7 | All visible text resolves through keys in eleven bundles. | The previously hard-coded pet/visit labels and actions now resolve through keys at `createOrUpdatePetForm.html:20-27` and `createOrUpdateVisitForm.html:32-33`; all eleven bundles have exact key parity and the new action keys. | STRONG | yes |
 | UC-1 G8 | Automated security evidence covers the whole route space, disclosure, and side effects. | Handler-shape inventory plus future scoped action shapes are exercised as anonymous, owner, and staff with body and database assertions. | STRONG | yes |
-| UC-1 G9 | Owner/staff rendered walkthrough is required before acceptance. | Automated DOM evidence passed; the human walkthrough below is now the only pending acceptance evidence. | STRONG | pending walkthrough |
+| UC-1 G9 | Owner/staff rendered walkthrough is required before acceptance. | Automated DOM evidence passed and the user confirmed the complete walkthrough below with PASS. | STRONG | yes |
 | UC-1 G10 | Localization scanning fails on bypassed messages or incomplete bundles. | `I18nPropertiesSyncTest.java:85-187` scans all production templates/Java and exact bundle parity; the explicit fixture proves direct, text-assignment, and fragment-label Thymeleaf literals are rejected while internal field/type literals are ignored. | STRONG | yes |
 | UC-1 success postcondition | Authenticated actors have the correct role-scoped landing/session. | Real form-login cookie journeys reached `/my/appointments` and `/staff/queue` with exact role presentation. | STRONG | yes |
 | UC-1 minimal guarantee | Invalid and guarded attempts disclose and mutate nothing. | Real-server and MockMvc negative paths compare bodies, sessions, and complete relevant database snapshots. | STRONG | yes |
@@ -90,7 +90,7 @@ No active findings.
 
 ## Walkthrough
 
-User result: pending.
+User result: PASS.
 
 1. Start the application with `./mvnw spring-boot:run` and open `/` in a private browser window. Confirm redirect to the PetClinic-styled Sign in page and that no owner or clinic data is visible.
 2. Submit `george` with an incorrect password. Confirm the page says only “Invalid username or password,” remains at Sign in, and exposes neither which value was wrong nor protected data.
@@ -103,8 +103,8 @@ User result: pending.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no later use case is eligible until the user confirms UC-1 G9.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-2 through UC-8 are now eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: complete the eight UC-1 owner/staff checks above and report PASS or the failing step.
+APPROVED
