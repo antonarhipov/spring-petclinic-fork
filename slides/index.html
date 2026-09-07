@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Spec-Driven Development with AI Agents — a conference slide deck grounded in the Smart Appointment Scheduling demo.">
+  <title>Spec-Driven Development with AI Agents</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="deck" id="deck" aria-label="Spec-Driven Development with AI Agents slide deck">
+    <div class="stage" id="stage">
+      <section class="slide cover active" id="slide-1" data-title="Spec-Driven Development with AI Agents">
+        <div class="cover-rule"></div>
+        <div class="eyebrow">A field report from a working repository</div>
+        <h1>Spec-Driven<br>Development<br><span>with AI Agents</span></h1>
+        <p class="cover-subtitle">How a PetClinic feature turned requirements, failures, and evidence into a control system.</p>
+        <div class="cover-mark" aria-hidden="true">
+          <span>SPEC</span><span>PLAN</span><span>CODE</span><span>PROOF</span>
+        </div>
+        <div class="slide-index">01</div>
+        <aside class="speaker-notes">
+          <p>This is not a story about prompting harder. It is a story about making the state of the work explicit enough that both a person and an agent can inspect it.</p>
+          <p>The repository implements Smart Appointment Scheduling in Spring PetClinic with Spring AI, Ollama, and Timefold.</p>
+          <p>[Sources]</p>
+          <p>README.md; spec/proposal.md; spec/status.md</p>
+        </aside>
+      </section>
+
+      <section class="slide statement" id="slide-2" data-title="The agent is only as predictable as the workflow">
+        <div class="eyebrow">The problem</div>
+        <h2>The agent was not the unpredictable part.</h2>
+        <p class="giant-emphasis">The unchecked ambiguity was.</p>
+        <div class="fault-line" aria-hidden="true"></div>
+        <div class="three-causes">
+          <div><b>Meaning drifted</b><span>“complete”, “secure”, and “end-to-end” had weaker interpretations.</span></div>
+          <div><b>Work drifted</b><span>The interesting domain model displaced the boring HTTP wiring.</span></div>
+          <div><b>Evidence drifted</b><span>A green subset of tests was mistaken for a working system.</span></div>
+        </div>
+        <div class="slide-index">02</div>
+        <aside class="speaker-notes">
+          <p>The failures were not random. They were permitted by ambiguity in the plan, task scope, and validation language.</p>
+          <p>The useful question is not “How do I make the model smarter?” It is “Where can the model reinterpret the contract without being stopped?”</p>
+          <p>[Sources]</p>
+          <p>deviation-analysis-report.md sections 1–3</p>
+        </aside>
+      </section>
+
+      <section class="slide pipeline-slide" id="slide-3" data-title="The three-file story needs gates">
+        <div class="eyebrow">The model</div>
+        <h2>The three-file story is a good headline.<br><span>The working pipeline needs gates.</span></h2>
+        <div class="simple-pipeline" aria-label="Expanded spec-driven development pipeline">
+          <div class="pipe-node"><strong>Proposal</strong><small>intent</small></div>
+          <i>→</i>
+          <div class="pipe-node accent"><strong>Grill</strong><small>decisions</small></div>
+          <i>→</i>
+          <div class="pipe-node"><strong>Spec</strong><small>behaviors + UCs</small></div>
+          <i>→</i>
+          <div class="pipe-node"><strong>Criteria</strong><small>observable proof</small></div>
+          <i>→</i>
+          <div class="pipe-node"><strong>Rules</strong><small>technical constraints</small></div>
+        </div>
+        <div class="gate-row"><span>SPEC REVIEW</span></div>
+        <div class="simple-pipeline lower">
+          <div class="pipe-node"><strong>Tasks</strong><small>exact artifacts</small></div>
+          <i>→</i>
+          <div class="pipe-node accent"><strong>Plan review</strong><small>reachability</small></div>
+          <i>→</i>
+          <div class="pipe-node"><strong>Execute</strong><small>one task</small></div>
+          <i class="loop-arrow">⇄</i>
+          <div class="pipe-node dark"><strong>Converge</strong><small>independent audit</small></div>
+        </div>
+        <p class="bottom-claim">Each artifact narrows the next agent’s freedom—and preserves the reason why.</p>
+        <div class="slide-index">03</div>
+        <aside class="speaker-notes">
+          <p>The familiar requirements → plan → tasks framing still applies. This repository expands “requirements” into proposal, decisions, behaviors, criteria, and rules because the seams between them caused real defects.</p>
+          <p>There are two review gates: one for the specification system and one for the executable task plan.</p>
+          <p>[Sources]</p>
+          <p>.agents/skills/01-spec/SKILL.md; .agents/skills/04-review/SKILL.md; .agents/skills/06-execute/SKILL.md</p>
+        </aside>
+      </section>
+
+      <section class="slide feature-slide" id="slide-4" data-title="The demo feature crosses many seams">
+        <div class="eyebrow">The demo</div>
+        <h2>One “simple” feature crosses every dangerous seam.</h2>
+        <div class="quote-block">
+          <div class="quote-mark">“</div>
+          <p>I’d prefer Tuesday or Thursday after lunch. I can’t come on Wednesday, and mornings before 10 don’t work.</p>
+        </div>
+        <div class="feature-flow">
+          <div><b>Owner</b><span>free-form availability</span></div><i>→</i>
+          <div><b>LLM</b><span>structured interpretation</span></div><i>→</i>
+          <div><b>Timefold</b><span>ranked feasible slot</span></div><i>→</i>
+          <div><b>Staff</b><span>fallback + lifecycle</span></div>
+        </div>
+        <div class="seam-list"><span>authentication</span><span>consent</span><span>async work</span><span>holds</span><span>concurrency</span><span>localization</span></div>
+        <div class="slide-index">04</div>
+        <aside class="speaker-notes">
+          <p>The owner never sees the full calendar. They describe their constraints; the LLM creates a structured interpretation; Timefold ranks feasible slots; staff can take over.</p>
+          <p>This makes the feature a useful SDD test case: external AI, deterministic ranking, security, persistence, state machines, and user-visible HTTP behavior all meet.</p>
+          <p>[Sources]</p>
+          <p>spec/proposal.md sections 2–10</p>
+        </aside>
+      </section>
+
+      <section class="slide questions-slide" id="slide-5" data-title="Grilling converts ambiguity into decisions">
+        <div class="eyebrow">Stage 1 · Grilling</div>
+        <div class="split-heading">
+          <h2>Ask one consequential<br>question at a time.</h2>
+          <div class="big-number"><b>49</b><span>recorded decisions</span></div>
+        </div>
+        <div class="question-stack">
+          <div><span>Q1</span><p>Is an appointment separate from the stock Visit?</p></div>
+          <div><span>Q3</span><p>What exactly does a preferred or excluded time window mean?</p></div>
+          <div><span>Q13</span><p>Which operation owns the concurrency lock?</p></div>
+          <div><span>Q31</span><p>What does “end-to-end” cross: services, MVC, or real HTTP?</p></div>
+          <div><span>Q39</span><p>Which text must pass the localization sweep?</p></div>
+        </div>
+        <p class="bottom-claim">A question is worth asking only if its answer changes behavior, scope, or a safe assumption.</p>
+        <div class="slide-index">05</div>
+        <aside class="speaker-notes">
+          <p>The interview was not a requirements questionnaire dumped in one turn. It followed decision dependencies and asked one question at a time.</p>
+          <p>The answer to each question was written to scope-decisions.md, so it could not disappear into chat history.</p>
+          <p>[Sources]</p>
+          <p>spec/scope-decisions.md; .agents/skills/01-spec/SKILL.md sections Interview Rules and Worth-Asking Bar</p>
+        </aside>
+      </section>
+
+      <section class="slide decisions-slide" id="slide-6" data-title="The interview changed the product">
+        <div class="eyebrow">The result of grilling</div>
+        <h2>The interview did not polish the proposal.<br><span>It changed the product.</span></h2>
+        <div class="decision-lines">
+          <div><b>Emergency detection</b><span class="strike">AI flag + owner checkbox</span><strong>Removed; always-visible call guidance</strong></div>
+          <div><b>Slot hold</b><span>Ambiguous lifetime</span><strong>No timer; explicit release events</strong></div>
+          <div><b>Interpretation</b><span>Synchronous-looking UI</span><strong>Async executor + persisted state + polling</strong></div>
+          <div><b>Isolation</b><span>Scheduling pages only</span><strong>Every route, including stock pages</strong></div>
+          <div><b>Seed data</b><span>Illustrative examples</span><strong>Exact rows—no more, no fewer</strong></div>
+        </div>
+        <div class="slide-index">06</div>
+        <aside class="speaker-notes">
+          <p>The emergency path is the clearest example. It sounded useful, but it conflicted with consent and the state machine. The eventual product decision was to remove automated emergency detection and keep explicit urgent-care guidance.</p>
+          <p>Other decisions made invisible implementation choices explicit: no hold timer, async interpretation, cross-application authorization, and normative seed data.</p>
+          <p>[Sources]</p>
+          <p>spec/scope-decisions.md Q5, Q14, Q31, Q36, Q45–Q47; spec/review.md BLOCKER-1 resolution</p>
+        </aside>
+      </section>
+
+      <section class="slide spec-slide" id="slide-7" data-title="The spec defines executable meaning">
+        <div class="eyebrow">Stage 2 · Specification</div>
+        <h2>The spec defines executable meaning,<br>not implementation.</h2>
+        <div class="metrics-line">
+          <div><b>101</b><span>observable behaviors</span></div>
+          <div><b>6</b><span>use cases + extensions</span></div>
+          <div><b>2</b><span>state machines</span></div>
+          <div><b>5</b><span>normative data groups</span></div>
+        </div>
+        <div class="state-path" aria-label="Scheduling request lifecycle excerpt">
+          <span>Awaiting consent</span><i>→</i><span>Interpreting</span><i>→</i><span>Interpreted</span><i>→</i><span>Suggestion offered</span><i>→</i><span>Accepted</span>
+        </div>
+        <div class="spec-sample">
+          <code>B-24</code>
+          <p>When a second active request is attempted for the same pet, the system refuses it and creates no second active request.</p>
+        </div>
+        <div class="slide-index">07</div>
+        <aside class="speaker-notes">
+          <p>The spec is intentionally implementation-agnostic but highly observable. It contains behaviors, explicit assumptions, state tables, use cases, edge cases, and copied normative data.</p>
+          <p>Every allowed lifecycle transition is named, and every unlisted transition is refused with no side effect.</p>
+          <p>The five normative data groups are accounts, opening hours, veterinarian schedules, exceptions, and configuration defaults.</p>
+          <p>[Sources]</p>
+          <p>spec/spec.md sections State model, Use cases, Normative data, Behaviors to verify</p>
+        </aside>
+      </section>
+
+      <section class="slide loaded-words-slide" id="slide-8" data-title="Loaded words need operational definitions">
+        <div class="eyebrow">Specification discipline</div>
+        <h2>Loaded words are where weak implementations hide.</h2>
+        <div class="word-table">
+          <div class="word-row header"><span>Word</span><span>Weak reading</span><span>Operational definition</span></div>
+          <div class="word-row"><b>secure</b><span>returns 403</span><strong>denial + no disclosure + no mutation</strong></div>
+          <div class="word-row"><b>full calendar</b><span>appointments list</span><strong>hours + blocks + holds + free capacity</strong></div>
+          <div class="word-row"><b>exact seed</b><span>expected count</span><strong>every row by value; closed set</strong></div>
+          <div class="word-row"><b>end-to-end</b><span>service calls</span><strong>actor sessions + HTTP + CSRF + persisted state</strong></div>
+          <div class="word-row"><b>untouched</b><span>same enum value</span><strong>byte-for-byte domain snapshot + no event</strong></div>
+        </div>
+        <div class="slide-index">08</div>
+        <aside class="speaker-notes">
+          <p>These definitions later exposed real gaps. For example, “leave the request open” was implemented as a same-state transition that changed updatedAt and added an event. The enum stayed the same, but the request was not untouched.</p>
+          <p>The test strategy has to mirror the operational definition, not the convenient approximation.</p>
+          <p>[Sources]</p>
+          <p>spec/spec.md; spec/criteria.md; spec/rules.md; spec/convergence/cp-3.md C-4 and Category Notes 7</p>
+        </aside>
+      </section>
+
+      <section class="slide criteria-slide" id="slide-9" data-title="Acceptance criteria compile behavior into proof">
+        <div class="eyebrow">Stage 3 · Acceptance criteria</div>
+        <div class="split-heading">
+          <h2>Compile behavior<br>into observable proof.</h2>
+          <div class="big-number"><b>139</b><span>active EARS criteria</span></div>
+        </div>
+        <div class="trace-chain">
+          <div><small>BEHAVIOR</small><code>B-23</code><p>At most one active request per pet under concurrency.</p></div>
+          <i>→</i>
+          <div class="accent-box"><small>CRITERION</small><code>AC-22</code><p>When submissions race, the system shall persist one active request.</p></div>
+          <i>→</i>
+          <div><small>NEGATIVE TWIN</small><code>AC-23</code><p>The losing attempt creates no second request or side effect.</p></div>
+        </div>
+        <div class="ears-line"><b>When</b> [trigger], <b>the system shall</b> [observable response].</div>
+        <div class="slide-index">09</div>
+        <aside class="speaker-notes">
+          <p>Criteria are written in EARS forms: ubiquitous, event-driven, state-driven, unwanted behavior, and optional feature.</p>
+          <p>Traceability is two-way: every behavior is covered by at least one criterion, and every criterion names its source behavior and use-case flow.</p>
+          <p>The deck says 139 active criteria because AC-87 and AC-88 were retired when emergency detection was removed, while numbering remains stable through AC-141.</p>
+          <p>[Sources]</p>
+          <p>spec/criteria.md; .agents/skills/02-criteria/SKILL.md</p>
+        </aside>
+      </section>
+
+      <section class="slide rules-slide" id="slide-10" data-title="Rules bind proof to the codebase">
+        <div class="eyebrow">Stage 4 · Technical rules</div>
+        <h2>Rules bind the proof to this codebase.</h2>
+        <div class="rule-composition">
+          <div class="rule-main">
+            <div class="rule-id">RULE-44</div>
+            <h3>The test double must not produce a value that production cannot.</h3>
+            <p>Use the real security chain, isolated H2, deterministic clocks, real HTTP flow, and explicit persisted-state checks.</p>
+          </div>
+          <div class="rule-side">
+            <div><b>Architecture</b><span>controllers never call repositories directly</span></div>
+            <div><b>Security surface</b><span>every URL mapped to allowed roles</span></div>
+            <div><b>Concurrency</b><span>lock boundaries and invariants</span></div>
+            <div><b>Testing</b><span>evidence shape per EARS pattern</span></div>
+          </div>
+        </div>
+        <div class="rule-count">44 rules · RFC 2119 language · AC cross-reference</div>
+        <div class="slide-index">10</div>
+        <aside class="speaker-notes">
+          <p>Rules are not a restatement of the feature. They record design decisions and constraints that follow from the criteria and the existing repository.</p>
+          <p>Codebase grounding happens here: build versions, package layout, security routes, templates, localization bundles, and test infrastructure are inspected before rules are written.</p>
+          <p>[Sources]</p>
+          <p>spec/rules.md; .agents/skills/03-rules/SKILL.md</p>
+        </aside>
+      </section>
+
+      <section class="slide review-slide" id="slide-11" data-title="Review the seams before code exists">
+        <div class="eyebrow">Stage 5 · Spec review</div>
+        <h2>Review the seams before code exists.</h2>
+        <div class="conflict-diagram">
+          <div class="conflict-source"><small>REQUIREMENT</small><b>Urgent requests skip automation</b></div>
+          <div class="conflict-x">×</div>
+          <div class="conflict-source"><small>STATE GUARD</small><b>No transition to “With staff”</b></div>
+          <div class="conflict-result"><small>BLOCKER-1</small><b>The feature cannot be implemented consistently.</b></div>
+        </div>
+        <div class="resolution-line"><span>Resolution</span><b>Remove automated urgency detection; keep the always-visible urgent-care banner.</b></div>
+        <p class="review-note">The same review restored two missing “book and leave open” self-transitions.</p>
+        <div class="slide-index">11</div>
+        <aside class="speaker-notes">
+          <p>Each upstream artifact could look internally reasonable while the combination was impossible. Review focuses on those seams: AC versus AC, AC versus rule, rule versus codebase, and test strategy versus evidence required.</p>
+          <p>The emergency blocker was resolved before implementation by changing the product decision, not by asking the executor to improvise.</p>
+          <p>[Sources]</p>
+          <p>spec/review.md BLOCKER-1 and MAJOR-1</p>
+        </aside>
+      </section>
+
+      <section class="slide tasks-slide" id="slide-12" data-title="A task is an execution contract">
+        <div class="eyebrow">Stage 6 · Tasks</div>
+        <h2>A task is not a to-do.<br><span>It is an execution contract.</span></h2>
+        <div class="task-anatomy">
+          <pre><code>id: task-5.5
+artifact:
+  - .../ConcurrencyGuaranteeTests.java
+  - .../LocalizationSweepTests.java
+modifies:
+  - .../SecurityMatrixWebTests.java
+covers:
+  acs: [AC-140, AC-141]
+validation:
+  - Test.method → AC-141 → two races,
+    exactly one winner in each</code></pre>
+          <div class="task-rules">
+            <div><b>Exact paths</b><span>No globs, prose, or silent renames.</span></div>
+            <div><b>Exact routes</b><span>Each mapping has an owning task.</span></div>
+            <div><b>Exact proof</b><span>Test class, method, level, assertion.</span></div>
+            <div><b>Small scope</b><span>At most five ACs per new task.</span></div>
+          </div>
+        </div>
+        <div class="task-count">48 tasks across 5 phases</div>
+        <div class="slide-index">12</div>
+        <aside class="speaker-notes">
+          <p>The artifact list is deliberately literal. If a controller, template, message bundle, or test method is needed to reach the checkpoint, its path belongs in the plan.</p>
+          <p>The validation bullet prevents common substitutions: count instead of value, service call instead of HTTP, status-only instead of no mutation.</p>
+          <p>[Sources]</p>
+          <p>spec/tasks.yaml; .agents/skills/05-tasks/SKILL.md sections Artifact Exactness, Route Inventory, Validation Shape</p>
+        </aside>
+      </section>
+
+      <section class="slide phases-slide" id="slide-13" data-title="Organize delivery around demonstrable slices">
+        <div class="eyebrow">Planning strategy</div>
+        <h2>Walk once. Then deepen by use case.</h2>
+        <div class="phase-track">
+          <div class="phase"><span>1</span><b>Walking skeleton</b><small>thin UC-1 · login → booking</small></div>
+          <div class="phase"><span>2</span><b>Owner automation</b><small>UC-1, UC-2, UC-3</small></div>
+          <div class="phase"><span>3</span><b>Staff resolution</b><small>UC-4</small></div>
+          <div class="phase"><span>4</span><b>Calendar + lifecycle</b><small>UC-5</small></div>
+          <div class="phase"><span>5</span><b>Owner cancellation</b><small>UC-6 + terminal proof</small></div>
+        </div>
+        <div class="checkpoint-track"><span>cp-1</span><span>cp-2</span><span>cp-3</span><span>cp-4</span><span>cp-5</span></div>
+        <p class="bottom-claim">Every phase ends in something a person can walk through—not merely a layer that compiles.</p>
+        <div class="slide-index">13</div>
+        <aside class="speaker-notes">
+          <p>The plan uses “walking skeleton then feature slice.” Phase 1 proves the primary path across all important seams. Later phases thicken independently demonstrable use cases.</p>
+          <p>The checkpoint is part of the phase design, not a retrospective report.</p>
+          <p>[Sources]</p>
+          <p>spec/tasks.yaml phases 1–5; .agents/skills/05-tasks/SKILL.md sections Selection Ladder and Checkpoint Patterns</p>
+        </aside>
+      </section>
+
+      <section class="slide plan-review-slide" id="slide-14" data-title="The plan needs its own review gate">
+        <div class="eyebrow">The missing gate</div>
+        <h2>The spec can pass while the plan is impossible.</h2>
+        <div class="before-after">
+          <div class="before">
+            <small>ORIGINAL PIPELINE</small>
+            <b>spec review → tasks → execute</b>
+            <p>No one asked whether the union of phase artifacts could perform the walkthrough.</p>
+            <strong>Result: phase 1 planned templates and security—but no controller artifact.</strong>
+          </div>
+          <div class="after">
+            <small>IMPROVED PIPELINE</small>
+            <b>spec review → tasks → plan review → execute</b>
+            <p>Check reachability, exact paths, route ownership, coverage, task shape, and skeleton order.</p>
+            <strong>Re-plan review: 5 blockers + 4 majors → fixed → PASS.</strong>
+          </div>
+        </div>
+        <div class="slide-index">14</div>
+        <aside class="speaker-notes">
+          <p>The first plan went straight from generation to execution. That allowed a walking-skeleton phase with no controller artifact.</p>
+          <p>The new plan-review mode asks the decisive question: if you take the union of all artifacts in the phase, can you perform every checkpoint step and URL?</p>
+          <p>After the re-plan, round one still found five blockers and four majors. Fixing those before execution was cheaper than finding them at a checkpoint.</p>
+          <p>[Sources]</p>
+          <p>deviation-analysis-report.md 2.1 and 3.1; spec/plan-review.md; .agents/skills/04-review/SKILL.md Plan Review</p>
+        </aside>
+      </section>
+
+      <section class="slide execution-slide" id="slide-15" data-title="Execution is a strict protocol">
+        <div class="eyebrow">Stage 7 · Execute</div>
+        <h2>Execution is a strict protocol,<br>not an open-ended coding session.</h2>
+        <div class="execution-loop">
+          <div><span>1</span><b>Verify</b><small>dependencies + clean tree</small></div>
+          <div><span>2</span><b>Mark</b><small>task in progress + base commit</small></div>
+          <div><span>3</span><b>Build</b><small>only declared scope</small></div>
+          <div><span>4</span><b>Validate</b><small>literal assertion shape</small></div>
+          <div><span>5</span><b>Close</b><small>mechanical gate</small></div>
+          <div><span>6</span><b>Commit</b><small>one task, one commit</small></div>
+          <div><span>7</span><b>Stop</b><small>at the checkpoint</small></div>
+        </div>
+        <div class="stop-rule"><b>Cannot satisfy the validation literally?</b><span>Raise a blocker. Do not weaken the contract.</span></div>
+        <div class="slide-index">15</div>
+        <aside class="speaker-notes">
+          <p>Every task runs the complete loop. Seven tasks means seven loops and seven commits, not one large implementation followed by a narrative.</p>
+          <p>The executor is explicitly the builder, not the judge. Unsupported APIs, spec conflicts, impossible artifact names, or unachievable validation are reasons to stop.</p>
+          <p>[Sources]</p>
+          <p>.agents/skills/06-execute/SKILL.md sections Initialization, Execution Loop, When to Raise a Blocker</p>
+        </aside>
+      </section>
+
+      <section class="slide closure-slide" id="slide-16" data-title="Complete has a mechanical definition">
+        <div class="eyebrow">Task closure</div>
+        <h2>“Complete” has eight yes-or-no checks.</h2>
+        <div class="closure-list">
+          <div><span>01</span><b>Artifacts exist</b><small>at exact declared paths</small></div>
+          <div><span>02</span><b>Scope is clean</b><small>diff matches this task</small></div>
+          <div><span>03</span><b>Every AC is cited</b><small>by a passing test</small></div>
+          <div><span>04</span><b>Validation has file:line</b><small>at the promised level</small></div>
+          <div><span>05</span><b>Rules have file:line</b><small>MUST / MUST NOT traced</small></div>
+          <div><span>06</span><b>Routes are mapped</b><small>to the declared handler</small></div>
+          <div><span>07</span><b>Plan guards pass</b><small>artifact · route · AC tags</small></div>
+          <div><span>08</span><b>Suite is green</b><small>tree remains attributable</small></div>
+        </div>
+        <p class="closure-footer">The evidence is written to <code>spec/status.md</code> before the task becomes COMPLETE.</p>
+        <div class="slide-index">16</div>
+        <aside class="speaker-notes">
+          <p>The closure gate turns completeness from a self-assessment into a checklist that converge can rerun independently.</p>
+          <p>The three plan guards mechanically compare completed tasks with files, mapped routes, and AC tags.</p>
+          <p>[Sources]</p>
+          <p>.agents/skills/06-execute/SKILL.md Task Closure Gate; spec/status.md Notes</p>
+        </aside>
+      </section>
+
+      <section class="slide converge-slide" id="slide-17" data-title="Convergence audits claims, not intentions">
+        <div class="eyebrow">Stage 8 · Converge</div>
+        <h2>A checkpoint report is a claim.<br><span>Convergence tries to disprove it.</span></h2>
+        <div class="audit-flow">
+          <div class="claim-box"><small>EXECUTOR CLAIM</small><b>“phase complete”</b><span>commits · artifacts · AC table · runtime evidence</span></div>
+          <div class="audit-lens"><span>re-run</span><span>inspect</span><span>reproduce</span></div>
+          <div class="verdict-box"><small>INDEPENDENT VERDICT</small><b>APPROVE / REVISE</b><span>critical · gap · protocol · drift</span></div>
+        </div>
+        <div class="audit-categories">
+          <span>protocol gate</span><span>full suite</span><span>real runtime</span><span>evidence ledger</span><span>security walk</span><span>spec reconciliation</span>
+        </div>
+        <div class="slide-index">17</div>
+        <aside class="speaker-notes">
+          <p>Converge begins with protocol: committed checkpoint report, one ordered commit per task, plan review present, exact artifacts, closure evidence, blocker discipline, and clean task scope.</p>
+          <p>Then it runs the full suite, starts the application, repeats the walkthrough URLs for each actor, and grades every claimed AC as strong, weak, misplaced, impossible, or absent.</p>
+          <p>[Sources]</p>
+          <p>.agents/skills/07-converge/SKILL.md Protocol Gate, Grounding, AC Evidence Audit</p>
+        </aside>
+      </section>
+
+      <section class="slide failure-slide" id="slide-18" data-title="Checkpoint 1 exposed the control gap">
+        <div class="eyebrow">Checkpoint 1 · What actually happened</div>
+        <h2>Seven tasks were “complete.”<br>The skeleton did not walk.</h2>
+        <div class="failure-metrics">
+          <div><b>7</b><span>tasks claimed complete</span></div>
+          <div class="danger"><b>2</b><span>batched implementation commits</span></div>
+          <div class="danger"><b>5 / 43</b><span>ACs with strong evidence at first audit</span></div>
+          <div><b>40–50%</b><span>of phase 1 written after the claim</span></div>
+        </div>
+        <div class="failure-callout"><b>No feature HTTP endpoint existed at checkpoint time.</b><span>The phase was named “walking skeleton.”</span></div>
+        <div class="slide-index">18</div>
+        <aside class="speaker-notes">
+          <p>The first execution batched tasks 1.1–1.4 and 1.5–1.7. The executor declared 7/7 complete, but the first convergence found seven critical defects, six gaps, and only five of 43 phase ACs with strong evidence.</p>
+          <p>The post-checkpoint work was not polish. It added controllers, templates, adapters, entities, and the declared tests—the skeleton itself.</p>
+          <p>The 40–50 percent figure is the repository’s deviation analysis estimate based on commits and the later working tree.</p>
+          <p>[Sources]</p>
+          <p>deviation-analysis-report.md section 1; git commits 056ab3b, 7cb2696, 2d632a3</p>
+        </aside>
+      </section>
+
+      <section class="slide lazy-cause-slide" id="slide-19" data-title="A new page outlived its persistence context">
+        <div class="eyebrow">Faulty generation · JPA read boundary</div>
+        <h2>The new page outlived<br>its persistence context.</h2>
+        <div class="lazy-chain">
+          <div class="code-panel bad-code">
+            <small>GENERATED READ PATH</small>
+            <pre><code>@Transactional(readOnly = true)
+SchedulingRequest requireRequest(...) {
+  return repository.findByIdAndOwnerId(...);
+}
+
+// repository: no fetch plan
+Optional&lt;SchedulingRequest&gt;
+  findByIdAndOwnerId(id, ownerId);</code></pre>
+          </div>
+          <div class="boundary-arrow"><span>transaction ends</span><b>→</b></div>
+          <div class="code-panel template-code">
+            <small>THYMELEAF RENDERS LATER</small>
+            <pre><code>${request.pet.name}
+
+${appointment.pet.name}
+${appointment.vet.firstName}
+${appointment.vet.lastName}</code></pre>
+          </div>
+        </div>
+        <div class="runtime-error"><code>500 LazyInitializationException</code><span>Pet#1 / Vet#4 — no persistence session</span></div>
+        <p class="bottom-claim">The query answered ownership. It did not load the complete read model the page needed.</p>
+        <div class="slide-index">19</div>
+        <aside class="speaker-notes">
+          <p>The generated service method was transactional, but it returned JPA entities. With spring.jpa.open-in-view=false, the transaction and persistence context ended before Thymeleaf rendered the view.</p>
+          <p>SchedulingRequest.pet and Appointment.vet remained lazy. The new request-detail and appointments pages dereferenced those associations after detachment, producing HTTP 500 responses.</p>
+          <p>This was triggered by new data-access scenarios: the existing repository methods proved ownership, but they were not use-case read models for the new pages.</p>
+          <p>[Sources]</p>
+          <p>git commit 7a5be39 versions of OwnerSchedulingAccessService.java, SchedulingRequestRepository.java, AppointmentRepository.java, requestDetail.html, appointments.html; spec/convergence/cp-1.md C-1 and C-2</p>
+        </aside>
+      </section>
+
+      <section class="slide test-mask-slide" id="slide-20" data-title="The test passed by changing the runtime model">
+        <div class="eyebrow">Why the generated test missed it</div>
+        <h2>The test passed because it changed<br>the runtime model.</h2>
+        <div class="mask-comparison">
+          <div class="mask-side test-side">
+            <small>TEST</small>
+            <pre><code>@SpringBootTest
+@Transactional
+class SchedulingLifecycleE2eTests {
+  // MockMvc requests + template render
+}</code></pre>
+            <div class="context-line"><span>transaction open</span><b>read → render → assert</b></div>
+            <strong>Lazy associations stay attached.</strong>
+          </div>
+          <div class="mask-side runtime-side">
+            <small>RUNNING APPLICATION</small>
+            <pre><code>spring.jpa.open-in-view=false
+
+service read transaction
+  → returns entity
+  → transaction closes
+  → template renders</code></pre>
+            <div class="context-line broken"><span>context closed</span><b>read → × → render</b></div>
+            <strong>The same URL returns 500.</strong>
+          </div>
+        </div>
+        <div class="mask-lesson">A test is not end-to-end if it supplies infrastructure the production request does not have.</div>
+        <div class="slide-index">20</div>
+        <aside class="speaker-notes">
+          <p>The class-level @Transactional annotation wrapped the entire MockMvc test. That kept the persistence context open across controller execution and view rendering.</p>
+          <p>It was a realistic-looking HTTP test with the real filter chain, but the transaction boundary was unrealistic. The checkpoint’s live URL reproduction exposed what the test masked.</p>
+          <p>[Sources]</p>
+          <p>git commit 7a5be39 SchedulingLifecycleE2eTests.java; spec/convergence/cp-1.md C-1, C-2 and the runtime reproduction table</p>
+        </aside>
+      </section>
+
+      <section class="slide lazy-fix-slide" id="slide-21" data-title="The fix made the read contract explicit">
+        <div class="eyebrow">Fix · use-case read model + faithful test</div>
+        <h2>Load what the page promises.<br>Then remove the test mask.</h2>
+        <div class="fix-columns">
+          <div>
+            <small>REQUEST DETAIL</small>
+            <pre><code>@EntityGraph(attributePaths = {
+  "pet", "owner", "heldVet"
+})
+Optional&lt;SchedulingRequest&gt;
+  findByIdAndOwnerId(...);</code></pre>
+          </div>
+          <div>
+            <small>APPOINTMENT LIST</small>
+            <pre><code>SELECT a ...
+JOIN FETCH a.pet
+JOIN FETCH a.vet
+WHERE o.id = :ownerId
+ORDER BY a.startTime</code></pre>
+          </div>
+          <div>
+            <small>E2E CONTRACT</small>
+            <pre><code>// deliberately NOT @Transactional
+GET /my/requests/{id} → 200
+GET /my/appointments → 200
+body contains pet + vet</code></pre>
+          </div>
+        </div>
+        <div class="fix-guardrails"><b>No global EAGER.</b><b>No Open Session in View.</b><b>No DTO required for this POC.</b><strong>Explicit fetch plan per rendered use case.</strong></div>
+        <div class="commit-tag"><code>8d35373</code><span>read model fix</span><code>6e32f14</code><span>faithful E2E test</span></div>
+        <div class="slide-index">21</div>
+        <aside class="speaker-notes">
+          <p>The fix did not make every relationship eager. It added an EntityGraph for the request detail and JOIN FETCH clauses for appointment pet and veterinarian associations.</p>
+          <p>The E2E test removed @Transactional, asserted every rendered page returns 200, and checked the pet and veterinarian values that force lazy associations to be accessed.</p>
+          <p>The improved execution rule is broader: validation must run at the promised level and must not use a substitute that production cannot provide.</p>
+          <p>[Sources]</p>
+          <p>git commits 8d35373 and 6e32f14; current SchedulingRequestRepository.java and AppointmentRepository.java</p>
+        </aside>
+      </section>
+
+      <section class="slide ollama-start-slide" id="slide-22" data-title="The test seam broke Ollama startup">
+        <div class="eyebrow">Faulty generation · Spring wiring</div>
+        <h2>The test seam broke<br>Spring’s constructor selection.</h2>
+        <div class="constructor-layout">
+          <div class="constructor-code">
+            <small>AT CHECKPOINT 3</small>
+            <pre><code>public OllamaRequestInterpreter(
+    ChatClient client,
+    String modelTag,
+    InterpretationPromptFactory prompts) { ... }
+
+OllamaRequestInterpreter(
+    ModelCall modelCall,
+    String modelTag) { ... } // test seam</code></pre>
+          </div>
+          <div class="constructor-result">
+            <div class="spring-choice"><span>2 constructors</span><b>+</b><span>0 injection markers</span></div>
+            <code>No default constructor found</code>
+            <p>The test profile selected the stub, so focused tests never created this bean.</p>
+          </div>
+        </div>
+        <div class="constructor-fix"><code>+ @Autowired</code><span>on the production constructor</span><code>+ OllamaProviderContextTests</code><span>starts the default provider without calling a live model</span></div>
+        <div class="slide-index">22</div>
+        <aside class="speaker-notes">
+          <p>Task 2.7 added a package-private ModelCall constructor to test failure semantics without a live model. With two constructors and neither marked, Spring could not choose the production constructor.</p>
+          <p>The normal test profile pinned the stub provider, so the broken Ollama bean was excluded. Converge started the default configuration and found the application context failure.</p>
+          <p>The fix marked the production constructor with @Autowired and added a context test that activates provider=ollama while proving startup does not make a model call.</p>
+          <p>[Sources]</p>
+          <p>spec/convergence/cp-3.md C-1; git commit 4758b8e; OllamaProviderContextTests.java</p>
+        </aside>
+      </section>
+
+      <section class="slide ollama-contract-slide" id="slide-23" data-title="Ollama failure became a domain outcome">
+        <div class="eyebrow">Fix · communication contract</div>
+        <h2>Model failure became a domain outcome,<br>not a hanging request.</h2>
+        <div class="failure-matrix">
+          <div class="matrix-row header"><span>Failure</span><span>Adapter policy</span><span>Request outcome</span></div>
+          <div class="matrix-row"><b>Malformed structured output</b><span>retry once</span><strong>With staff · reason recorded</strong></div>
+          <div class="matrix-row"><b>Read timeout</b><span>do not retry transport</span><strong>With staff · “model timeout”</strong></div>
+          <div class="matrix-row"><b>I/O / connection failure</b><span>do not retry transport</span><strong>With staff · “model transport failure”</strong></div>
+        </div>
+        <div class="ollama-code-row">
+          <pre><code>withTimeouts(10s, ${scheduling.ai.timeout:60s})</code></pre>
+          <pre><code>catch (ModelUnavailableException ex) {
+  applyModelUnavailable(id, ex.getMessage(), actor);
+}</code></pre>
+        </div>
+        <div class="observability-line"><b>Diagnosable:</b><span>requestId · model · prompt version · attempt · raw response before typed conversion</span></div>
+        <div class="slide-index">23</div>
+        <aside class="speaker-notes">
+          <p>The adapter contract distinguishes response failures from transport failures. Malformed structured output is retried exactly once. Timeouts and I/O failures are not retried and are mapped to stable domain reasons.</p>
+          <p>AsyncInterpretationService catches ModelUnavailableException and moves the request to With staff in a fresh state-checked transaction. The user is not left on an interpreting page forever.</p>
+          <p>The RestClient has a fixed 10-second connect timeout and a configurable read timeout, default 60 seconds. Contract tests assert both the exception mapping and the downstream request state/event reason.</p>
+          <p>Later instrumentation added SimpleLoggerAdvisor plus request-scoped logs of model, attempt, prompt, raw response, and mapped output.</p>
+          <p>[Sources]</p>
+          <p>git commit 3f88c98; OllamaAdapterContractTests.java; OllamaChatConfiguration.java; AsyncInterpretationService.java; git commit d1167ff</p>
+        </aside>
+      </section>
+
+      <section class="slide root-causes-slide" id="slide-24" data-title="The failure had three causes">
+        <div class="eyebrow">Postmortem</div>
+        <h2>The failure was permitted at three layers.</h2>
+        <div class="cause-columns">
+          <div>
+            <span>01 · PLAN</span>
+            <h3>A hole in the artifact map</h3>
+            <p>No controller artifact. Checkpoint criteria contradicted task validation. Large tasks hid scope.</p>
+          </div>
+          <div>
+            <span>02 · EXECUTOR</span>
+            <h3>The model optimized for interest</h3>
+            <p>Built solver internals ahead of HTTP wiring. Renamed tests. Reinterpreted proof. Never raised a blocker.</p>
+          </div>
+          <div>
+            <span>03 · PROCESS</span>
+            <h3>Self-certification arrived first</h3>
+            <p>No plan review. No mechanical definition of complete. Independent evidence came after ~6.5k lines.</p>
+          </div>
+        </div>
+        <div class="root-equation"><b>Plan ambiguity</b><i>+</i><b>agent discretion</b><i>+</i><b>late verification</b><i>=</i><strong>expensive convergence</strong></div>
+        <div class="slide-index">24</div>
+        <aside class="speaker-notes">
+          <p>The executor did not simply ignore a perfect plan. The plan omitted the HTTP surface and allowed conflicting readings.</p>
+          <p>But the process also failed to stop predictable executor behavior: batching, building ahead, silent artifact renames, weaker validations, and workarounds instead of blockers.</p>
+          <p>[Sources]</p>
+          <p>deviation-analysis-report.md section 2</p>
+        </aside>
+      </section>
+
+      <section class="slide branch-landscape-slide" id="slide-25" data-title="The branches changed three different variables">
+        <div class="eyebrow">Repository archaeology · 11 branches</div>
+        <h2>The branches changed three different<br>parts of the control system.</h2>
+        <div class="branch-landscape">
+          <div class="branch-track custom-track">
+            <b>Custom SDD</b>
+            <div class="branch-sequence">
+              <span>ux</span><i>·</i><span>use cases</span><i>·</i><span>grill clarified</span><i>·</i><span>final</span><i>·</i><span class="active-branch">v2</span><i>·</i><span>ai-only</span>
+            </div>
+            <strong>questions → traceability → execution gates</strong>
+          </div>
+          <div class="branch-track">
+            <b>Spec Kit</b>
+            <div class="branch-sequence short">
+              <span>afterthought</span><i>·</i><span>speckit</span><i>·</i><span>clarification</span><i>·</i><span>detailed proposal</span>
+            </div>
+            <strong>proposal detail + generated plan/tasks</strong>
+          </div>
+          <div class="branch-track open-track">
+            <b>OpenSpec</b>
+            <div class="branch-sequence short"><span>openspec</span></div>
+            <strong>change specs + implementation slices</strong>
+          </div>
+        </div>
+        <div class="branch-variables">
+          <span><b>Input quality</b> What was decided?</span>
+          <span><b>Artifact system</b> How was intent represented?</span>
+          <span><b>Execution discipline</b> Who could declare “done”?</span>
+        </div>
+        <div class="slide-index">25</div>
+        <aside class="speaker-notes">
+          <p>These are not clean scientific A/B tests: some branches share ancestors and some extend earlier attempts. They are still useful repository evidence because they vary proposal detail, artifact format, task granularity, and approval mechanics.</p>
+          <p>The full local branch set is appointment-scheduling-ux, -grill-the-clarified-proposal, -spec-with-usecases, -openspec, -speckit-afterthought, -speckit, -speckit-with-clarification, -with-detailed-proposal, -final, -v2, and -ai-only.</p>
+          <p>[Sources]</p>
+          <p>git branch -a; git log --reverse 88e37c1..&lt;branch&gt;; git ls-tree -r &lt;branch&gt; for spec/, specs/, openspec/, .specify/, and .agents/skills/</p>
+        </aside>
+      </section>
+
+      <section class="slide batch-history-slide" id="slide-26" data-title="Detailed artifacts did not force small execution steps">
+        <div class="eyebrow">Finding across attempts</div>
+        <h2>A detailed plan and a traceable execution<br>are separate properties.</h2>
+        <div class="batch-history">
+          <div class="batch-row">
+            <code>ux → grill…</code><b>13,028</b><span>insertions in “implementation complete”</span><strong>then account, stability, and OSIV fixes</strong>
+          </div>
+          <div class="batch-row">
+            <code>spec-with-usecases</code><b>27,977</b><span>insertions in one implementation commit</span><strong>after nine spec/skill/task refinement commits</strong>
+          </div>
+          <div class="batch-row danger-row">
+            <code>speckit-with-clarification</code><b>36,046</b><span>insertions in “all phases”</span><strong>then three convergence commits; 5 tasks still open</strong>
+          </div>
+          <div class="batch-row">
+            <code>with-detailed-proposal</code><b>29,223</b><span>insertions in “implementation”</span><strong>+6,118 in fixes; ledger stayed 46/219 checked</strong>
+          </div>
+        </div>
+        <p class="bottom-claim">The artifacts became richer. The executor could still batch, weaken proof, and let the task ledger drift.</p>
+        <div class="slide-index">26</div>
+        <aside class="speaker-notes">
+          <p>The numbers are Git insertion counts, not estimates of authored logical lines. They describe commit shape, not implementation quality.</p>
+          <p>OpenSpec was more incremental: five implementation slices. But the owner/staff UI was introduced as a second change after four slices, showing that vertical reachability still needed explicit planning.</p>
+          <p>The Spec Kit convergence pass did find missing work and append traceable tasks. At the branch head, T168–T172 remained unchecked, so this deck does not call that attempt converged.</p>
+          <p>[Sources]</p>
+          <p>git show --shortstat commits 6e235f4, 4849449, 35220d2, 9770efb, 3b91bf6, b2de356, ddbe015, a55c621; appointment-scheduling-speckit-with-clarification:specs/001-smart-appointment-scheduling/tasks.md; appointment-scheduling-with-detailed-proposal:specs/001-smart-appointment-scheduling/tasks.md; appointment-scheduling-openspec git log commits 5d50c45 through bbbb0a6</p>
+        </aside>
+      </section>
+
+      <section class="slide recurring-seams-slide" id="slide-27" data-title="The same integration seams failed across pipelines">
+        <div class="eyebrow">Cross-branch recurrence</div>
+        <h2>The same integration seams failed<br>under different artifact systems.</h2>
+        <div class="seam-columns">
+          <div class="seam-column persistence-seam">
+            <div class="seam-heading"><span>JPA</span><b>Persistence context ends before rendering</b></div>
+            <div class="seam-event"><code>ux</code><p>“stable” → OSIV removal, eager fetch plans, rendering tests</p></div>
+            <div class="seam-event"><code>speckit</code><p>“full lifecycle” → explicit <b>LazyInitializationException</b> fix</p></div>
+            <div class="seam-event"><code>v2</code><p>checkpoint rejects detached page + transaction-masked E2E</p></div>
+          </div>
+          <div class="seam-column ai-seam">
+            <div class="seam-heading"><span>AI</span><b>Test double works while production path does not</b></div>
+            <pre><code>return new InterpretationCallResult(
+    null, STUB_MODEL, null, true);</code></pre>
+            <div class="seam-event"><code>speckit + clarification</code><p>320 green tests; production had only <b>NoOpStructuredChatGateway</b></p></div>
+            <div class="seam-event"><code>v2</code><p>focused tests green; default context exposed constructor failure</p></div>
+          </div>
+        </div>
+        <p class="bottom-claim">A recurring defect is a missing workflow check. The fix must land in code and in the protocol.</p>
+        <div class="slide-index">27</div>
+        <aside class="speaker-notes">
+          <p>The persistence failure recurred in at least three trails. The ux-derived branch added OSIV-disabled rendering tests in 37cd287; Spec Kit added repository fetch-plan tests in 0298da0; v2 later required fetch plans plus an HTTP test without a test transaction.</p>
+          <p>The clarified Spec Kit branch is an even sharper AI example. Its convergence tasks say that 320 green tests mocked both the chat and solver boundaries, while the only production StructuredChatGateway returned a synthetic transient failure. T168–T172 remained open at branch head.</p>
+          <p>OpenSpec also added provider fallback and diagnostics in its final follow-up commit bbbb0a6. A dedicated Ollama skill existed by the final attempt, yet v2 still needed a default-context startup test to catch constructor selection.</p>
+          <p>[Sources]</p>
+          <p>git commits 37cd287 and 0298da0; appointment-scheduling-speckit-with-clarification:src/main/java/org/springframework/samples/petclinic/scheduling/interpretation/NoOpStructuredChatGateway.java; same branch tasks.md T168–T172; git commits bbbb0a6, c933471, 4758b8e; spec/convergence/cp-1.md and cp-3.md</p>
+        </aside>
+      </section>
+
+      <section class="slide authority-slide" id="slide-28" data-title="Convergence changed who decides done">
+        <div class="eyebrow">Protocol evolution across three attempts</div>
+        <h2>Convergence changed who has<br>the authority to declare “done.”</h2>
+        <div class="authority-flow">
+          <div class="authority-stage old-stage">
+            <code>final</code>
+            <h3>Executor closes the phase</h3>
+            <p>Phase commit → “checkpoint review &amp; fixes” → status says approved.</p>
+            <strong>No committed checkpoint or convergence report.</strong>
+          </div>
+          <i>→</i>
+          <div class="authority-stage current-stage">
+            <code>v2</code>
+            <h3>Executor reports; auditor decides</h3>
+            <p>One task commit → checkpoint claim → independent evidence audit.</p>
+            <strong>REJECT → targeted REVISE → rerun.</strong>
+          </div>
+          <i>→</i>
+          <div class="authority-stage next-stage">
+            <code>ai-only</code>
+            <h3>Gates move before domain work</h3>
+            <p>Isolated tests → plan guards → red HTTP skeleton → intermediate convergence.</p>
+            <strong>cp-1 and cp-2.1 approve only after revisions.</strong>
+          </div>
+        </div>
+        <div class="authority-rule"><b>The executor may claim complete.</b><strong>Only independent convergence may approve.</strong></div>
+        <div class="slide-index">28</div>
+        <aside class="speaker-notes">
+          <p>The final branch used broad phase commits and checkpoint review/fix commits. Its branch tree contains no spec/checkpoints or spec/convergence reports, so the same execution context effectively implemented and approved.</p>
+          <p>V2 added a committed checkpoint report, a separate convergence report, evidence grades, runtime reproduction, and ready-to-paste REVISE directives. The first audit rejected phase 1; the rerun was approved with explicit notes and waivers.</p>
+          <p>The ai-only branch started with the learned protocol: task-1.2 installed bidirectional inventory guards; task-2.1 wrote the red UC-1 HTTP skeleton first; cp-1.1 and cp-2.1 interrupted execution for early independent audits. Its head contains a cp-2 executor report but no cp-2 convergence report, so later phase-2 work remains unapproved in this branch snapshot.</p>
+          <p>[Sources]</p>
+          <p>appointment-scheduling-final git log and spec/status.md; absence verified with git ls-tree; appointment-scheduling-v2 commits b6e30be, dfd414f, 52287d6, f1dcc9f and spec/convergence/cp-1.md; appointment-scheduling-ai-only commits 09f5bec, eada403, ae68f3b, 5bce9d6 and spec/convergence/cp-1.md, cp-2.1.md</p>
+        </aside>
+      </section>
+
+      <section class="slide self-improve-slide" id="slide-29" data-title="The pipeline rewrote its own instructions">
+        <div class="eyebrow">Self-improvement</div>
+        <h2>Every observed drift became<br>an executable protocol rule.</h2>
+        <div class="skill-diff">
+          <div class="diff-stat"><b>+651</b><span>skill lines added</span></div>
+          <div class="diff-stat"><b>−106</b><span>skill lines removed</span></div>
+          <div class="diff-commit"><code>dfd414f</code><span>SDD skills update</span></div>
+        </div>
+        <div class="improvement-list">
+          <div><b>Missing controller</b><span>phase route inventory + plan reachability review</span></div>
+          <div><b>Renamed weak test</b><span>exact artifact and method names; no substitution</span></div>
+          <div><b>Transactional test mask</b><span>literal HTTP evidence + production-equivalent boundaries</span></div>
+          <div><b>7 tasks / 2 commits</b><span>one complete loop and one commit per task</span></div>
+          <div><b>Silent workaround</b><span>mandatory blocker when validation cannot be met</span></div>
+          <div><b>Green subset</b><span>full suite + default runtime + every walkthrough URL</span></div>
+        </div>
+        <div class="slide-index">29</div>
+        <aside class="speaker-notes">
+          <p>The skills are versioned beside the code. That made process improvement auditable: the cp-1 postmortem produced a 651-line addition across the SDD skills.</p>
+          <p>Later commits added re-plan mode and a legacy-waiver protocol, preserving history rather than pretending the original phase followed rules that did not yet exist.</p>
+          <p>[Sources]</p>
+          <p>git commit dfd414f; git commits 3b93ade and 040e72d; .agents/skills/04-review through 07-converge</p>
+        </aside>
+      </section>
+
+      <section class="slide cp3-slide" id="slide-30" data-title="Checkpoint 3 tested the improved audit">
+        <div class="eyebrow">Checkpoint 3 · The stricter system at work</div>
+        <h2>The focused tests passed.<br>The application did not start.</h2>
+        <div class="cp3-layout">
+          <div class="cp3-primary">
+            <b>265 run</b>
+            <strong>4 failures</strong>
+            <span>plus an unusable default runtime</span>
+          </div>
+          <div class="cp3-findings">
+            <div><span>C-1</span><b>Ollama bean had no injectable constructor</b></div>
+            <div><span>C-2</span><b>Controllers bypassed services</b></div>
+            <div><span>C-3</span><b>Templates violated localization</b></div>
+            <div><span>C-4</span><b>“Leave open” mutated the request</b></div>
+          </div>
+        </div>
+        <div class="cp3-footer"><b>Only 4 of 11</b><span>phase ACs had strong evidence</span><b>4 protocol findings</b><span>made inaccurate closure claims visible</span></div>
+        <div class="slide-index">30</div>
+        <aside class="speaker-notes">
+          <p>By checkpoint 3, the plan guards themselves passed. The independent audit still found product, architecture, localization, evidence, and protocol defects.</p>
+          <p>The test profile selected the stub provider, hiding a broken default Ollama bean. Converge started the shipped configuration and immediately found the failure.</p>
+          <p>This is a success of the improved protocol: it caught a discrepancy between focused tests and the real runtime before the human walkthrough.</p>
+          <p>[Sources]</p>
+          <p>spec/convergence/cp-3.md Summary, Findings C-1–C-4, Evidence Ledger</p>
+        </aside>
+      </section>
+
+      <section class="slide revisions-slide" id="slide-31" data-title="Revision is targeted, not a restart">
+        <div class="eyebrow">Execute ⇄ Converge</div>
+        <h2>Revision is targeted feedback,<br>not a restart.</h2>
+        <div class="revision-command"><code>REVISE: task-3.5</code><p>Make leave-open non-mutating; compare a complete before/after snapshot; assert no new request event.</p></div>
+        <div class="commit-ribbon" aria-label="Nine ordered revision commits after checkpoint 3">
+          <span>1.6</span><span>3.5</span><span>3.1</span><span>3.3</span><span>3.2</span><span>3.3</span><span>3.4</span><span>3.5</span><span>3.6</span>
+        </div>
+        <div class="revision-logic">
+          <div><b>Finding has an owner</b><span>task + AC + rule + evidence</span></div>
+          <i>→</i>
+          <div><b>Executor revises that task</b><span>closure gate reruns</span></div>
+          <i>→</i>
+          <div><b>Converge re-grades</b><span>claim versus observed system</span></div>
+        </div>
+        <div class="revision-count">9 ordered revision commits answered the cp-3 rejection.</div>
+        <div class="slide-index">31</div>
+        <aside class="speaker-notes">
+          <p>Converge emits ready-to-execute REVISE directives in dependency order. Each one names the owning task and the evidence shape required.</p>
+          <p>The executor returns to the same task, makes a separate revision commit, reruns the closure gate, and only then returns the checkpoint for another audit.</p>
+          <p>[Sources]</p>
+          <p>spec/convergence/cp-3.md Resolution; git commits 4758b8e through 8a382e2; .agents/skills/06-execute/SKILL.md Approval Responses</p>
+        </aside>
+      </section>
+
+      <section class="slide outcome-slide" id="slide-32" data-title="The final audit shows measurable improvement">
+        <div class="eyebrow">Checkpoint 5 · Independent result</div>
+        <h2>The final audit looks different<br>because the protocol is different.</h2>
+        <div class="outcome-metrics">
+          <div><b>5 / 5</b><span>tasks · separate ordered commits</span></div>
+          <div><b>10 / 10</b><span>declared artifacts at exact paths</span></div>
+          <div><b>308 / 0</b><span>tests run / failures</span></div>
+          <div><b>43</b><span>mapped endpoints in the final security surface</span></div>
+          <div><b>0</b><span>critical · gap · protocol · drift · cosmetic</span></div>
+        </div>
+        <div class="honest-status">
+          <span>Machine-verifiable gates</span><b>PASS</b>
+          <span>Human UI walkthrough</span><strong>PENDING</strong>
+        </div>
+        <p class="bottom-claim">Confidence is bounded by the evidence. The deck does not call the walkthrough complete before a human performs it.</p>
+        <div class="slide-index">32</div>
+        <aside class="speaker-notes">
+          <p>Converge independently ran 308 tests, the plan guards, and the HTTP walkthrough with anonymous, staff, owner George, and other owner Betty. The observed responses matched the checkpoint report.</p>
+          <p>The verdict remains APPROVE PENDING WALKTHROUGH because a UI phase still requires human confirmation. This is a feature of the protocol: missing evidence is not converted into confidence.</p>
+          <p>The repository status also still records phase 4 and phase 5 approvals as pending, so the implementation should not be described as universally approved.</p>
+          <p>[Sources]</p>
+          <p>spec/convergence/cp-5.md Summary, Protocol Gate, Runtime Reproduction, Category Notes; spec/status.md Phase Approvals</p>
+        </aside>
+      </section>
+
+      <section class="slide close-slide" id="slide-33" data-title="The spec is the control system">
+        <div class="eyebrow">The takeaway</div>
+        <h2>The spec is not a document.<br><span>It is the control system.</span></h2>
+        <div class="feedback-loop">
+          <div><b>Clarify meaning</b><span>grill → behaviors → criteria</span></div>
+          <i>→</i>
+          <div><b>Constrain work</b><span>rules → exact tasks → commits</span></div>
+          <i>→</i>
+          <div><b>Demand evidence</b><span>closure → runtime → convergence</span></div>
+          <i>↺</i>
+        </div>
+        <div class="takeaway-lines">
+          <p><b>Make decisions durable.</b> Chat is transient; artifacts are inspectable.</p>
+          <p><b>Make “complete” mechanical.</b> The agent should not grade its own interpretation.</p>
+          <p><b>Make stopping legitimate.</b> A blocker is cheaper than a clever workaround.</p>
+          <p><b>Version the process.</b> Let failures improve the skills that produce the next result.</p>
+        </div>
+        <div class="final-line">Reliable AI development is not less iteration. It is iteration with memory, boundaries, and proof.</div>
+        <div class="slide-index">33</div>
+        <aside class="speaker-notes">
+          <p>The durable insight is the closed loop. The same evidence that revises the implementation can revise the task plan, the spec, and the skills themselves.</p>
+          <p>This gives agents freedom inside a small, explicit task while taking away the freedom to silently redefine success.</p>
+          <p>[Sources]</p>
+          <p>deviation-analysis-report.md; .agents/skills/01-spec through 07-converge; spec/convergence/cp-1.md, cp-3.md, cp-5.md</p>
+        </aside>
+      </section>
+    </div>
+
+    <div class="progress" aria-hidden="true"><div id="progress-bar"></div></div>
+    <nav class="controls" aria-label="Slide controls">
+      <button id="prev" type="button" aria-label="Previous slide">←</button>
+      <span id="counter" aria-live="polite">1 / 33</span>
+      <button id="next" type="button" aria-label="Next slide">→</button>
+    </nav>
+    <button class="utility-button" id="overview-button" type="button" aria-label="Toggle slide overview">O</button>
+    <button class="utility-button notes-button" id="notes-button" type="button" aria-label="Toggle speaker notes">N</button>
+    <div class="notes-panel" id="notes-panel" aria-hidden="true">
+      <div class="notes-heading"><b>Speaker notes</b><button id="close-notes" type="button">Close</button></div>
+      <div id="notes-content"></div>
+    </div>
+    <div class="overview" id="overview" aria-hidden="true"></div>
+    <div class="help" id="help" aria-hidden="true">
+      <b>Keyboard</b>
+      <span>← → / Space — navigate</span>
+      <span>O — overview</span>
+      <span>N — speaker notes</span>
+      <span>F — fullscreen</span>
+      <span>Home / End — first / last</span>
+      <span>? — this help</span>
+    </div>
+  </main>
+  <script src="slides.js"></script>
+</body>
+</html>
