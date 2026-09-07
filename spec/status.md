@@ -3,7 +3,7 @@
 ## Current
 
 - Use case: UC-2
-- Status: READY_FOR_CONVERGENCE
+- Status: NEEDS_REVISION
 - Next eligible: none
 
 ## Progress
@@ -11,7 +11,7 @@
 | Use case | Status | Depends on | Implementation | Convergence |
 |---|---|---|---|---|
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
-| UC-2 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | - |
+| UC-2 | NEEDS_REVISION | UC-1 | `048dcdc` | [REJECTED C-1](convergence/UC-2.md) |
 | UC-3 | APPROVED | UC-1 | `4477d22` | [APPROVED](convergence/UC-3.md) - walkthrough passed |
 | UC-4 | NOT_STARTED | UC-1 | - | - |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
