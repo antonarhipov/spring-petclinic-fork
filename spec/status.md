@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-2, UC-3, UC-4, UC-5, UC-6, UC-7, UC-8
+- Use case: UC-3
+- Status: IN_PROGRESS
+- Next eligible: none
 
 ## Progress
 
@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | NOT_STARTED | UC-1 | - | - |
-| UC-3 | NOT_STARTED | UC-1 | - | - |
+| UC-3 | IN_PROGRESS | UC-1 | - | - |
 | UC-4 | NOT_STARTED | UC-1 | - | - |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
@@ -74,6 +74,12 @@
 | RULE-17 | Exact bundle parity and hard-coded visible text/status/Thymeleaf-expression scans are enforced by `I18nPropertiesSyncTest.java:85`; all eleven bundles contain the new action keys. |
 | RULE-18 | Real-server UC-1 journey is `AuthenticationE2ETests.java:41`; final suite is 101/0/0/0; profile and runtime-data isolation guards are `TestDataIsolationTests.java:48`. |
 | RULE-24 | Maven/H2-only dependency, path, property, README, and permanent-deletion checks are in `RepositoryScopeTests.java:37`. |
+
+## UC-3 Evidence
+
+- Started: 2026-09-07T22:58:42+02:00
+- Started from: `e556a93874f10d79237d47e444ea6b4b2dade5ff`
+- Pre-existing dirty files: `.agents/` (untracked environment-mounted skill files; excluded from implementation)
 
 ## Blockers
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Spring AI Ollama Integration"
-  short_description: "Configure Spring AI Ollama reliably"
-  default_prompt: "Use $spring-ai-ollama-integration to add a configurable Ollama model and proven client timeouts to a Spring Boot application."
