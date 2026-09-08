@@ -44,10 +44,10 @@ class SecurityMatrixWebTests {
 			route("/staff/queue"), route("/staff/requests"), route("/staff/requests/1"),
 			route("/staff/requests/1/interpretation"), route("/staff/requests/1/release-hold"),
 			route("/staff/requests/1/suggest"), route("/staff/requests/1/book"), route("/staff/calendar"),
-			route("/staff/calendar/book"), route("/staff/appointments/1"), route("/staff/appointments/1/reschedule"),
-			route("/staff/appointments/1/cancel"), route("/staff/appointments/1/complete"),
-			route("/staff/appointments/1/no-show"), route("/actuator"), route("/actuator/env"), route("/h2-console"),
-			route("/oups"));
+			route("/staff/calendar/book"), route("/staff/settings"), route("/staff/appointments/1"),
+			route("/staff/appointments/1/reschedule"), route("/staff/appointments/1/cancel"),
+			route("/staff/appointments/1/complete"), route("/staff/appointments/1/no-show"), route("/actuator"),
+			route("/actuator/env"), route("/h2-console"), route("/oups"));
 
 	private static final List<Route> AUTHENTICATED_ROUTES = List.of(route("/"), route("/error"),
 			route("/definitely-not-a-route"));
@@ -146,7 +146,8 @@ class SecurityMatrixWebTests {
 
 	private DatabaseSnapshot snapshot() {
 		return new DatabaseSnapshot(rows("owners"), rows("pets"), rows("visits"), rows("scheduling_requests"),
-				rows("appointments"));
+				rows("appointments"), rows("clinic_settings"), rows("clinic_opening_hours"), rows("vet_working_blocks"),
+				rows("vet_exceptions"), rows("vet_leave"), rows("clinic_closures"));
 	}
 
 	private List<Map<String, Object>> rows(String table) {
@@ -168,7 +169,9 @@ class SecurityMatrixWebTests {
 
 	private record DatabaseSnapshot(List<Map<String, Object>> owners, List<Map<String, Object>> pets,
 			List<Map<String, Object>> visits, List<Map<String, Object>> requests,
-			List<Map<String, Object>> appointments) {
+			List<Map<String, Object>> appointments, List<Map<String, Object>> settings,
+			List<Map<String, Object>> openingHours, List<Map<String, Object>> workingBlocks,
+			List<Map<String, Object>> exceptions, List<Map<String, Object>> leave, List<Map<String, Object>> closures) {
 	}
 
 }

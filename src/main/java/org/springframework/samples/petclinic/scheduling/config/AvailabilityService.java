@@ -1,13 +1,14 @@
 package org.springframework.samples.petclinic.scheduling.config;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.samples.petclinic.scheduling.matching.EffectiveAvailability;
+import org.springframework.samples.petclinic.scheduling.matching.EffectiveAvailabilityCalculator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +20,13 @@ public class AvailabilityService {
 
 	private final VetAvailabilityRepository availabilityRepository;
 
+	private final EffectiveAvailabilityCalculator calculator;
+
 	public AvailabilityService(ClinicSettingsRepository settingsRepository,
-			VetAvailabilityRepository availabilityRepository) {
+			VetAvailabilityRepository availabilityRepository, EffectiveAvailabilityCalculator calculator) {
 		this.settingsRepository = settingsRepository;
 		this.availabilityRepository = availabilityRepository;
+		this.calculator = calculator;
 	}
 
 	public boolean isClinicClosed(LocalDate date) {
@@ -30,6 +34,9 @@ public class AvailabilityService {
 	}
 
 	public Optional<OpeningHours> getOpeningHours(LocalDate date) {
+		if (this.availabilityRepository.isClinicClosed(date)) {
+			return Optional.empty();
+		}
 		return this.settingsRepository.findCurrentSettings()
 			.flatMap(s -> s.getOpeningHoursFor(date.getDayOfWeek()))
 			.filter(OpeningHours::isOpen);
@@ -64,47 +71,22 @@ public class AvailabilityService {
 	}
 
 	private List<EffectiveAvailability> computeEffectiveAvailability(LocalDate date, Integer vetIdFilter) {
-		if (this.availabilityRepository.isClinicClosed(date)) {
-			return List.of();
-		}
-
 		Optional<OpeningHours> openingHoursOpt = getOpeningHours(date);
-		if (openingHoursOpt.isEmpty()) {
-			return List.of();
-		}
-
-		OpeningHours opening = openingHoursOpt.get();
-		LocalTime openTime = opening.getOpenTime();
-		LocalTime closeTime = opening.getCloseTime();
-
-		List<Integer> exceptionVets = this.availabilityRepository.findExceptionVetIds(date);
-		List<Integer> leaveVets = this.availabilityRepository.findLeaveVetIds(date);
-
 		List<VetWorkingBlock> blocks = (vetIdFilter != null)
 				? this.availabilityRepository.findWorkingBlocks(vetIdFilter, date.getDayOfWeek())
 				: this.availabilityRepository.findWorkingBlocksByWeekday(date.getDayOfWeek());
-
-		List<EffectiveAvailability> result = new ArrayList<>();
-		for (VetWorkingBlock block : blocks) {
-			int vetId = block.getVet().getId();
-			if (exceptionVets.contains(vetId)) {
-				continue;
-			}
-			if (leaveVets.contains(vetId)) {
-				continue;
-			}
-
-			LocalTime start = block.getStartTime().isBefore(openTime) ? openTime : block.getStartTime();
-			LocalTime end = block.getEndTime().isAfter(closeTime) ? closeTime : block.getEndTime();
-
-			if (end.isAfter(start)) {
-				result.add(new EffectiveAvailability(vetId, date, start, end));
-			}
-		}
-
-		result.sort(
-				Comparator.comparingInt(EffectiveAvailability::vetId).thenComparing(EffectiveAvailability::startTime));
-		return result;
+		Set<Integer> unavailableVets = new HashSet<>(this.availabilityRepository.findExceptionVetIds(date));
+		unavailableVets.addAll(this.availabilityRepository.findLeaveVetIds(date));
+		ClinicConfiguration.OpeningPeriod opening = openingHoursOpt
+			.map(value -> new ClinicConfiguration.OpeningPeriod(value.getWeekday(), value.getOpenTime(),
+					value.getCloseTime()))
+			.orElse(null);
+		List<ClinicConfiguration.WorkingPeriod> periods = blocks.stream()
+			.map(block -> new ClinicConfiguration.WorkingPeriod(block.getVet().getId(), block.getWeekday(),
+					block.getStartTime(), block.getEndTime()))
+			.toList();
+		return this.calculator.calculate(date, opening, periods, unavailableVets,
+				this.availabilityRepository.isClinicClosed(date), vetIdFilter);
 	}
 
 }

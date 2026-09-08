@@ -60,7 +60,8 @@ class PresentationShellTests {
 		}
 		assertThat(layouts).containsExactly(TEMPLATES.resolve("fragments/layout.html"));
 		for (Path template : List.of(TEMPLATES.resolve("login.html"), TEMPLATES.resolve("my/pets.html"),
-				TEMPLATES.resolve("my/appointments.html"), TEMPLATES.resolve("staff/queue.html"))) {
+				TEMPLATES.resolve("my/appointments.html"), TEMPLATES.resolve("staff/queue.html"),
+				TEMPLATES.resolve("staff/settings.html"))) {
 			assertThat(Files.readString(template)).contains("fragments/layout :: layout")
 				.doesNotContain("<style", "style=");
 		}

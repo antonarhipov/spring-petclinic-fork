@@ -40,6 +40,18 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 	List<Appointment> findByDateAndStatusInOrderByVetIdAscStartTimeAsc(LocalDate date,
 			List<AppointmentStatus> statuses);
 
+	@Query("""
+			select appointment from Appointment appointment
+			join fetch appointment.pet
+			join fetch appointment.vet
+			left join fetch appointment.request
+			where appointment.status in :statuses
+			and (appointment.date > :date or (appointment.date = :date and appointment.endTime > :time))
+			order by appointment.date, appointment.startTime, appointment.id
+			""")
+	List<Appointment> findProtectedFrom(@Param("date") LocalDate date, @Param("time") LocalTime time,
+			@Param("statuses") List<AppointmentStatus> statuses);
+
 	@Query("select appointment from Appointment appointment, Owner owner join owner.pets pet where owner.id = :ownerId and appointment.pet = pet order by appointment.date, appointment.startTime")
 	List<Appointment> findByPetOwnerIdOrderByDateAscStartTimeAsc(@Param("ownerId") Integer ownerId);
 

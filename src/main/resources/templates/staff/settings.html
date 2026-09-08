@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'settings')}">
+<body>
+<h2 th:text="#{scheduling.settings}">Clinic settings</h2>
+
+<div th:if="${actionErrorKey}" class="alert alert-danger" role="alert" th:text="#{${actionErrorKey}}">Error</div>
+<div th:if="${actionNoticeKey}" class="alert alert-info" role="status" th:text="#{${actionNoticeKey}}">Notice</div>
+
+<section th:if="${confirmedConflicts}" class="card border-danger mb-4" id="confirmed-conflicts">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.settings.conflicts.title}">Conflicting appointments</h3>
+    <p th:text="#{scheduling.settings.conflicts.instructions}">Reschedule every listed appointment first.</p>
+    <ul>
+      <li th:each="conflict : ${confirmedConflicts}">
+        <a th:href="@{/staff/appointments/{id}(id=${conflict.appointmentId})}"
+           th:text="|#${conflict.appointmentId} - ${conflict.petName} - ${conflict.veterinarianName} - ${conflict.date} ${conflict.startTime}-${conflict.endTime}|">Appointment</a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section th:if="${affectedRequests}" class="card mb-4" id="affected-requests">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.settings.affected.title}">Affected requests</h3>
+    <p th:if="${#lists.isEmpty(affectedRequests)}" th:text="#{scheduling.settings.affected.none}">No requests were affected.</p>
+    <ul th:unless="${#lists.isEmpty(affectedRequests)}">
+      <li th:each="affected : ${affectedRequests}">
+        <a th:href="@{/staff/requests/{id}(id=${affected.requestId})}"
+           th:text="|#${affected.requestId} - ${affected.petName} - ${affected.veterinarianName} - ${affected.date} ${affected.startTime}|">Request</a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<form th:object="${configuration}" th:action="@{/staff/settings}" method="post">
+  <section class="card mb-4">
+    <div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.settings.limits}">Scheduling limits</h3>
+      <div class="row g-3">
+        <div class="col-md-4"><label for="booking-horizon" class="form-label" th:text="#{scheduling.settings.horizon}">Scheduling horizon</label><input id="booking-horizon" class="form-control" type="number" min="1" th:field="*{bookingHorizonDays}" required></div>
+        <div class="col-md-4"><label for="minimum-lead" class="form-label" th:text="#{scheduling.settings.leadTime}">Minimum lead time</label><input id="minimum-lead" class="form-control" type="number" min="1" th:field="*{minimumLeadDays}" required></div>
+        <div class="col-md-4"><label for="time-zone" class="form-label" th:text="#{scheduling.settings.timeZone}">Time zone</label><input id="time-zone" class="form-control" th:field="*{timeZone}" required></div>
+        <div class="col-md-4"><label for="minimum-duration" class="form-label" th:text="#{scheduling.settings.duration.minimum}">Minimum duration</label><input id="minimum-duration" class="form-control" type="number" min="1" th:field="*{minimumDurationMinutes}" required></div>
+        <div class="col-md-4"><label for="default-duration" class="form-label" th:text="#{scheduling.settings.duration.default}">Default duration</label><input id="default-duration" class="form-control" type="number" min="1" th:field="*{defaultDurationMinutes}" required></div>
+        <div class="col-md-4"><label for="maximum-duration" class="form-label" th:text="#{scheduling.settings.duration.maximum}">Maximum duration</label><input id="maximum-duration" class="form-control" type="number" min="1" th:field="*{maximumDurationMinutes}" required></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card mb-4">
+    <div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.settings.openingHours}">Opening hours</h3>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th th:text="#{scheduling.settings.weekday}">Weekday</th><th th:text="#{scheduling.settings.closed}">Closed</th><th th:text="#{scheduling.settings.opens}">Opens</th><th th:text="#{scheduling.settings.closes}">Closes</th></tr></thead>
+          <tbody>
+          <tr th:each="hours, stat : *{openingHours}">
+            <td><input type="hidden" th:field="*{openingHours[__${stat.index}__].weekday}"><span th:text="#{${hours.weekdayMessageKey}}">Monday</span></td>
+            <td><input class="form-check-input" type="checkbox" th:field="*{openingHours[__${stat.index}__].closed}" th:aria-label="#{scheduling.settings.closed}"></td>
+            <td><input class="form-control" type="time" th:field="*{openingHours[__${stat.index}__].openTime}" th:aria-label="#{scheduling.settings.opens}"></td>
+            <td><input class="form-control" type="time" th:field="*{openingHours[__${stat.index}__].closeTime}" th:aria-label="#{scheduling.settings.closes}"></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card mb-4">
+    <div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.settings.dayParts}">Named parts of day</h3>
+      <div class="row g-3">
+        <div class="col-md-2"><label for="morning-start" class="form-label" th:text="#{scheduling.settings.morning.start}">Morning start</label><input id="morning-start" class="form-control" type="time" th:field="*{morningStart}" required></div>
+        <div class="col-md-2"><label for="morning-end" class="form-label" th:text="#{scheduling.settings.morning.end}">Morning end</label><input id="morning-end" class="form-control" type="time" th:field="*{morningEnd}" required></div>
+        <div class="col-md-2"><label for="afternoon-start" class="form-label" th:text="#{scheduling.settings.afternoon.start}">Afternoon start</label><input id="afternoon-start" class="form-control" type="time" th:field="*{afternoonStart}" required></div>
+        <div class="col-md-2"><label for="afternoon-end" class="form-label" th:text="#{scheduling.settings.afternoon.end}">Afternoon end</label><input id="afternoon-end" class="form-control" type="time" th:field="*{afternoonEnd}" required></div>
+        <div class="col-md-2"><label for="evening-start" class="form-label" th:text="#{scheduling.settings.evening.start}">Evening start</label><input id="evening-start" class="form-control" type="time" th:field="*{eveningStart}" required></div>
+        <div class="col-md-2"><label for="evening-end" class="form-label" th:text="#{scheduling.settings.evening.end}">Evening end</label><input id="evening-end" class="form-control" type="time" th:field="*{eveningEnd}" required></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card mb-4" id="veterinarian-availability">
+    <div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.settings.veterinarianAvailability}">Veterinarian availability</h3>
+      <p th:text="#{scheduling.settings.veterinarianIds}">Veterinarian ids</p>
+      <ul class="list-inline"><li class="list-inline-item" th:each="vet : ${veterinarians}" th:text="|${vet.id}: ${vet.name}|">1: Veterinarian</li></ul>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <label for="working-periods" class="form-label" th:text="#{scheduling.settings.workingBlocks}">Recurring working blocks</label>
+          <p class="form-text" th:text="#{scheduling.settings.workingBlocks.format}">One block per line.</p>
+          <textarea id="working-periods" class="form-control font-monospace" rows="12" th:field="*{workingPeriods}" th:placeholder="#{scheduling.settings.workingBlocks.placeholder}"></textarea>
+        </div>
+        <div class="col-lg-6">
+          <label for="exceptions" class="form-label" th:text="#{scheduling.settings.exceptions}">Date exceptions</label>
+          <p class="form-text" th:text="#{scheduling.settings.exceptions.format}">One exception per line.</p>
+          <textarea id="exceptions" class="form-control font-monospace" rows="5" th:field="*{exceptions}" th:placeholder="#{scheduling.settings.exceptions.placeholder}"></textarea>
+          <label for="leave-periods" class="form-label mt-3" th:text="#{scheduling.settings.leave}">Veterinarian leave</label>
+          <p class="form-text" th:text="#{scheduling.settings.leave.format}">One leave period per line.</p>
+          <textarea id="leave-periods" class="form-control font-monospace" rows="4" th:field="*{leavePeriods}" th:placeholder="#{scheduling.settings.leave.placeholder}"></textarea>
+          <label for="closures" class="form-label mt-3" th:text="#{scheduling.settings.closures}">Clinic closures</label>
+          <p class="form-text" th:text="#{scheduling.settings.closures.format}">One closure date per line.</p>
+          <textarea id="closures" class="form-control font-monospace" rows="4" th:field="*{closures}" th:placeholder="#{scheduling.settings.closures.placeholder}"></textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <button class="btn btn-primary" type="submit" th:text="#{scheduling.settings.save}">Save configuration</button>
+</form>
+</body>
+</html>

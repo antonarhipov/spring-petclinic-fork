@@ -138,4 +138,27 @@ public class ClinicSettings {
 		this.openingHours.add(oh);
 	}
 
+	public void update(int bookingHorizonDays, int minimumLeadDays, int minimumDurationMinutes,
+			int defaultDurationMinutes, int maximumDurationMinutes, LocalTime morningStart, LocalTime morningEnd,
+			LocalTime afternoonStart, LocalTime afternoonEnd, LocalTime eveningStart, LocalTime eveningEnd,
+			String timeZone) {
+		this.bookingHorizonDays = bookingHorizonDays;
+		this.minimumLeadDays = minimumLeadDays;
+		this.minimumDurationMinutes = minimumDurationMinutes;
+		this.defaultDurationMinutes = defaultDurationMinutes;
+		this.maximumDurationMinutes = maximumDurationMinutes;
+		this.morningStart = morningStart;
+		this.morningEnd = morningEnd;
+		this.afternoonStart = afternoonStart;
+		this.afternoonEnd = afternoonEnd;
+		this.eveningStart = eveningStart;
+		this.eveningEnd = eveningEnd;
+		this.timeZone = timeZone;
+	}
+
+	public void replaceOpeningHours(List<OpeningHours> values) {
+		this.openingHours.clear();
+		values.forEach(this::addOpeningHours);
+	}
+
 }

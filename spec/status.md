@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-7, UC-8
+- Use case: UC-7
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none until UC-7 is approved; then UC-8
 
 ## Progress
 
@@ -16,7 +16,7 @@
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
 | UC-6 | APPROVED | UC-1 | `737d8ea` | [APPROVED](convergence/UC-6.md) - walkthrough passed |
-| UC-7 | NOT_STARTED | UC-1 | - | - |
+| UC-7 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | pending |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
 
 ## UC-1 Evidence
@@ -395,6 +395,50 @@
 | RULE-16, RULE-17 | Shared PetClinic layout, state-dependent owner controls, localized template text, and eleven identical key sets pass. |
 | RULE-18 | `OwnerActivityE2ETests.java:89` supplies the real-server journey; every extension and guarantee maps above; 358 tests pass and runtime H2 is unchanged. |
 | RULE-24 | Maven/H2 inventory, test isolation, restart, and unchanged runtime database regressions pass. |
+
+## UC-7 Evidence
+
+- Started: 2026-09-08T23:19:10+02:00
+- Started from: `c0ffe098c38c1b3176a4913e0e519e1ca986621d`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Configuration UI and application boundary: `ClinicConfigurationController.java`, `ClinicConfigurationForm.java`, `ClinicConfigurationService.java`, `ClinicConfiguration.java`, `ConfigurationValidationException.java`, and `templates/staff/settings.html`.
+  - Shared scheduling configuration: `ClinicSettings.java`, `OpeningHours.java`, `ClockConfig.java`, `ClinicZoneClock.java`, `AvailabilityCalculatorConfiguration.java`, `AvailabilityService.java`, `EffectiveAvailabilityCalculator.java`, and `AppointmentRepository.java`.
+  - Presentation and security: all eleven `messages*.properties` bundles, `PresentationShellTests.java`, and `SecurityMatrixWebTests.java`.
+  - Verification and evidence: `ClinicConfigurationE2ETests.java`, `ClinicConfigurationServiceTests.java`, `ClinicConfigurationWebTests.java`, `ClinicZoneClockTests.java`, `EffectiveAvailabilityCalculatorTests.java`, `spec/status.md`, and `spec/checkpoints/UC-7.md`.
+- Commands and results:
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test`: 369 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:validate`: passed.
+  - `git diff --check`: passed.
+  - Runtime H2 remained 126976 bytes with SHA-256 `6c80213d262edc022bdc86145788363da080cc2d03dd828717806410f7b66570` before and after tests.
+
+| Contract element | Evidence |
+|---|---|
+| UC-7 main steps 1-3 | Staff settings GET/POST renders and accepts every configuration type in `ClinicConfigurationWebTests.java:47`; the real form-login journey begins at `ClinicConfigurationE2ETests.java:63`. |
+| UC-7 main steps 4-6 | `ClinicConfigurationService.java:109` locks veterinarians, finds all protected appointments, rejects confirmed conflicts, or persists and routes invalidated holds; database assertions are at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112`. |
+| UC-7 main step 7 | Saved settings drive prompt context, matching, staff validation, calendar rendering, and persisted suggestions in `ClinicConfigurationServiceTests.java:139`; the real server observes a newly saved closure in the staff calendar at `ClinicConfigurationE2ETests.java:88`. |
+| UC-7 extension 3a | Exact input formats are enforced by `ClinicConfigurationForm.java:86`; structural ranges and overlap validation are at `ClinicConfigurationService.java:201`; service and rendered error tests preserve database snapshots at `ClinicConfigurationServiceTests.java:198` and `ClinicConfigurationWebTests.java:90`. |
+| UC-7 extension 4a | All confirmed conflicts are returned before persistence at `ClinicConfigurationService.java:124`; web and service tests list both conflicts and prove the complete configuration and holds remain unchanged at `ClinicConfigurationWebTests.java:112` and `ClinicConfigurationServiceTests.java:62`. |
+| UC-7 extension 5a | Clean changes save and render the no-affected-requests result at `ClinicConfigurationWebTests.java:47`; cross-consumer persistence is verified at `ClinicConfigurationServiceTests.java:139`. |
+| UC-7 G1-G2 | The pure calculator intersects split shifts with opening hours and removes exceptions, leave, and closures at `EffectiveAvailabilityCalculatorTests.java:21`; saved openings and named day parts appear in AI clinic context and effective availability at `ClinicConfigurationServiceTests.java:139`. |
+| UC-7 G3-G4 | Confirmed-care rejection and atomic hold deletion plus `WITH_STAFF/SCHEDULE_CHANGED` transitions are proved against complete snapshots at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112`. |
+| UC-7 G5 | `ClinicZoneClock.java:22` reads the saved clinic zone for each date calculation; opposite-side-of-midnight zones are verified at `ClinicZoneClockTests.java:19`. |
+| UC-7 G6-G7 | Unchanged Flyway migrations, exact seed values/passwords, fixed exception fixtures, persistence, and matching regressions pass in the 369-test suite. |
+| UC-7 G8 | The settings page uses the shared layout and localized text; all eleven bundles, presentation checks, complete handler inventory, role matrix, and CSRF tests pass. |
+| UC-7 success postcondition | The real-server journey saves a closure, deletes its conflicting hold, changes the request reason, and renders the calendar closed at `ClinicConfigurationE2ETests.java:63`. |
+| UC-7 minimal guarantee | Invalid and confirmed-conflict tests compare full configuration/request/appointment snapshots and prove no hold release or partial save. |
+| UC-7 Requires UC-1 | Seeded staff form login, identity/logout shell, anonymous redirect, owner 403, staff success, and CSRF behavior pass in real-server and security suites. |
+| RULE-1, RULE-2 | MVC delegates to read-only and transactional application-service methods; lifecycle and conflict decisions remain below the controller. |
+| RULE-3, RULE-20 | `EffectiveAvailabilityCalculator.java:12` is framework-free and is called by `AvailabilityService.java:73` for matching, staff validation, and calendar paths and by `ClinicConfigurationService.java:145` for conflict detection. |
+| RULE-4, RULE-5, RULE-6 | Hold invalidation uses the existing typed request/appointment lifecycle path, deletes holds, takes veterinarian write locks, and passes the complete lifecycle/concurrency regression suite. |
+| RULE-7, RULE-8 | Configuration values round-trip as local date/time values through the existing Flyway schema; exact seeds and password verification remain green. |
+| RULE-9, RULE-10 | `/staff/settings` is in the full route inventory; there is no owner-id input or new owner surface, and all principal-scope regressions pass. |
+| RULE-15 | Conflict cut-off and transition timestamps use the injected clinic-zone `Clock`; no direct system clock is introduced. |
+| RULE-16, RULE-17 | `staff/settings.html` uses the shared layout with no inline style, and all visible strings resolve from identical keys in eleven bundles. |
+| RULE-18 | `ClinicConfigurationE2ETests.java:63` supplies the real-server actor journey; every extension and guarantee maps above; 369 tests pass and runtime H2 is unchanged. |
+| RULE-23 | Invalid, confirmed-conflict, hold-only-conflict, and clean changes are covered across settings, weekly blocks, exceptions, leave, and closures with all-or-nothing assertions. |
+| RULE-24 | Maven/H2 inventory, in-memory test isolation, formatting, and unchanged file-backed runtime H2 regressions pass. |
 
 ## Blockers
 

@@ -74,4 +74,9 @@ public class OpeningHours {
 		return this.openTime != null && this.closeTime != null;
 	}
 
+	public void update(LocalTime openTime, LocalTime closeTime) {
+		this.openTime = openTime;
+		this.closeTime = closeTime;
+	}
+
 }
