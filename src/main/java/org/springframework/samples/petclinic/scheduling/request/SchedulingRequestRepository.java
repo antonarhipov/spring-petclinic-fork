@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,5 +19,9 @@ public interface SchedulingRequestRepository extends JpaRepository<SchedulingReq
 	List<SchedulingRequest> findByPetOwnerIdOrderByCreatedDateDescCreatedTimeDesc(@Param("ownerId") Integer ownerId);
 
 	long countByActivePetIdIsNotNull();
+
+	@Modifying(flushAutomatically = true)
+	@Query("update SchedulingRequest request set request.version = request.version + 1 where request.id = :id and request.version = :version and request.state = :state")
+	int claimStaffAction(@Param("id") Integer id, @Param("version") long version, @Param("state") RequestState state);
 
 }

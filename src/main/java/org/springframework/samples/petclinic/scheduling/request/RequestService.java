@@ -86,7 +86,9 @@ public class RequestService {
 			return CreationResult.created(persist(petId, requestText, true));
 		}
 		catch (DataIntegrityViolationException ex) {
-			return CreationResult.refused("scheduling.request.duplicate.active");
+			SchedulingRequest winner = this.readTransaction.execute(status -> this.requests.findByActivePetId(petId)
+				.orElseThrow(() -> new IllegalStateException("Active request constraint failed without a winner", ex)));
+			return CreationResult.existing(winner);
 		}
 	}
 
@@ -271,20 +273,95 @@ public class RequestService {
 	}
 
 	@Transactional
+	public ActionResult authorInterpretation(int requestId, long expectedVersion,
+			StaffInterpretationForm.Values values) {
+		if (values.careType() == CareType.SPECIALTY && !"OTHER".equals(values.specialty())) {
+			Long count = this.entityManager
+				.createQuery("select count(specialty) from Specialty specialty where specialty.name = :name",
+						Long.class)
+				.setParameter("name", values.specialty())
+				.getSingleResult();
+			if (count == 0) {
+				return ActionResult.refused(require(requestId), "scheduling.staff.interpretation.specialty.invalid");
+			}
+		}
+		org.springframework.samples.petclinic.vet.Vet preferredVet = null;
+		if (values.preferredVetId() != null) {
+			preferredVet = this.entityManager.find(org.springframework.samples.petclinic.vet.Vet.class,
+					values.preferredVetId());
+			if (preferredVet == null) {
+				return ActionResult.refused(require(requestId), "scheduling.staff.interpretation.vet.invalid");
+			}
+		}
+		Interpretation interpretation = new Interpretation(true, values.careType(), values.specialty(),
+				values.specialtyLabel(), values.durationMinutes(), preferredVet, InterpretationOrigin.STAFF, null, null,
+				null, today(), now());
+		for (StaffInterpretationForm.WindowValue window : values.preferredWindows()) {
+			interpretation.addWindow(toWindow(window));
+		}
+		for (StaffInterpretationForm.WindowValue window : values.allowedWindows()) {
+			interpretation.addWindow(toWindow(window));
+		}
+		for (StaffInterpretationForm.WindowValue window : values.excludedWindows()) {
+			interpretation.addWindow(toWindow(window));
+		}
+		return authorInterpretation(requestId, expectedVersion, interpretation);
+	}
+
+	private InterpretationWindow toWindow(StaffInterpretationForm.WindowValue window) {
+		return new InterpretationWindow(window.kind(), window.weekday(), window.date(), window.startTime(),
+				window.endTime());
+	}
+
+	@Transactional
 	public ActionResult authorInterpretation(int requestId, long expectedVersion, Interpretation interpretation) {
 		return staffAction(requestId, expectedVersion, "AUTHOR_INTERPRETATION", RequestState.WITH_STAFF, request -> {
 			requireOrigin(interpretation, InterpretationOrigin.STAFF, "staff interpretation");
+			if (sameStructuredValues(request.getCurrentInterpretation(), interpretation)) {
+				return;
+			}
 			interpretation.attachTo(request);
 			Interpretation saved = this.interpretations.save(interpretation);
 			request.addInterpretation(saved, today(), now());
 		});
 	}
 
+	private boolean sameStructuredValues(Interpretation current, Interpretation submitted) {
+		if (current == null || current.isUnderstood() != submitted.isUnderstood()
+				|| current.getCareType() != submitted.getCareType()
+				|| !java.util.Objects.equals(current.getSpecialty(), submitted.getSpecialty())
+				|| !java.util.Objects.equals(current.getSpecialtyLabel(), submitted.getSpecialtyLabel())
+				|| !java.util.Objects.equals(current.getDurationMinutes(), submitted.getDurationMinutes())
+				|| !java.util.Objects.equals(id(current.getPreferredVet()), id(submitted.getPreferredVet()))
+				|| current.getWindows().size() != submitted.getWindows().size()) {
+			return false;
+		}
+		for (int index = 0; index < current.getWindows().size(); index++) {
+			InterpretationWindow left = current.getWindows().get(index);
+			InterpretationWindow right = submitted.getWindows().get(index);
+			if (!java.util.Objects.equals(left.getWindowKind(), right.getWindowKind())
+					|| !java.util.Objects.equals(left.getWeekday(), right.getWeekday())
+					|| !java.util.Objects.equals(left.getDate(), right.getDate())
+					|| !java.util.Objects.equals(left.getStartTime(), right.getStartTime())
+					|| !java.util.Objects.equals(left.getEndTime(), right.getEndTime())) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private Integer id(org.springframework.samples.petclinic.vet.Vet vet) {
+		return vet != null ? vet.getId() : null;
+	}
+
 	@Transactional
 	public ActionResult placeStaffSuggestion(int requestId, long expectedVersion,
-			SlotSuggestionPort.StaffSuggestionCommand command) {
+			SlotSuggestionPort.StaffSuggestionCommand command, String reason, String changedBy) {
+		if (reason == null || reason.isBlank() || changedBy == null || changedBy.isBlank()) {
+			return ActionResult.refused(require(requestId), "scheduling.action.requiredReason");
+		}
 		return staffAction(requestId, expectedVersion, "STAFF_SUGGEST", RequestState.WITH_STAFF, request -> {
-			if (!slots().placeStaffSuggestion(request, command)) {
+			if (!slots().placeStaffSuggestion(request, command, reason, changedBy)) {
 				throw new IllegalStateException("Slot suggestion port returned no candidate for a staff-selected slot");
 			}
 			request.transitionTo(RequestState.SUGGESTION_OFFERED, today(), now());
@@ -350,6 +427,12 @@ public class RequestService {
 				return ActionResult.refused(request, "scheduling.request.stale");
 			}
 			requireState(request, action, requiredState);
+			if (this.requests.claimStaffAction(requestId, expectedVersion, requiredState) != 1) {
+				this.entityManager.clear();
+				return ActionResult.refused(require(requestId), "scheduling.request.stale");
+			}
+			this.entityManager.clear();
+			request = require(requestId);
 			mutation.accept(request);
 			return ActionResult.completed(this.requests.save(request));
 		});

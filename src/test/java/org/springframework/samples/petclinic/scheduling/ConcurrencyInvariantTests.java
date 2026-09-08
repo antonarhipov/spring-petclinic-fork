@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.scheduling;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -30,6 +31,7 @@ import org.springframework.samples.petclinic.scheduling.request.InterpretationWi
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
+import org.springframework.samples.petclinic.scheduling.request.SlotSuggestionPort;
 import org.springframework.samples.petclinic.scheduling.support.TestClockConfiguration;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -57,8 +59,76 @@ class ConcurrencyInvariantTests {
 
 	@BeforeEach
 	void clearSchedulingRows() {
-		this.appointments.deleteAll();
-		this.requests.deleteAll();
+		this.jdbcTemplate.update("update scheduling_requests set current_interpretation_id = null");
+		this.jdbcTemplate.update("delete from interpretation_windows");
+		this.jdbcTemplate.update("delete from interpretation_failures");
+		this.jdbcTemplate.update("delete from request_rejections");
+		this.jdbcTemplate.update("delete from appointments");
+		this.jdbcTemplate.update("delete from interpretations");
+		this.jdbcTemplate.update("delete from scheduling_requests");
+	}
+
+	@Test
+	void uc4ConcurrentStaffCreationsReturnTheSingleExistingRequest() throws Exception {
+		List<RequestService.CreationResult> results = race(
+				() -> this.requestService.createForStaff(1, "Staff caller one"),
+				() -> this.requestService.createForStaff(1, "Staff caller two"));
+
+		assertThat(results).extracting(result -> result.request().getId())
+			.doesNotContainNull()
+			.containsOnly(results.get(0).request().getId());
+		assertThat(results).filteredOn(RequestService.CreationResult::created).hasSize(1);
+		assertThat(this.requests.findAll()).singleElement().satisfies(request -> {
+			assertThat(request.getState()).isEqualTo(RequestState.WITH_STAFF);
+			assertThat(request.getRequestText()).isIn("Staff caller one", "Staff caller two");
+		});
+	}
+
+	@Test
+	void uc4ConcurrentStaffSlotClaimsHaveOneWinnerAndOneUnchangedRequest() throws Exception {
+		SchedulingRequest first = this.requestService.createForStaff(1, "First staff slot claim").request();
+		SchedulingRequest second = this.requestService.createForStaff(2, "Second staff slot claim").request();
+		SlotSuggestionPort.StaffSuggestionCommand command = new SlotSuggestionPort.StaffSuggestionCommand(4,
+				LocalDate.of(2026, 9, 10), LocalTime.of(10, 0), 30);
+
+		List<String> results = race(() -> staffSuggestionOutcome(first, command),
+				() -> staffSuggestionOutcome(second, command));
+
+		assertThat(results).containsExactlyInAnyOrder("COMPLETED", "UNAVAILABLE");
+		assertThat(this.requests.findAll()).extracting(SchedulingRequest::getState)
+			.containsExactlyInAnyOrder(RequestState.SUGGESTION_OFFERED, RequestState.WITH_STAFF);
+		assertThat(this.appointments.findAll()).singleElement().satisfies(appointment -> {
+			assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.HELD);
+			assertThat(appointment.getLastChangeReason()).isEqualTo("Concurrent staff selection");
+			assertThat(appointment.getLastChangedBy()).isEqualTo("staff");
+		});
+	}
+
+	@Test
+	void uc4ConcurrentActionsOnOneRequestUseTheOptimisticVersionBeforeSideEffects() throws Exception {
+		SchedulingRequest request = this.requestService.createForStaff(1, "One request, two staff actions").request();
+		Interpretation interpretation = new Interpretation(true, CareType.GENERAL, null, null, 30, null,
+				InterpretationOrigin.STAFF, null, null, null, LocalDate.of(2026, 9, 7), LocalTime.of(9, 0));
+		interpretation
+			.addWindow(InterpretationWindow.preferred(DayOfWeek.THURSDAY, LocalTime.of(9, 0), LocalTime.of(12, 0)));
+		this.requestService.authorInterpretation(request.getId(), request.getVersion(), interpretation);
+		long expectedVersion = this.requests.findById(request.getId()).orElseThrow().getVersion();
+
+		List<RequestService.ActionResult> results = race(
+				() -> this.requestService.bookDirectly(request.getId(), expectedVersion,
+						new SlotSuggestionPort.StaffDirectBookingCommand(4, LocalDate.of(2026, 9, 10),
+								LocalTime.of(9, 0), 30, "First concurrent booking", "staff")),
+				() -> this.requestService.bookDirectly(request.getId(), expectedVersion,
+						new SlotSuggestionPort.StaffDirectBookingCommand(5, LocalDate.of(2026, 9, 10),
+								LocalTime.of(9, 0), 30, "Second concurrent booking", "staff")));
+
+		assertThat(results).extracting(RequestService.ActionResult::messageKey)
+			.containsExactlyInAnyOrder(null, "scheduling.request.stale");
+		assertThat(this.requests.findById(request.getId()).orElseThrow().getState()).isEqualTo(RequestState.ACCEPTED);
+		assertThat(this.appointments.findAll()).singleElement().satisfies(appointment -> {
+			assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
+			assertThat(appointment.getLastChangeReason()).isIn("First concurrent booking", "Second concurrent booking");
+		});
 	}
 
 	@Test
@@ -140,6 +210,18 @@ class ConcurrencyInvariantTests {
 				InterpretationWindow.preferred(LocalDate.of(2026, 9, 8), LocalTime.of(9, 0), LocalTime.of(9, 30)));
 		this.requestService.interpretationSucceeded(requestId, interpretation);
 		return requestId;
+	}
+
+	private String staffSuggestionOutcome(SchedulingRequest request,
+			SlotSuggestionPort.StaffSuggestionCommand command) {
+		try {
+			RequestService.ActionResult result = this.requestService.placeStaffSuggestion(request.getId(),
+					request.getVersion(), command, "Concurrent staff selection", "staff");
+			return result.messageKey() == null ? "COMPLETED" : result.messageKey();
+		}
+		catch (IllegalStateException ex) {
+			return "UNAVAILABLE";
+		}
 	}
 
 	private <T> List<T> race(Callable<T> first, Callable<T> second) throws Exception {

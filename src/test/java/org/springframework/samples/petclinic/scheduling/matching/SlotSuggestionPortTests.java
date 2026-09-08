@@ -125,7 +125,8 @@ class SlotSuggestionPortTests {
 		SchedulingRequest staffRequest = this.requestService.createForStaff(2, "Hold later time for workload test")
 			.request();
 		this.requestService.placeStaffSuggestion(staffRequest.getId(), staffRequest.getVersion(),
-				new SlotSuggestionPort.StaffSuggestionCommand(1, DATE.plusDays(1), LocalTime.of(11, 0), 30));
+				new SlotSuggestionPort.StaffSuggestionCommand(1, DATE.plusDays(1), LocalTime.of(11, 0), 30),
+				"Workload test", "staff");
 
 		int ownerRequestId = startRequestWithWindows();
 		this.requestService.confirmInterpretation(ownerRequestId);
@@ -162,9 +163,12 @@ class SlotSuggestionPortTests {
 	void uc3Rule20_staffContinuationUsesTheSameEffectiveAvailability() {
 		SchedulingRequest staffRequest = this.requestService.createForStaff(2, "Invalid Saturday suggestion").request();
 
-		assertThatThrownBy(() -> this.requestService.placeStaffSuggestion(staffRequest.getId(),
-				staffRequest.getVersion(),
-				new SlotSuggestionPort.StaffSuggestionCommand(1, LocalDate.of(2026, 9, 12), LocalTime.of(10, 0), 30)))
+		assertThatThrownBy(
+				() -> this.requestService
+					.placeStaffSuggestion(staffRequest.getId(), staffRequest.getVersion(),
+							new SlotSuggestionPort.StaffSuggestionCommand(1, LocalDate.of(2026, 9, 12),
+									LocalTime.of(10, 0), 30),
+							"Saturday suggestion", "staff"))
 			.isInstanceOf(IllegalStateException.class);
 
 		SchedulingRequest reloaded = this.requests.findById(staffRequest.getId()).orElseThrow();

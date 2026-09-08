@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
+<body>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 th:text="#{scheduling.staff.request.detail}">Scheduling request</h2>
+  <a class="btn btn-secondary" th:href="@{/staff/queue}" th:text="#{scheduling.staff.queue.back}">Back to queue</a>
+</div>
+
+<div th:if="${actionErrorKey}" class="alert alert-danger" role="alert" th:text="#{${actionErrorKey}}">Error</div>
+<div th:if="${actionNoticeKey}" class="alert alert-info" role="status" th:text="#{${actionNoticeKey}}">Notice</div>
+<ul th:if="${interpretationErrors}" class="alert alert-danger" role="alert">
+  <li th:each="errorKey : ${interpretationErrors}" th:text="#{${errorKey}}">Validation error</li>
+</ul>
+
+<section class="card mb-4" id="request-summary">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3" th:text="#{scheduling.queue.owner}">Owner</dt>
+      <dd class="col-sm-9" id="request-owner" th:text="${detail.request.ownerName}">Owner</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.queue.pet}">Pet</dt>
+      <dd class="col-sm-9" id="request-pet" th:text="${detail.request.petName}">Pet</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.queue.status}">Status</dt>
+      <dd class="col-sm-9" id="request-state" th:text="#{${detail.request.stateMessageKey}}">State</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.staff.request.version}">Version</dt>
+      <dd class="col-sm-9" id="request-version" th:text="${detail.request.version}">0</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.queue.request}">Request</dt>
+      <dd class="col-sm-9" id="request-text" th:text="${detail.request.requestText}">Request text</dd>
+      <dt class="col-sm-3" th:text="#{scheduling.staff.reason}">Reason</dt>
+      <dd class="col-sm-9" id="request-reason">
+        <span th:if="${detail.request.reasonMessageKey}" th:text="#{${detail.request.reasonMessageKey}}">Reason</span>
+        <span th:unless="${detail.request.reasonMessageKey}" th:text="#{none}">none</span>
+        <span th:if="${detail.request.staffReason}" th:text="| - ${detail.request.staffReason}|">detail</span>
+      </dd>
+      <dt class="col-sm-3" th:text="#{scheduling.interpretation.origin}">Origin</dt>
+      <dd class="col-sm-9" id="request-origin">
+        <span th:if="${detail.request.originMessageKey}" th:text="#{${detail.request.originMessageKey}}">Origin</span>
+        <span th:unless="${detail.request.originMessageKey}" th:text="#{none}">none</span>
+      </dd>
+    </dl>
+  </div>
+</section>
+
+<section th:if="${detail.request.heldSlot}" class="card mb-4" id="held-slot">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.queue.hold}">Held slot</h3>
+    <p>
+      <span th:text="|${detail.request.heldSlot.date} ${detail.request.heldSlot.startTime}-${detail.request.heldSlot.endTime}|">Time</span>,
+      <span th:text="${detail.request.heldSlot.veterinarianName}">Veterinarian</span>.
+      <span th:text="#{scheduling.queue.holdAge}">Hold age</span>:
+      <span th:text="#{scheduling.unit.minutes(${detail.request.heldSlot.ageMinutes})}">0 minutes</span>
+    </p>
+    <form th:if="${detail.request.state.name() == 'SUGGESTION_OFFERED'}"
+          th:action="@{/staff/requests/{id}/release-hold(id=${detail.request.id})}" method="post" class="row g-2">
+      <input type="hidden" name="version" th:value="${detail.request.version}">
+      <div class="col-md-8">
+        <label for="detail-release-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label>
+        <input id="detail-release-reason" name="reason" class="form-control" required>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-warning" type="submit" th:text="#{scheduling.queue.release}">Release hold</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card mb-4" id="current-interpretation">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.staff.interpretation.current}">Current interpretation</h3>
+    <p th:unless="${detail.current}" class="text-muted" th:text="#{scheduling.staff.interpretation.none}">No interpretation</p>
+    <div th:if="${detail.current}">
+      <dl class="row">
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.origin}">Origin</dt>
+        <dd class="col-sm-8" th:text="#{${detail.current.originMessageKey}}">Origin</dd>
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.understood}">Understood</dt>
+        <dd class="col-sm-8" th:text="${detail.current.understood} ? #{scheduling.interpretation.understood.yes} : #{scheduling.interpretation.understood.no}">Yes</dd>
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.care}">Care</dt>
+        <dd class="col-sm-8"><span th:if="${detail.current.careTypeMessageKey}" th:text="#{${detail.current.careTypeMessageKey}}">Care</span><span th:unless="${detail.current.careTypeMessageKey}" th:text="#{none}">none</span></dd>
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.specialty}">Specialty</dt>
+        <dd class="col-sm-8">
+          <span th:if="${detail.current.specialty}" th:text="${detail.current.specialty}">Specialty</span>
+          <span th:unless="${detail.current.specialty}" th:text="#{none}">none</span>
+          <span th:if="${detail.current.specialtyLabel}" th:text="| - ${detail.current.specialtyLabel}|">label</span>
+        </dd>
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.duration.requested}">Duration</dt>
+        <dd class="col-sm-8"><span th:if="${detail.current.durationMinutes != null}" th:text="#{scheduling.unit.minutes(${detail.current.durationMinutes})}">Duration</span><span th:unless="${detail.current.durationMinutes != null}" th:text="#{none}">none</span></dd>
+        <dt class="col-sm-4" th:text="#{scheduling.interpretation.veterinarian}">Preferred veterinarian</dt>
+        <dd class="col-sm-8"><span th:if="${detail.current.preferredVetName}" th:text="${detail.current.preferredVetName}">Vet</span><span th:unless="${detail.current.preferredVetName}" th:text="#{none}">none</span></dd>
+      </dl>
+      <div class="row">
+        <div class="col-md-4">
+          <h4 class="h6" th:text="#{scheduling.interpretation.windows.preferred}">Preferred</h4>
+          <ul><li th:each="window : ${detail.current.preferredWindows}" th:text="|${window.dayOrDate} ${window.startTime}-${window.endTime}|">Window</li>
+              <li th:if="${#lists.isEmpty(detail.current.preferredWindows)}" th:text="#{none}">none</li></ul>
+        </div>
+        <div class="col-md-4">
+          <h4 class="h6" th:text="#{scheduling.interpretation.windows.allowed}">Allowed</h4>
+          <ul><li th:each="window : ${detail.current.allowedWindows}" th:text="|${window.dayOrDate} ${window.startTime}-${window.endTime}|">Window</li>
+              <li th:if="${#lists.isEmpty(detail.current.allowedWindows)}" th:text="#{none}">none</li></ul>
+        </div>
+        <div class="col-md-4">
+          <h4 class="h6" th:text="#{scheduling.interpretation.windows.excluded}">Excluded</h4>
+          <ul><li th:each="window : ${detail.current.excludedWindows}" th:text="|${window.dayOrDate} ${window.startTime}-${window.endTime}|">Window</li>
+              <li th:if="${#lists.isEmpty(detail.current.excludedWindows)}" th:text="#{none}">none</li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section th:if="${detail.request.state.name() == 'WITH_STAFF'}" class="card mb-4" id="interpretation-authoring">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.staff.interpretation.author}">Review or author interpretation</h3>
+    <form th:action="@{/staff/requests/{id}/interpretation(id=${detail.request.id})}" method="post"
+          th:object="${interpretationForm}" class="row g-3">
+      <input type="hidden" name="version" th:value="${detail.request.version}">
+      <div class="col-md-4">
+        <label for="careType" class="form-label" th:text="#{scheduling.interpretation.care}">Care need</label>
+        <select id="careType" th:field="*{careType}" class="form-select" required>
+          <option value="" th:text="#{scheduling.staff.choose}">Choose</option>
+          <option value="GENERAL" th:text="#{scheduling.careType.general}">General</option>
+          <option value="SPECIALTY" th:text="#{scheduling.careType.specialty}">Specialty</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="specialty" class="form-label" th:text="#{scheduling.interpretation.specialty}">Specialty</label>
+        <select id="specialty" th:field="*{specialty}" class="form-select">
+          <option value="" th:text="#{none}">none</option>
+          <option th:each="specialty : ${detail.specialties}" th:value="${specialty}" th:text="${specialty}">specialty</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="specialtyLabel" class="form-label" th:text="#{scheduling.interpretation.other}">Other specialty</label>
+        <input id="specialtyLabel" th:field="*{specialtyLabel}" class="form-control" maxlength="255">
+      </div>
+      <div class="col-md-4">
+        <label for="durationMinutes" class="form-label" th:text="#{scheduling.interpretation.duration.requested}">Duration</label>
+        <input id="durationMinutes" th:field="*{durationMinutes}" class="form-control" inputmode="numeric">
+      </div>
+      <div class="col-md-8">
+        <label for="preferredVetId" class="form-label" th:text="#{scheduling.interpretation.veterinarian}">Preferred veterinarian</label>
+        <select id="preferredVetId" th:field="*{preferredVetId}" class="form-select">
+          <option value="" th:text="#{none}">none</option>
+          <option th:each="vet : ${detail.veterinarians}" th:value="${vet.id}" th:text="|${vet.name} - ${#strings.listJoin(vet.specialties, ', ')}|">Vet</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <p class="form-text" th:text="#{scheduling.staff.interpretation.windows.hint}">One window per line</p>
+      </div>
+      <div class="col-md-4">
+        <label for="preferredWindows" class="form-label" th:text="#{scheduling.interpretation.windows.preferred}">Preferred windows</label>
+        <textarea id="preferredWindows" th:field="*{preferredWindows}" class="form-control" rows="4"></textarea>
+      </div>
+      <div class="col-md-4">
+        <label for="allowedWindows" class="form-label" th:text="#{scheduling.interpretation.windows.allowed}">Allowed windows</label>
+        <textarea id="allowedWindows" th:field="*{allowedWindows}" class="form-control" rows="4"></textarea>
+      </div>
+      <div class="col-md-4">
+        <label for="excludedWindows" class="form-label" th:text="#{scheduling.interpretation.windows.excluded}">Excluded windows</label>
+        <textarea id="excludedWindows" th:field="*{excludedWindows}" class="form-control" rows="4"></textarea>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary" th:text="#{scheduling.staff.interpretation.save}">Save interpretation</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section th:if="${detail.request.state.name() == 'WITH_STAFF'}" class="card mb-4" id="staff-slot-actions">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.staff.resolve}">Resolve request</h3>
+    <div class="alert alert-warning" th:unless="${detail.currentComplete}" th:text="#{scheduling.staff.interpretation.required}">Complete interpretation required</div>
+    <div th:if="${detail.currentComplete}">
+      <p th:text="#{scheduling.staff.override.notice}">Owner preferences are advisory.</p>
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <h4 class="h6" th:text="#{scheduling.staff.suggestion.place}">Place suggestion</h4>
+          <form th:action="@{/staff/requests/{id}/suggest(id=${detail.request.id})}" method="post" class="row g-2">
+            <input type="hidden" name="version" th:value="${detail.request.version}">
+            <div class="col-12"><label for="suggest-vet" class="form-label" th:text="#{scheduling.slot.veterinarian}">Veterinarian</label>
+              <select id="suggest-vet" name="veterinarianId" class="form-select" required>
+                <option th:each="vet : ${detail.veterinarians}" th:value="${vet.id}" th:text="${vet.name}"
+                        th:classappend="${vet.specialtyMatch} ? 'fw-bold' : 'text-warning'">Vet</option>
+              </select></div>
+            <div class="col-12"><ul class="small"><li th:each="vet : ${detail.veterinarians}"><span th:text="${vet.name}">Vet</span>: <span th:text="#{${vet.matchMessageKey}}">match</span></li></ul></div>
+            <div class="col-md-6"><label for="suggest-date" class="form-label" th:text="#{scheduling.slot.date}">Date</label><input id="suggest-date" type="date" name="date" class="form-control" required></div>
+            <div class="col-md-6"><label for="suggest-time" class="form-label" th:text="#{scheduling.slot.time}">Time</label><input id="suggest-time" type="time" step="900" name="startTime" class="form-control" required></div>
+            <div class="col-12"><label for="suggest-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="suggest-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.current.durationMinutes != null ? detail.current.durationMinutes : 30}"></div>
+            <div class="col-12"><label for="suggest-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="suggest-reason" name="reason" class="form-control" required></div>
+            <div class="col-12"><button type="submit" class="btn btn-primary" th:text="#{scheduling.staff.suggestion.place}">Place suggestion</button></div>
+          </form>
+        </div>
+        <div class="col-lg-6">
+          <h4 class="h6" th:text="#{scheduling.appointment.book}">Book appointment</h4>
+          <form th:action="@{/staff/requests/{id}/book(id=${detail.request.id})}" method="post" class="row g-2">
+            <input type="hidden" name="version" th:value="${detail.request.version}">
+            <div class="col-12"><label for="book-vet" class="form-label" th:text="#{scheduling.slot.veterinarian}">Veterinarian</label>
+              <select id="book-vet" name="veterinarianId" class="form-select" required>
+                <option th:each="vet : ${detail.veterinarians}" th:value="${vet.id}" th:text="${vet.name}"
+                        th:classappend="${vet.specialtyMatch} ? 'fw-bold' : 'text-warning'">Vet</option>
+              </select></div>
+            <div class="col-12"><ul class="small"><li th:each="vet : ${detail.veterinarians}"><span th:text="${vet.name}">Vet</span>: <span th:text="#{${vet.matchMessageKey}}">match</span></li></ul></div>
+            <div class="col-md-6"><label for="book-date" class="form-label" th:text="#{scheduling.slot.date}">Date</label><input id="book-date" type="date" name="date" class="form-control" required></div>
+            <div class="col-md-6"><label for="book-time" class="form-label" th:text="#{scheduling.slot.time}">Time</label><input id="book-time" type="time" step="900" name="startTime" class="form-control" required></div>
+            <div class="col-md-6"><label for="book-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="book-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.current.durationMinutes != null ? detail.current.durationMinutes : 30}"></div>
+            <div class="col-md-6"><label for="book-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="book-reason" name="reason" class="form-control" required></div>
+            <div class="col-12"><button type="submit" class="btn btn-success" th:text="#{scheduling.appointment.book}">Book appointment</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card mb-4" id="interpretation-history">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.staff.interpretation.history}">Earlier versions</h3>
+    <p th:if="${#lists.isEmpty(detail.history)}" class="text-muted" th:text="#{scheduling.empty}">No items</p>
+    <article th:each="version : ${detail.history}" class="border-top pt-3 mt-3">
+      <h4 class="h6"><span th:text="#{scheduling.staff.interpretation.version}">Version</span> <span th:text="${version.id}">1</span></h4>
+      <dl class="row mb-0">
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.origin}">Origin</dt><dd class="col-sm-9" th:text="#{${version.originMessageKey}}">Origin</dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.understood}">Understood</dt><dd class="col-sm-9" th:text="${version.understood} ? #{scheduling.interpretation.understood.yes} : #{scheduling.interpretation.understood.no}">Yes</dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.care}">Care</dt><dd class="col-sm-9"><span th:if="${version.careTypeMessageKey}" th:text="#{${version.careTypeMessageKey}}">Care</span><span th:unless="${version.careTypeMessageKey}" th:text="#{none}">none</span></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.specialty}">Specialty</dt><dd class="col-sm-9"><span th:if="${version.specialty}" th:text="${version.specialty}">Specialty</span><span th:unless="${version.specialty}" th:text="#{none}">none</span><span th:if="${version.specialtyLabel}" th:text="| - ${version.specialtyLabel}|">label</span></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.duration.requested}">Duration</dt><dd class="col-sm-9"><span th:if="${version.durationMinutes != null}" th:text="#{scheduling.unit.minutes(${version.durationMinutes})}">Duration</span><span th:unless="${version.durationMinutes != null}" th:text="#{none}">none</span></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.veterinarian}">Preferred veterinarian</dt><dd class="col-sm-9"><span th:if="${version.preferredVetName}" th:text="${version.preferredVetName}">Vet</span><span th:unless="${version.preferredVetName}" th:text="#{none}">none</span></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.windows.preferred}">Preferred</dt><dd class="col-sm-9"><ul class="list-unstyled mb-0"><li th:each="window : ${version.preferredWindows}" th:text="${window.displayValue}">Window</li><li th:if="${#lists.isEmpty(version.preferredWindows)}" th:text="#{none}">none</li></ul></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.windows.allowed}">Allowed</dt><dd class="col-sm-9"><ul class="list-unstyled mb-0"><li th:each="window : ${version.allowedWindows}" th:text="${window.displayValue}">Window</li><li th:if="${#lists.isEmpty(version.allowedWindows)}" th:text="#{none}">none</li></ul></dd>
+        <dt class="col-sm-3" th:text="#{scheduling.interpretation.windows.excluded}">Excluded</dt><dd class="col-sm-9"><ul class="list-unstyled mb-0"><li th:each="window : ${version.excludedWindows}" th:text="${window.displayValue}">Window</li><li th:if="${#lists.isEmpty(version.excludedWindows)}" th:text="#{none}">none</li></ul></dd>
+      </dl>
+    </article>
+  </div>
+</section>
+</body>
+</html>

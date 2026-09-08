@@ -13,7 +13,8 @@ public interface SlotSuggestionPort {
 
 	void releaseSuggestion(SchedulingRequest request);
 
-	boolean placeStaffSuggestion(SchedulingRequest request, StaffSuggestionCommand command);
+	boolean placeStaffSuggestion(SchedulingRequest request, StaffSuggestionCommand command, String reason,
+			String changedBy);
 
 	boolean bookDirectly(SchedulingRequest request, StaffDirectBookingCommand command);
 

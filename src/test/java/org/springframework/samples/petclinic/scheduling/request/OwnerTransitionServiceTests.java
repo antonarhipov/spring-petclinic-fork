@@ -156,6 +156,8 @@ class OwnerTransitionServiceTests {
 			assertThat(reloaded.getState()).isEqualTo(RequestState.AWAITING_CONSENT);
 			assertThat(reloaded.getRequestText()).isEqualTo("Edited text 3");
 			assertThat(reloaded.getRejections()).hasSize(1);
+			assertThat(reloaded.getCurrentInterpretation()).isNull();
+			assertThat(reloaded.getInterpretations()).hasSize(1);
 			return null;
 		});
 	}

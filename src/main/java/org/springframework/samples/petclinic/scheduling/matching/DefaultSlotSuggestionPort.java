@@ -22,6 +22,7 @@ import org.springframework.samples.petclinic.scheduling.request.InterpretationWi
 import org.springframework.samples.petclinic.scheduling.request.Rejection;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SlotSuggestionPort;
+import org.springframework.samples.petclinic.scheduling.request.StaffSlotUnavailableException;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.stereotype.Component;
 
@@ -177,28 +178,27 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 	}
 
 	@Override
-	public boolean placeStaffSuggestion(SchedulingRequest request, StaffSuggestionCommand command) {
-		releaseSuggestion(request);
-
+	public boolean placeStaffSuggestion(SchedulingRequest request, StaffSuggestionCommand command, String reason,
+			String changedBy) {
 		LocalTime end = command.startTime().plusMinutes(command.durationMinutes());
-		if (!isStaffSlotFeasible(command.veterinarianId(), command.date(), command.startTime(), end,
-				command.durationMinutes())) {
-			return false;
+		String refusal = staffSlotRefusal(command.veterinarianId(), command.date(), command.startTime(), end,
+				command.durationMinutes());
+		if (refusal != null) {
+			throw new StaffSlotUnavailableException(refusal);
 		}
 		return this.appointmentService
 			.createHeld(request, command.veterinarianId(), command.date(), command.startTime(), end,
-					RankReason.STAFF_SELECTED.getMessageKey())
+					RankReason.STAFF_SELECTED.getMessageKey(), reason, changedBy)
 			.isPresent();
 	}
 
 	@Override
 	public boolean bookDirectly(SchedulingRequest request, StaffDirectBookingCommand command) {
-		releaseSuggestion(request);
-
 		LocalTime end = command.startTime().plusMinutes(command.durationMinutes());
-		if (!isStaffSlotFeasible(command.veterinarianId(), command.date(), command.startTime(), end,
-				command.durationMinutes())) {
-			return false;
+		String refusal = staffSlotRefusal(command.veterinarianId(), command.date(), command.startTime(), end,
+				command.durationMinutes());
+		if (refusal != null) {
+			throw new StaffSlotUnavailableException(refusal);
 		}
 		return this.appointmentService
 			.bookDirectly(request, command.veterinarianId(), command.date(), command.startTime(), end, command.reason(),
@@ -270,21 +270,26 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 		return count != null ? count : 0;
 	}
 
-	private boolean isStaffSlotFeasible(int vetId, LocalDate date, LocalTime start, LocalTime end,
-			int durationMinutes) {
+	private String staffSlotRefusal(int vetId, LocalDate date, LocalTime start, LocalTime end, int durationMinutes) {
 		ClinicSettings settings = this.settingsRepository.getCurrentSettings();
 		if (durationMinutes < settings.getMinimumDurationMinutes()
-				|| durationMinutes > settings.getMaximumDurationMinutes() || !end.isAfter(start)
-				|| !FeasibilityChecker.isGridAligned(start)) {
-			return false;
+				|| durationMinutes > settings.getMaximumDurationMinutes() || !end.isAfter(start)) {
+			return "scheduling.slot.invalid.duration";
 		}
-		return this.availabilityService.getOpeningHours(date)
+		if (!FeasibilityChecker.isGridAligned(start)) {
+			return "scheduling.slot.invalid.grid";
+		}
+		boolean open = this.availabilityService.getOpeningHours(date)
 			.filter(opening -> FeasibilityChecker.isInsideOpeningHours(start, end,
 					new FeasibilityChecker.OpeningHours(opening.getWeekday(), opening.getOpenTime(),
 							opening.getCloseTime())))
-			.isPresent()
-				&& FeasibilityChecker.isInsideEffectiveBlock(vetId, date, start, end,
-						this.availabilityService.getEffectiveAvailability(vetId, date));
+			.isPresent();
+		if (!open) {
+			return "scheduling.slot.invalid.opening";
+		}
+		return FeasibilityChecker.isInsideEffectiveBlock(vetId, date, start, end,
+				this.availabilityService.getEffectiveAvailability(vetId, date)) ? null
+						: "scheduling.slot.invalid.block";
 	}
 
 }

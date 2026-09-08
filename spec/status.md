@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-4, UC-5, UC-6, UC-7, UC-8
+- Use case: UC-4
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none
 
 ## Progress
 
@@ -13,7 +13,7 @@
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | APPROVED | UC-1 | `72f152e` | [APPROVED](convergence/UC-2.md) - walkthrough passed |
 | UC-3 | APPROVED | UC-1 | `4477d22` | [APPROVED](convergence/UC-3.md) - walkthrough passed |
-| UC-4 | NOT_STARTED | UC-1 | - | - |
+| UC-4 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | pending |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
 | UC-7 | NOT_STARTED | UC-1 | - | - |
@@ -222,6 +222,75 @@
 | RULE-21 | Exact absent/raw values and duration boundaries are covered in `InterpretationPersistenceTests.java:119`, `InterpretationPersistenceTests.java:213`, and `DurationAndTimeTests.java:93`. |
 | RULE-22 | The exact rejected vet/date/time survives edit, reinterpretation, restart, and rematch in `SlotSuggestionPortTests.java:301` and `RuntimePersistenceRestartTests.java:41`. |
 | RULE-24 | Maven/H2-only inventory and flattened AI property assertions are in `RepositoryScopeTests.java:54`; isolated test/runtime persistence boundaries are covered by `TestDataIsolationTests.java:50` and `RuntimePersistenceRestartTests.java:41`. |
+
+## UC-4 Evidence
+
+- Started: 2026-09-08T08:42:59+02:00
+- Started from: `04a2776db29429e8aa926313dd21bde6e5b8e460`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Staff request and appointment behavior: `Appointment.java`, `AppointmentService.java`, `DefaultSlotSuggestionPort.java`, `RequestService.java`, `SchedulingRequest.java`, `SchedulingRequestRepository.java`, `SlotSuggestionPort.java`, `StaffInterpretationForm.java`, `StaffQueueController.java`, `StaffQueueQueryService.java`, `StaffRequestController.java`, and `StaffSlotUnavailableException.java` under `src/main/java/org/springframework/samples/petclinic/scheduling`.
+  - Presentation and localization: `src/main/resources/templates/staff/queue.html`, `src/main/resources/templates/staff/request-detail.html`, and all eleven `src/main/resources/messages/messages*.properties` bundles.
+  - Verification: `ConcurrencyInvariantTests.java`, `SchedulingE2eTests.java`, `AppointmentStateTransitionTests.java`, `SlotSuggestionPortTests.java`, `OwnerTransitionServiceTests.java`, `RequestCreationServiceTests.java`, `RequestStateTransitionTests.java`, `StaffSchedulingWebTests.java`, and `SecurityMatrixWebTests.java` under `src/test/java/org/springframework/samples/petclinic`.
+- Commands and results:
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=ConcurrencyInvariantTests test` - PASS, 6 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=SchedulingE2eTests test` - PASS, 15 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=StaffSchedulingWebTests,I18nPropertiesSyncTest test` - PASS, 12 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` - PASS, 338 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:validate` and `git diff --check` - PASS.
+  - `data/petclinic.mv.db` remained 114688 bytes with SHA-256 `6bd75c0c92324582c86d98d90eada9612d7b40f8711cedf2d8f79c08e37a6820` and timestamp `2026-09-08T15:16:05+0200` across the final test run.
+
+| Contract element | Evidence |
+|---|---|
+| UC-4 main steps 1-4 | Exact queue partition/order and rendered staff detail are asserted in `StaffSchedulingWebTests.java:82` and `StaffSchedulingWebTests.java:106`; form-login queue entry is exercised at real-server boundary in `SchedulingE2eTests.java:285`. |
+| UC-4 main steps 5-6 | Latest-value prefill, empty declined-consent form, immutable history, STAFF origin, and no duplicate version are asserted in `StaffSchedulingWebTests.java:106` and `StaffSchedulingWebTests.java:142`; real HTTP authoring is at `SchedulingE2eTests.java:301`. |
+| UC-4 main steps 7-10 | Required reason, specialty match/mismatch display, bounded constraint validation, Confirmed/Accepted state, audit values, queue removal, and owner visibility are asserted in `StaffSchedulingWebTests.java:247` and the real-server journey at `SchedulingE2eTests.java:312`. |
+| UC-4 extension 1a | Staff creation produces `WITH_STAFF/STAFF_CREATED`, no interpretation, and zero AI calls in `SchedulingE2eTests.java:289`. |
+| UC-4 extension 1b | Sequential and concurrent duplicates return the existing request in `RequestCreationServiceTests.java:110`, `SchedulingE2eTests.java:350`, and `ConcurrencyInvariantTests.java:72`. |
+| UC-4 extension 2a | Reasoned hold release deletes the hold and routes to `WITH_STAFF/HOLD_RELEASED` in `StaffSchedulingWebTests.java:318`. |
+| UC-4 extension 2b | In-progress state, origin, held slot, age, inspect action, and release-only mutation surface are rendered and asserted in `StaffSchedulingWebTests.java:318`. |
+| UC-4 extension 3a | An abandoned request refuses the later staff action, remains out of the queue, creates nothing, and invokes no interpreter in `StaffSchedulingWebTests.java:373`. |
+| UC-4 extension 5a | Resubmitting unchanged complete structured values does not create a version in `StaffSchedulingWebTests.java:106`. |
+| UC-4 extension 5b | The complete request action-by-state matrix refuses authoring outside With staff without mutation in `RequestStateTransitionTests.java:108`. |
+| UC-4 extension 5c | Missing specialty, invalid duration, and absent usable windows render localized errors and create no version or appointment in `StaffSchedulingWebTests.java:195`. |
+| UC-4 extension 7a | A reasoned staff suggestion creates one Held appointment, moves to Suggestion offered, and is owner-visible in `StaffSchedulingWebTests.java:318` and `SchedulingE2eTests.java:339`. |
+| UC-4 extension 7b | Duration, grid, opening, effective-block, overlap, and malformed-input refusals remain With staff and create nothing in `StaffSchedulingWebTests.java:166`, `StaffSchedulingWebTests.java:218`, and `StaffSchedulingWebTests.java:247`. |
+| UC-4 extension 8a | A booking before lead/horizon, outside the authored window, and with a specialty-mismatching veterinarian succeeds after the mismatch display in `StaffSchedulingWebTests.java:247` and `SchedulingE2eTests.java:309`. |
+| UC-4 extension 8b | Clinic-closed, outside-block, grid, duration, and overlap inputs are specifically refused with unchanged appointment capacity in `StaffSchedulingWebTests.java:166` and `StaffSchedulingWebTests.java:247`. |
+| UC-4 extension 9a | Stale HTTP and raced same-request actions create no losing side effect in `StaffSchedulingWebTests.java:373` and `ConcurrencyInvariantTests.java:108`. |
+| UC-4 extension 9b | Two same-slot staff claims yield one Held winner and one unchanged With staff request in `ConcurrencyInvariantTests.java:88`. |
+| UC-4 extension 4a | Owner abandonment removes the request from Needs staff and makes later staff action a no-op in `StaffSchedulingWebTests.java:373`. |
+| UC-4 G1-G2 | Exact queue membership/order/fields are in `StaffSchedulingWebTests.java:82`; optimistic claim behavior is in `ConcurrencyInvariantTests.java:108` and `SchedulingRequestRepository.java:23`. |
+| UC-4 G3 | Zero AI calls and no booking/suggestion actions without a complete interpretation are asserted in `SchedulingE2eTests.java:289` and `StaffSchedulingWebTests.java:142`; all forged wrong-state staff actions are refused in `RequestStateTransitionTests.java:108`. |
+| UC-4 G4 | Complete current/history field values, origin, localized windows, preservation, and no duplicate version are asserted in `StaffSchedulingWebTests.java:106` and `RequestCreationServiceTests.java:125`. |
+| UC-4 G5 | Staff override success and every non-overridable constraint boundary are asserted in `StaffSchedulingWebTests.java:166` and `StaffSchedulingWebTests.java:247`. |
+| UC-4 G6 | Concurrent staff creation, same-slot claims, and same-request actions each leave one winner in `ConcurrencyInvariantTests.java:72`. |
+| UC-4 G7 | Owner visibility and abandonment from With staff pass in `SchedulingE2eTests.java:323` and `OwnerTransitionServiceTests.java:209`; the state matrix refuses editing in With staff. |
+| UC-4 G8 | Shared layout/localization scans pass; suggestion, booking, and release require and persist a reason in `StaffSchedulingWebTests.java:247` and `StaffSchedulingWebTests.java:318`. |
+| UC-4 success postcondition | The real-server journey proves both Accepted/Confirmed and Suggestion offered/one Held outcomes visible to the relevant owner in `SchedulingE2eTests.java:285`. |
+| UC-4 minimal guarantee | Constraint, malformed, stale, abandoned, wrong-state, and losing-concurrency tests compare state and side effects in `StaffSchedulingWebTests.java:166`, `StaffSchedulingWebTests.java:218`, `StaffSchedulingWebTests.java:373`, and `ConcurrencyInvariantTests.java:88`. |
+| UC-4 Requires UC-1 | The real-server journey authenticates seeded staff and owners through the approved form-login session boundary in `SchedulingE2eTests.java:286`; full security regressions pass. |
+| RULE-1 | Controllers delegate queries and lifecycle mutations to `StaffQueueQueryService.java:53` and `RequestService.java:276`; matching stays in `DefaultSlotSuggestionPort`. |
+| RULE-2 | Query models use read-only transactions at `StaffQueueQueryService.java:53`; all mutations are transactional in `RequestService.java:256` and `AppointmentService.java:56`. |
+| RULE-3 | Staff feasibility reuses framework-free `FeasibilityChecker` through `DefaultSlotSuggestionPort.java:278`; exact boundary tests are `StaffSchedulingWebTests.java:166`. |
+| RULE-4 | Allowed staff transitions and every unlisted state/action no-op are asserted in `RequestStateTransitionTests.java:108`. |
+| RULE-5 | Staff holds and direct bookings use the existing appointment aggregate; lifecycle/refusal regressions pass in `AppointmentStateTransitionTests.java`. |
+| RULE-6 | The unique active-pet constraint, optimistic staff claim, veterinarian lock, overlap recheck, and all three two-thread outcomes are exercised in `ConcurrencyInvariantTests.java:72`. |
+| RULE-7 | Immutable STAFF rows retain local date/time and interpretation values in `RequestCreationServiceTests.java:125` and `StaffSchedulingWebTests.java:106`; Flyway/restart regressions pass. |
+| RULE-8 | `SeedMigrationTests` passes exact normative sets and all credential comparisons in the 338-test suite. |
+| RULE-9 | New staff routes are covered as anonymous/owner/staff with CSRF and no-mutation assertions in `SecurityMatrixWebTests.java:61`. |
+| RULE-10 | No owner id is introduced under `/my/**`; owner result visibility continues through principal-scoped pages, and all owner-isolation regressions pass. |
+| RULE-12 | Staff creation/authoring/suggestion/booking invokes no interpreter in `SchedulingE2eTests.java:289` and `StaffSchedulingWebTests.java:373`. |
+| RULE-15 | Queue hold age uses only the injected clock at `StaffQueueQueryService.java:46`; time-dependent tests remain pinned. |
+| RULE-16 | Both staff templates use the shared PetClinic layout and state-specific actions; rendered DOM tests pass, with human walkthrough left to convergence. |
+| RULE-17 | Every new validation, flash, reason, and label key is present in all eleven bundles; `I18nPropertiesSyncTest` and localized weekday rendering at `StaffSchedulingWebTests.java:132` pass. |
+| RULE-18 | `SchedulingE2eTests.java:285` is the real-server actor journey; direct evidence maps every contract element above; 338 tests pass and runtime data is unchanged. |
+| RULE-19 | Duration, grid, opening-hours, continuous effective-block, and overlap checks run at `DefaultSlotSuggestionPort.java:278`; override and refusal evidence is `StaffSchedulingWebTests.java:166`. |
+| RULE-20 | Staff validation uses the same `AvailabilityService` calls at `DefaultSlotSuggestionPort.java:287`; approved matching parity tests remain green. |
+| RULE-21 | Staff values round-trip verbatim and unchanged submission creates no duplicate version in `StaffSchedulingWebTests.java:106`; duration is bounded only during slot validation. |
+| RULE-22 | UC-4 does not mutate rejection history; edit/history and durable-rejection regressions remain green in `OwnerTransitionServiceTests.java:111` and `SlotSuggestionPortTests`. |
+| RULE-24 | Repository-scope, H2 isolation, restart, README, and unsupported-stack absence tests pass in the full suite. |
 
 ## Blockers
 

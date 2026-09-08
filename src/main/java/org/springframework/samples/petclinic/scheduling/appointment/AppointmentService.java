@@ -56,11 +56,18 @@ public class AppointmentService {
 	@Transactional
 	public Optional<Appointment> createHeld(SchedulingRequest request, int vetId, LocalDate date, LocalTime startTime,
 			LocalTime endTime, String rankReason) {
+		return createHeld(request, vetId, date, startTime, endTime, rankReason, null, null);
+	}
+
+	@Transactional
+	public Optional<Appointment> createHeld(SchedulingRequest request, int vetId, LocalDate date, LocalTime startTime,
+			LocalTime endTime, String rankReason, String reason, String changedBy) {
 		Vet vet = lockAvailableVet(vetId, date, startTime, endTime, null);
 		if (vet == null) {
 			return Optional.empty();
 		}
-		Appointment appointment = Appointment.held(request, vet, date, startTime, endTime, rankReason, today(), now());
+		Appointment appointment = Appointment.held(request, vet, date, startTime, endTime, rankReason, reason,
+				changedBy, today(), now());
 		return Optional.of(this.appointments.saveAndFlush(appointment));
 	}
 

@@ -194,6 +194,7 @@ public class SchedulingRequest extends BaseEntity {
 
 	void replaceText(String requestText, LocalDate date, LocalTime time) {
 		this.requestText = requestText;
+		this.currentInterpretation = null;
 		this.withStaffReason = null;
 		this.staffReason = null;
 		transitionTo(RequestState.AWAITING_CONSENT, date, time);

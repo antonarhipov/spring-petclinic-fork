@@ -107,15 +107,16 @@ class RequestCreationServiceTests {
 
 	@Test
 	@Tag("AC-30")
-	void ac30_staff_duplicate_is_refused_without_row() {
+	void ac30_staff_duplicate_opens_existing_without_second_row() {
 		RequestService.CreationResult first = this.requestService.createForStaff(1, "staff-created request");
 		RequestService.CreationResult duplicate = this.requestService.createForStaff(1, "duplicate staff request");
 
 		assertThat(first.created()).isTrue();
 		assertThat(first.request().getState()).isEqualTo(RequestState.WITH_STAFF);
 		assertThat(first.request().getWithStaffReason()).isEqualTo(WithStaffReason.STAFF_CREATED);
-		assertThat(duplicate.request()).isNull();
-		assertThat(duplicate.messageKey()).isEqualTo("scheduling.request.duplicate.active");
+		assertThat(duplicate.request().getId()).isEqualTo(first.request().getId());
+		assertThat(duplicate.messageKey()).isNull();
+		assertThat(duplicate.created()).isFalse();
 		assertThat(this.requests.count()).isEqualTo(1);
 	}
 
@@ -167,20 +168,23 @@ class RequestCreationServiceTests {
 		LocalTime suggestionStart = LocalTime.of(10, 0);
 		SlotSuggestionPort.StaffSuggestionCommand suggestion = new SlotSuggestionPort.StaffSuggestionCommand(2,
 				appointmentDate, suggestionStart, 30);
-		when(this.slotSuggestions.placeStaffSuggestion(any(), eq(suggestion))).thenAnswer(invocation -> {
-			SchedulingRequest request = invocation.getArgument(0);
-			return this.appointmentService
-				.createHeld(request, suggestion.veterinarianId(), suggestion.date(), suggestion.startTime(),
-						suggestion.startTime().plusMinutes(suggestion.durationMinutes()), "scheduling.rank.staff")
-				.isPresent();
-		});
+		when(this.slotSuggestions.placeStaffSuggestion(any(), eq(suggestion), eq("Staff selected slot"), eq("staff")))
+			.thenAnswer(invocation -> {
+				SchedulingRequest request = invocation.getArgument(0);
+				return this.appointmentService
+					.createHeld(request, suggestion.veterinarianId(), suggestion.date(), suggestion.startTime(),
+							suggestion.startTime().plusMinutes(suggestion.durationMinutes()), "scheduling.rank.staff",
+							"Staff selected slot", "staff")
+					.isPresent();
+			});
 
 		SchedulingRequest suggestionRequest = this.requestService.createForStaff(1, "place a suggestion").request();
 		RequestService.ActionResult suggested = this.requestService.placeStaffSuggestion(suggestionRequest.getId(),
-				suggestionRequest.getVersion(), suggestion);
+				suggestionRequest.getVersion(), suggestion, "Staff selected slot", "staff");
 		assertThat(suggested.request().getState()).isEqualTo(RequestState.SUGGESTION_OFFERED);
-		assertThat(appointmentSnapshot(suggestionRequest.getId())).isEqualTo(new AppointmentSnapshot(2, appointmentDate,
-				suggestionStart, suggestionStart.plusMinutes(30), "HELD", "scheduling.rank.staff", null, null));
+		assertThat(appointmentSnapshot(suggestionRequest.getId()))
+			.isEqualTo(new AppointmentSnapshot(2, appointmentDate, suggestionStart, suggestionStart.plusMinutes(30),
+					"HELD", "scheduling.rank.staff", "Staff selected slot", "staff"));
 
 		LocalTime bookingStart = LocalTime.of(11, 0);
 		SlotSuggestionPort.StaffDirectBookingCommand booking = new SlotSuggestionPort.StaffDirectBookingCommand(3,

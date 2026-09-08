@@ -220,12 +220,14 @@ class RequestStateTransitionTests {
 	private int createStaffSuggestion() {
 		SchedulingRequest request = this.requestService.createForStaff(1, "staff suggestion").request();
 		SlotSuggestionPort.StaffSuggestionCommand command = suggestionCommand();
-		when(this.slotSuggestions.placeStaffSuggestion(any(), eq(command)))
+		when(this.slotSuggestions.placeStaffSuggestion(any(), eq(command), eq("Staff selected slot"), eq("staff")))
 			.thenAnswer(invocation -> this.appointmentService
 				.createHeld(invocation.getArgument(0), command.veterinarianId(), command.date(), command.startTime(),
-						command.startTime().plusMinutes(command.durationMinutes()), "scheduling.rank.staff")
+						command.startTime().plusMinutes(command.durationMinutes()), "scheduling.rank.staff",
+						"Staff selected slot", "staff")
 				.isPresent());
-		this.requestService.placeStaffSuggestion(request.getId(), request.getVersion(), command);
+		this.requestService.placeStaffSuggestion(request.getId(), request.getVersion(), command, "Staff selected slot",
+				"staff");
 		return request.getId();
 	}
 
@@ -430,7 +432,8 @@ class RequestStateTransitionTests {
 			@Override
 			void invoke(RequestService service, int id, long version) {
 				service.placeStaffSuggestion(id, version,
-						new SlotSuggestionPort.StaffSuggestionCommand(2, SLOT_DATE, TIME, 30));
+						new SlotSuggestionPort.StaffSuggestionCommand(2, SLOT_DATE, TIME, 30), "Staff selected slot",
+						"staff");
 			}
 		},
 		STAFF_BOOK {

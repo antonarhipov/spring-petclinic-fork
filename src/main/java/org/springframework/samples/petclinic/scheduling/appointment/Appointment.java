@@ -103,6 +103,12 @@ public class Appointment extends BaseEntity {
 
 	public static Appointment held(SchedulingRequest request, Vet vet, LocalDate date, LocalTime startTime,
 			LocalTime endTime, String rankReason, LocalDate createdDate, LocalTime createdTime) {
+		return held(request, vet, date, startTime, endTime, rankReason, null, null, createdDate, createdTime);
+	}
+
+	public static Appointment held(SchedulingRequest request, Vet vet, LocalDate date, LocalTime startTime,
+			LocalTime endTime, String rankReason, String reason, String changedBy, LocalDate createdDate,
+			LocalTime createdTime) {
 		Appointment appointment = new Appointment(request.getPet(), vet, date, startTime, endTime, null, null,
 				createdDate, createdTime);
 		appointment.request = request;
@@ -110,6 +116,8 @@ public class Appointment extends BaseEntity {
 		appointment.heldDate = createdDate;
 		appointment.heldTime = createdTime;
 		appointment.rankReason = rankReason;
+		appointment.lastChangeReason = reason;
+		appointment.lastChangedBy = changedBy;
 		return appointment;
 	}
 

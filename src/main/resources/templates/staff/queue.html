@@ -1,3 +1,117 @@
-<!DOCTYPE html><html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}"><body>
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'queue')}">
+<body>
 <h2 th:text="#{scheduling.queue}">Scheduling queue</h2>
-</body></html>
+
+<div th:if="${actionErrorKey}" class="alert alert-danger" role="alert" th:text="#{${actionErrorKey}}">Error</div>
+<div th:if="${actionNoticeKey}" class="alert alert-info" role="status" th:text="#{${actionNoticeKey}}">Notice</div>
+
+<section class="card mb-4" id="staff-request-create">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.staff.request.create}">Create request</h3>
+    <form th:action="@{/staff/requests}" method="post" class="row g-3">
+      <div class="col-md-5">
+        <label for="petId" class="form-label" th:text="#{scheduling.request.pet}">Pet</label>
+        <select id="petId" name="petId" class="form-select" required>
+          <option value="" th:text="#{scheduling.staff.request.pet.choose}">Choose a pet</option>
+          <option th:each="pet : ${queue.pets}" th:value="${pet.id}"
+                  th:text="|${pet.ownerName} - ${pet.name}|">Owner - pet</option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label for="requestText" class="form-label" th:text="#{scheduling.request.text}">Request</label>
+        <textarea id="requestText" name="requestText" class="form-control" maxlength="2000" required></textarea>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary" th:text="#{scheduling.staff.request.create}">Create request</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section id="needs-staff" class="mb-5">
+  <h3 th:text="#{scheduling.queue.needsStaff}">Needs staff</h3>
+  <p th:if="${#lists.isEmpty(queue.needsStaff)}" class="text-muted" th:text="#{scheduling.queue.empty}">No requests</p>
+  <div th:unless="${#lists.isEmpty(queue.needsStaff)}" class="table-responsive">
+    <table class="table table-striped">
+      <thead><tr>
+        <th th:text="#{scheduling.queue.owner}">Owner</th>
+        <th th:text="#{scheduling.queue.pet}">Pet</th>
+        <th th:text="#{scheduling.queue.request}">Request</th>
+        <th th:text="#{scheduling.staff.reason}">Reason</th>
+        <th th:text="#{scheduling.interpretation.origin}">Origin</th>
+        <th th:text="#{scheduling.actions}">Actions</th>
+      </tr></thead>
+      <tbody>
+      <tr th:each="request : ${queue.needsStaff}" th:id="|request-${request.id}|">
+        <td th:text="${request.ownerName}">Owner</td>
+        <td th:text="${request.petName}">Pet</td>
+        <td th:text="${request.requestText}">Request</td>
+        <td>
+          <span th:if="${request.reasonMessageKey}" th:text="#{${request.reasonMessageKey}}">Reason</span>
+          <span th:if="${request.staffReason}" th:text="| - ${request.staffReason}|">detail</span>
+        </td>
+        <td>
+          <span th:if="${request.originMessageKey}" th:text="#{${request.originMessageKey}}">Origin</span>
+          <span th:unless="${request.originMessageKey}" th:text="#{none}">none</span>
+        </td>
+        <td><a class="btn btn-primary btn-sm" th:href="@{/staff/requests/{id}(id=${request.id})}"
+               th:text="#{scheduling.staff.request.open}">Open</a></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="in-progress">
+  <h3 th:text="#{scheduling.queue.inProgress}">In progress</h3>
+  <p th:if="${#lists.isEmpty(queue.inProgress)}" class="text-muted" th:text="#{scheduling.queue.empty}">No requests</p>
+  <div th:unless="${#lists.isEmpty(queue.inProgress)}" class="table-responsive">
+    <table class="table table-striped">
+      <thead><tr>
+        <th th:text="#{scheduling.queue.owner}">Owner</th>
+        <th th:text="#{scheduling.queue.pet}">Pet</th>
+        <th th:text="#{scheduling.queue.status}">Status</th>
+        <th th:text="#{scheduling.interpretation.origin}">Origin</th>
+        <th th:text="#{scheduling.queue.hold}">Held slot</th>
+        <th th:text="#{scheduling.queue.holdAge}">Hold age</th>
+        <th th:text="#{scheduling.actions}">Actions</th>
+      </tr></thead>
+      <tbody>
+      <tr th:each="request : ${queue.inProgress}" th:id="|request-${request.id}|">
+        <td th:text="${request.ownerName}">Owner</td>
+        <td th:text="${request.petName}">Pet</td>
+        <td th:text="#{${request.stateMessageKey}}">State</td>
+        <td>
+          <span th:if="${request.originMessageKey}" th:text="#{${request.originMessageKey}}">Origin</span>
+          <span th:unless="${request.originMessageKey}" th:text="#{none}">none</span>
+        </td>
+        <td>
+          <span th:if="${request.heldSlot}"
+                th:text="|${request.heldSlot.date} ${request.heldSlot.startTime}-${request.heldSlot.endTime}, ${request.heldSlot.veterinarianName}|">Held slot</span>
+          <span th:unless="${request.heldSlot}" th:text="#{none}">none</span>
+        </td>
+        <td>
+          <span th:if="${request.heldSlot}" th:text="#{scheduling.unit.minutes(${request.heldSlot.ageMinutes})}">0 minutes</span>
+          <span th:unless="${request.heldSlot}" th:text="#{none}">none</span>
+        </td>
+        <td>
+          <a class="btn btn-secondary btn-sm" th:href="@{/staff/requests/{id}(id=${request.id})}"
+             th:text="#{scheduling.staff.request.inspect}">Inspect</a>
+          <form th:if="${request.heldSlot}" th:action="@{/staff/requests/{id}/release-hold(id=${request.id})}"
+                method="post" class="mt-2">
+            <input type="hidden" name="version" th:value="${request.version}">
+            <label th:for="|release-reason-${request.id}|" class="visually-hidden"
+                   th:text="#{scheduling.appointment.reason}">Reason</label>
+            <input th:id="|release-reason-${request.id}|" name="reason" class="form-control form-control-sm mb-1"
+                   required th:placeholder="#{scheduling.appointment.reason}">
+            <button type="submit" class="btn btn-warning btn-sm" th:text="#{scheduling.queue.release}">Release hold</button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</body>
+</html>

@@ -230,7 +230,8 @@ class SchedulingE2eTests {
 		HttpResponse<String> staffQueue = this.browser.loginAsNewSession("staff", "staff123", "/staff/queue");
 		this.browser.post("/staff/requests/" + assisted + "/suggest", staffQueue,
 				Map.of("version", text(value("select version from scheduling_requests where id = ?", assisted)),
-						"veterinarianId", "4", "date", "2026-09-04", "startTime", "10:00", "durationMinutes", "30"),
+						"veterinarianId", "4", "date", "2026-09-04", "startTime", "10:00", "durationMinutes", "30",
+						"reason", "Staff selected after reviewing the owner request"),
 				302);
 		assertRequestState(assisted, "SUGGESTION_OFFERED");
 		Map<String, Object> assistedHold = onlyAppointment(assisted, "HELD");
@@ -258,6 +259,14 @@ class SchedulingE2eTests {
 		assertWithStaff(declined, "DECLINED_CONSENT");
 
 		staffQueue = this.browser.loginAsNewSession("staff", "staff123", "/staff/queue");
+		HttpResponse<String> declinedDetail = this.browser.get("/staff/requests/" + declined, 200);
+		this.browser.post("/staff/requests/" + declined + "/interpretation", declinedDetail,
+				Map.of("version", text(value("select version from scheduling_requests where id = ?", declined)),
+						"careType", "GENERAL", "specialty", "", "specialtyLabel", "", "durationMinutes", "30",
+						"preferredVetId", "", "preferredWindows", "FRIDAY 10:00 16:00", "allowedWindows", "",
+						"excludedWindows", ""),
+				302);
+		staffQueue = this.browser.get("/staff/requests/" + declined, 200);
 		this.browser.post("/staff/requests/" + declined + "/book", staffQueue,
 				Map.of("version", text(value("select version from scheduling_requests where id = ?", declined)),
 						"veterinarianId", "5", "date", "2026-09-04", "startTime", "11:00", "durationMinutes", "30",
@@ -270,6 +279,85 @@ class SchedulingE2eTests {
 		this.browser.post("/staff/appointments/" + noShowAppointment + "/no-show", staffQueue, Map.of(), 302);
 		assertThat(value("select status from appointments where id = ?", noShowAppointment)).isEqualTo("NO_SHOW");
 		assertThat(count("select count(*) from visits where appointment_id = ?", noShowAppointment)).isZero();
+	}
+
+	@Test
+	void uc4_realServerStaffCreatesAuthorsResolvesAndOwnerSeesOutcomes() throws Exception {
+		HttpResponse<String> queue = this.browser.loginAsNewSession("staff", "staff123", "/staff/queue");
+		assertThat(queue.body()).contains("Needs staff", "In progress", "Create staff request");
+
+		HttpResponse<String> created = this.browser.post("/staff/requests", queue,
+				Map.of("petId", "1", "requestText", "Staff-created radiology request"), 302);
+		int bookedRequest = ((Number) value("select id from scheduling_requests where active_pet_id = 1")).intValue();
+		assertThat(created.headers().firstValue("Location").orElseThrow()).endsWith("/staff/requests/" + bookedRequest);
+		assertWithStaff(bookedRequest, "STAFF_CREATED");
+		assertThat(count("select count(*) from interpretations where request_id = ?", bookedRequest)).isZero();
+		assertThat(this.interpreter.getCallCount()).isZero();
+
+		HttpResponse<String> detail = this.browser.follow(created, 200);
+		assertThat(detail.body())
+			.contains("George Franklin", "Leo", "Request created by staff", "No interpretation has been recorded")
+			.doesNotContain("/staff/requests/" + bookedRequest + "/book");
+		HttpResponse<String> authored = this.browser.post("/staff/requests/" + bookedRequest + "/interpretation",
+				detail,
+				Map.of("version", text(value("select version from scheduling_requests where id = ?", bookedRequest)),
+						"careType", "SPECIALTY", "specialty", "radiology", "specialtyLabel", "", "durationMinutes",
+						"30", "preferredVetId", "5", "preferredWindows", "MONDAY 09:00 10:00", "allowedWindows", "",
+						"excludedWindows", ""),
+				302);
+		detail = this.browser.follow(authored, 200);
+		assertThat(detail.body()).contains("Clinic staff interpretation", "radiology", "matches requested specialty",
+				"specialty mismatch allowed", "/staff/requests/" + bookedRequest + "/book");
+
+		this.browser.post("/staff/requests/" + bookedRequest + "/book", detail,
+				Map.of("version", text(value("select version from scheduling_requests where id = ?", bookedRequest)),
+						"veterinarianId", "4", "date", "2026-09-04", "startTime", "10:30", "durationMinutes", "30",
+						"reason", "Staff override agreed with owner"),
+				302);
+		assertRequestState(bookedRequest, "ACCEPTED");
+		assertThat(
+				row("select status, vet_id, last_change_reason from appointments where request_id = ?", bookedRequest))
+			.containsEntry("STATUS", "CONFIRMED")
+			.containsEntry("VET_ID", 4)
+			.containsEntry("LAST_CHANGE_REASON", "Staff override agreed with owner");
+		HttpResponse<String> ownerAppointments = this.browser.loginAsNewSession("george", "george123",
+				"/my/appointments");
+		assertThat(ownerAppointments.body()).contains("2026-09-04", "Rafael Ortega",
+				"Staff override agreed with owner");
+
+		queue = this.browser.loginAsNewSession("staff", "staff123", "/staff/queue");
+		this.browser.post("/staff/requests", queue, Map.of("petId", "2", "requestText", "Staff suggestion request"),
+				302);
+		int suggestionRequest = ((Number) value("select id from scheduling_requests where active_pet_id = 2"))
+			.intValue();
+		detail = this.browser.get("/staff/requests/" + suggestionRequest, 200);
+		this.browser.post("/staff/requests/" + suggestionRequest + "/interpretation", detail, Map.of("version",
+				text(value("select version from scheduling_requests where id = ?", suggestionRequest)), "careType",
+				"GENERAL", "specialty", "", "specialtyLabel", "", "durationMinutes", "30", "preferredVetId", "",
+				"preferredWindows", "TUESDAY 09:00 12:00", "allowedWindows", "", "excludedWindows", ""), 302);
+		detail = this.browser.get("/staff/requests/" + suggestionRequest, 200);
+		this.browser.post("/staff/requests/" + suggestionRequest + "/suggest", detail,
+				Map.of("version",
+						text(value("select version from scheduling_requests where id = ?", suggestionRequest)),
+						"veterinarianId", "1", "date", "2026-09-08", "startTime", "10:00", "durationMinutes", "30",
+						"reason", "Staff selected this option"),
+				302);
+		assertRequestState(suggestionRequest, "SUGGESTION_OFFERED");
+		assertThat(row("select status, last_change_reason from appointments where request_id = ?", suggestionRequest))
+			.containsEntry("STATUS", "HELD")
+			.containsEntry("LAST_CHANGE_REASON", "Staff selected this option");
+
+		HttpResponse<String> duplicate = this.browser.post("/staff/requests", this.browser.get("/staff/queue", 200),
+				Map.of("petId", "2", "requestText", "Must not be created"), 302);
+		assertThat(duplicate.headers().firstValue("Location").orElseThrow())
+			.endsWith("/staff/requests/" + suggestionRequest);
+		assertThat(count("select count(*) from scheduling_requests where pet_id = 2 and active_pet_id is not null"))
+			.isOne();
+
+		HttpResponse<String> betty = this.browser.loginAsNewSession("betty", "betty123", "/my/appointments");
+		assertThat(this.browser.get("/my/requests/" + suggestionRequest, 200).body()).contains("Suggested appointment",
+				"2026-09-08", "James Carter");
+		assertThat(betty.body()).contains("Suggestion offered");
 	}
 
 	@Test
