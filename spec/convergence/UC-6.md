@@ -3,8 +3,8 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-6.md` at `737d8ea8a8f26561bf4214554b29fbc1e5d86d7b`
-- Verdict: PENDING WALKTHROUGH
-- Findings: 0 critical, 0 gap, 0 protocol; human UI walkthrough pending
+- Verdict: APPROVE
+- Findings: 0 critical, 0 gap, 0 protocol
 - Suite: 358 run, 0 failed, 0 errors, 0 skipped across 46 suites
 - Working tree impact from verification: none; the tracked runtime database remained unchanged
 
@@ -77,7 +77,7 @@
 
 ## Findings
 
-No critical, gap, protocol, drift, or cosmetic finding remains. Human confirmation of the UI-bearing flow is the only open gate.
+No critical, gap, protocol, drift, or cosmetic finding remains. The user confirmed the complete UI walkthrough.
 
 ## Walkthrough
 
@@ -87,12 +87,12 @@ No critical, gap, protocol, drift, or cosmetic finding remains. Human confirmati
 4. Confirm the detail now shows Cancelled, Cancelled by owner, a cancellation timestamp, the prior staff reason if one existed, and no Cancel action.
 5. Return to My appointments and confirm the Cancelled appointment remains in history with View appointment instead of Cancel appointment.
 
-User result: pending.
+User result: PASS on 2026-09-08.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no use case is eligible until the UC-6 walkthrough passes.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-7 and UC-8 are eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: complete the UC-6 owner-cancellation script above, then report PASS or the failing step.
+APPROVED
