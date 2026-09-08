@@ -27,7 +27,9 @@
     </tr>
   </table>
 
-  <form th:object="${visit}" class="form-horizontal" method="post">
+  <form th:object="${visit}"
+    th:action="@{/owners/{ownerId}/pets/{petId}/visits/new(ownerId=${owner.id},petId=${pet.id})}"
+    class="form-horizontal" id="visit-form" method="post">
     <div class="form-group has-feedback">
       <input th:replace="~{fragments/inputField :: input (#{date}, 'date', 'date')}" />
       <input th:replace="~{fragments/inputField :: input (#{description}, 'description', 'text')}" />

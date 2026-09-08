@@ -40,6 +40,10 @@ class ClinicRecordsE2ETests {
 	private static final Pattern CSRF = Pattern.compile(
 			"name=[\"']_csrf[\"'][^>]*value=[\"']([^\"']+)[\"']|value=[\"']([^\"']+)[\"'][^>]*name=[\"']_csrf[\"']");
 
+	private static final Pattern POST_FORM = Pattern.compile(
+			"<form\\b(?=[^>]*\\baction=[\"']([^\"']+)[\"'])(?=[^>]*\\bmethod=[\"']post[\"'])[^>]*>(.*?)</form>",
+			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
 	@LocalServerPort
 	private int port;
 
@@ -184,13 +188,14 @@ class ClinicRecordsE2ETests {
 		assertThat(this.browser.get("/owners/1/pets/1/visits/new").statusCode()).isEqualTo(403);
 		assertThat(
 				this.browser
-					.post("/owners/new", ownerPage,
+					.postUsingPageToken("/owners/new", ownerPage,
 							Map.of("firstName", "Forged", "lastName", "Owner", "address", "No", "city", "No",
 									"telephone", "0000000000"))
 					.statusCode())
 			.isEqualTo(403);
 		assertThat(this.browser
-			.post("/owners/1/pets/1/visits/new", ownerPage, Map.of("date", "2030-01-02", "description", "Forged visit"))
+			.postUsingPageToken("/owners/1/pets/1/visits/new", ownerPage,
+					Map.of("date", "2030-01-02", "description", "Forged visit"))
 			.statusCode()).isEqualTo(403);
 		assertThat(snapshot()).isEqualTo(before);
 	}
@@ -252,8 +257,18 @@ class ClinicRecordsE2ETests {
 
 		private HttpResponse<String> post(String path, HttpResponse<String> source, Map<String, String> values)
 				throws Exception {
+			return postWithToken(path, values, csrf(source.body(), path));
+		}
+
+		private HttpResponse<String> postUsingPageToken(String path, HttpResponse<String> source,
+				Map<String, String> values) throws Exception {
+			return postWithToken(path, values, csrf(source.body()));
+		}
+
+		private HttpResponse<String> postWithToken(String path, Map<String, String> values, String token)
+				throws Exception {
 			Map<String, String> submitted = new LinkedHashMap<>(values);
-			submitted.put("_csrf", csrf(source.body()));
+			submitted.put("_csrf", token);
 			String body = submitted.entrySet()
 				.stream()
 				.map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
@@ -266,11 +281,27 @@ class ClinicRecordsE2ETests {
 		}
 
 		private String csrf(String html) {
-			Matcher matcher = CSRF.matcher(html);
-			if (!matcher.find()) {
+			Matcher csrf = CSRF.matcher(html);
+			if (!csrf.find()) {
 				throw new IllegalStateException("CSRF field not found");
 			}
-			return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+			return csrf.group(1) != null ? csrf.group(1) : csrf.group(2);
+		}
+
+		private String csrf(String html, String path) {
+			Matcher forms = POST_FORM.matcher(html);
+			while (forms.find()) {
+				String action = URI.create(forms.group(1)).getPath();
+				if (!action.equals(path)) {
+					continue;
+				}
+				Matcher csrf = CSRF.matcher(forms.group(2));
+				if (!csrf.find()) {
+					throw new IllegalStateException("CSRF field not found in POST form " + path);
+				}
+				return csrf.group(1) != null ? csrf.group(1) : csrf.group(2);
+			}
+			throw new IllegalStateException("POST form not found for " + path);
 		}
 
 		private String encode(String value) {

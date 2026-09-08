@@ -69,6 +69,7 @@ class VisitControllerTests {
 	@BeforeEach
 	void init() {
 		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
 		owner.addPet(pet);
 		pet.setId(TEST_PET_ID);

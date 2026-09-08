@@ -8,7 +8,9 @@
     <th:block th:if="${pet['new']}" th:text="#{new}">New </th:block>
     <span th:text="#{pet}">Pet</span>
   </h2>
-  <form th:object="${pet}" class="form-horizontal" method="post">
+  <form th:object="${pet}"
+    th:action="${pet['new']} ? @{/owners/{ownerId}/pets/new(ownerId=${owner.id})} : @{/owners/{ownerId}/pets/{petId}/edit(ownerId=${owner.id},petId=${pet.id})}"
+    class="form-horizontal" id="pet-form" method="post">
     <input type="hidden" name="id" th:value="*{id}" />
     <div class="form-group has-feedback">
       <div class="form-group">

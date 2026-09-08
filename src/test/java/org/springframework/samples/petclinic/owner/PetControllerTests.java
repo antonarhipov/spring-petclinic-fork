@@ -82,6 +82,7 @@ class PetControllerTests {
 		given(this.types.findPetTypes()).willReturn(List.of(cat));
 
 		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
