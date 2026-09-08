@@ -3,8 +3,8 @@
 ## Current
 
 - Use case: UC-7
-- Status: READY_FOR_CONVERGENCE
-- Next eligible: none until UC-7 converges
+- Status: PENDING_WALKTHROUGH
+- Next eligible: none until the UC-7 walkthrough passes
 
 ## Progress
 
@@ -16,7 +16,7 @@
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
 | UC-6 | APPROVED | UC-1 | `737d8ea` | [APPROVED](convergence/UC-6.md) - walkthrough passed |
-| UC-7 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence (revision of `6c1a1a9`) | [RECHECK](convergence/UC-7.md) - C-1 revision submitted |
+| UC-7 | PENDING_WALKTHROUGH | UC-1 | `cd34791` (revision of `6c1a1a9`) | [PENDING WALKTHROUGH](convergence/UC-7.md) - C-1 resolved |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
 
 ## UC-1 Evidence
