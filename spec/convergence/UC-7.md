@@ -3,7 +3,7 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-7.md` at `cd347911ad5904e97c79435b11b47f76eda51d97`, revising initial submission `6c1a1a9b4f4ba940fefd6a018f72c10cff44bf93`
-- Verdict: PENDING WALKTHROUGH
+- Verdict: APPROVE
 - Findings: 0 critical, 0 gap, 0 protocol, 0 drift, 0 cosmetic
 - Suite: 16 focused tests and 369 full-suite tests passed with 0 failures, 0 errors, and 0 skipped
 - Working tree impact from verification: none; the tracked runtime database remained 126976 bytes with SHA-256 `6c80213d262edc022bdc86145788363da080cc2d03dd828717806410f7b66570`
@@ -99,12 +99,12 @@ None. C-1 is resolved: opening hours are now the sole mutable source of named da
 5. Enter a working-block time without the required leading zero, submit, and confirm the `HH:mm` explanation appears and the previously saved configuration is unchanged.
 6. Confirm the page remains in the established PetClinic layout with no missing or unlocalized labels. The Confirmed-conflict and Held-conflict branches require prepared appointment state and were reproduced through the automated production-boundary tests above.
 
-User result: pending.
+User result: PASS, confirmed 2026-09-09.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; UC-8 remains ineligible until the walkthrough passes and UC-7 is approved.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-8 is now eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: complete the UC-7 staff configuration script and report PASS or findings.
+APPROVED
