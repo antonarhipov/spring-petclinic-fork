@@ -3,8 +3,9 @@
 ## Summary
 
 - Status: READY_FOR_CONVERGENCE
-- Base commit: `c0ffe098c38c1b3176a4913e0e519e1ca986621d`
+- Base commit: `4ecf34f`
 - Submission commit: HEAD at convergence
+- Revision: C-1 derives named day parts from each weekday's opening hours and removes independent day-part mutation
 - Relations verified: Requires UC-1 through seeded staff form login, staff-only route authorization, CSRF, and the shared authenticated PetClinic shell
 
 ## Contract Evidence
@@ -13,11 +14,11 @@
 |---|---|---|
 | Main steps 1-3 | Every current configuration type renders and posts at `ClinicConfigurationWebTests.java:47`; real staff login and HTTP form submission run at `ClinicConfigurationE2ETests.java:63` | PASS |
 | Main steps 4-6 | Protected appointments are checked under veterinarian locks at `ClinicConfigurationService.java:109`; confirmed conflicts reject before persistence, while hold-only conflicts save, delete holds, and route requests at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112` | PASS |
-| Main step 7 | Saved settings drive AI clinic context, matching, staff validation, calendar rendering, and persisted suggestions at `ClinicConfigurationServiceTests.java:139`; a saved closure renders through real HTTP at `ClinicConfigurationE2ETests.java:88` | PASS |
+| Main step 7 | Saved settings drive AI clinic context, matching, staff validation, calendar rendering, and persisted suggestions at `ClinicConfigurationServiceTests.java:139`; weekday-specific day parts are derived at `PromptBuilder.java:123`; a saved closure renders through real HTTP at `ClinicConfigurationE2ETests.java:91` | PASS |
 | Extension 3a | Malformed exact-format input, reversed hours, invalid duration bounds, and overlapping working blocks produce localized errors and unchanged snapshots at `ClinicConfigurationWebTests.java:90` and `ClinicConfigurationServiceTests.java:198` | PASS |
 | Extension 4a | Both conflicting confirmed appointments are listed, the complete proposed change is rejected, and the held appointment/request remain unchanged at `ClinicConfigurationWebTests.java:112` and `ClinicConfigurationServiceTests.java:62` | PASS |
 | Extension 5a | A clean change saves and reports no affected requests at `ClinicConfigurationWebTests.java:47` and `ClinicConfigurationServiceTests.java:139` | PASS |
-| G1-G2 | Split shifts are intersected with clinic hours and suppressed by exceptions, leave, or closure in `EffectiveAvailabilityCalculatorTests.java:21`; saved openings and named parts are consumed by AI context and matching in `ClinicConfigurationServiceTests.java:139` | PASS |
+| G1-G2 | Split shifts are intersected with clinic hours and suppressed by exceptions, leave, or closure in `EffectiveAvailabilityCalculatorTests.java:21`; `PromptBuilder.java:123` derives fixed-boundary parts for each weekday and emits `closed` for empty intervals. Value assertions cover changed Thursday, differently opened Friday, and closed Saturday at `ClinicConfigurationServiceTests.java:177`, while `ClinicConfigurationWebTests.java:53` proves staff cannot submit independent day-part values | PASS |
 | G3-G4 | All confirmed conflicts block the whole transaction; hold-only conflicts atomically delete every hold and transition every request to `WITH_STAFF/SCHEDULE_CHANGED` at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112` | PASS |
 | G5 | The runtime clock reads the saved zone dynamically, retains one instant, and yields the correct local date on both sides of midnight at `ClinicZoneClockTests.java:19` | PASS |
 | G6-G7 | Exact migration seeds, BCrypt passwords, and fixed exception fixtures remain unchanged and pass the full regression suite | PASS |
@@ -43,16 +44,16 @@
 
 ## Validation
 
-- Focused UC-7 suites: 11 tests across configuration service, MVC, real-server HTTP, clinic-zone clock, and pure effective-availability calculation; 0 failures, 0 errors, 0 skipped in the final full run.
-- Full relevant suite: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` passed 369 tests with 0 failures, 0 errors, and 0 skipped.
+- Focused UC-7 C-1 revision: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -Dtest=ClinicConfigurationServiceTests,ClinicConfigurationWebTests,ClinicConfigurationE2ETests,InterpreterContractTests test` passed 16 tests with 0 failures, 0 errors, and 0 skipped.
+- Full relevant suite: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true test` passed 369 tests with 0 failures, 0 errors, and 0 skipped.
 - Formatting and hygiene: `spring-javaformat:validate` and `git diff --check` passed.
 - Working tree impact from tests: none.
 - Runtime database: unchanged at 126976 bytes with SHA-256 `6c80213d262edc022bdc86145788363da080cc2d03dd828717806410f7b66570`.
-- Changed files: staff configuration controller/form/service/model/template; settings, opening-hours, dynamic clock, appointment query, and shared effective-availability support; eleven locale bundles; focused, presentation, and route-security tests; status and this checkpoint.
+- Changed files: configuration record/form/service/settings model; prompt context builder; settings template; eleven locale bundles; configuration service/MVC/real-HTTP tests; interpreter contract test; status and this checkpoint.
 - Approved UCs regression-tested: UC-1 through UC-6 in the 369-test suite.
 
 ## Notes
 
-The first full run exposed a new test-context leak: the last configuration web test left a request row visible to a later transactional suite. UC-7's mutating tests now discard their contexts after each method; the final full run passes. The same first run had one transient localhost 503 response whose body was `Proxy key is incorrect`; it did not recur in the final identical permitted run. Automated UI evidence is complete; the staff walkthrough remains for convergence.
+C-1 is addressed by making opening hours the sole mutable source for named day parts. The existing seeded day-part columns remain unchanged for normative migration compatibility but are no longer accepted through the form/service or consumed by AI context. Automated UI evidence is complete; the staff walkthrough remains for convergence.
 
 READY FOR CONVERGENCE: UC-7

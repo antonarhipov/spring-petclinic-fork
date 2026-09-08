@@ -69,14 +69,7 @@
   <section class="card mb-4">
     <div class="card-body">
       <h3 class="h5" th:text="#{scheduling.settings.dayParts}">Named parts of day</h3>
-      <div class="row g-3">
-        <div class="col-md-2"><label for="morning-start" class="form-label" th:text="#{scheduling.settings.morning.start}">Morning start</label><input id="morning-start" class="form-control" type="time" th:field="*{morningStart}" required></div>
-        <div class="col-md-2"><label for="morning-end" class="form-label" th:text="#{scheduling.settings.morning.end}">Morning end</label><input id="morning-end" class="form-control" type="time" th:field="*{morningEnd}" required></div>
-        <div class="col-md-2"><label for="afternoon-start" class="form-label" th:text="#{scheduling.settings.afternoon.start}">Afternoon start</label><input id="afternoon-start" class="form-control" type="time" th:field="*{afternoonStart}" required></div>
-        <div class="col-md-2"><label for="afternoon-end" class="form-label" th:text="#{scheduling.settings.afternoon.end}">Afternoon end</label><input id="afternoon-end" class="form-control" type="time" th:field="*{afternoonEnd}" required></div>
-        <div class="col-md-2"><label for="evening-start" class="form-label" th:text="#{scheduling.settings.evening.start}">Evening start</label><input id="evening-start" class="form-control" type="time" th:field="*{eveningStart}" required></div>
-        <div class="col-md-2"><label for="evening-end" class="form-label" th:text="#{scheduling.settings.evening.end}">Evening end</label><input id="evening-end" class="form-control" type="time" th:field="*{eveningEnd}" required></div>
-      </div>
+      <p th:text="#{scheduling.settings.dayParts.derived}">Day parts are derived from each weekday's opening hours.</p>
     </div>
   </section>
 

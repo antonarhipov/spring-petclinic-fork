@@ -50,10 +50,12 @@ class ClinicConfigurationWebTests {
 			.andReturn()
 			.getResponse()
 			.getContentAsString();
-		assertThat(page).contains("Clinic settings", "Scheduling limits", "Europe/Amsterdam", "Monday", "Sunday",
-				"Recurring working blocks", "1,MONDAY,09:00,17:00", "Date exceptions", "1,2026-09-15",
-				"Veterinarian leave", "Clinic closures", "James Carter", "Sharon Jenkins", "name=\"_csrf\"",
-				">staff</span>", ">Logout</button>");
+		assertThat(page)
+			.contains("Clinic settings", "Scheduling limits", "Europe/Amsterdam", "Monday", "Sunday",
+					"Recurring working blocks", "1,MONDAY,09:00,17:00", "Date exceptions", "1,2026-09-15",
+					"Veterinarian leave", "Clinic closures", "James Carter", "Sharon Jenkins", "name=\"_csrf\"",
+					"Derived from each weekday&#39;s opening hours", ">staff</span>", ">Logout</button>")
+			.doesNotContain("name=\"morningStart\"", "name=\"eveningEnd\"");
 
 		ClinicConfigurationForm form = ClinicConfigurationForm.from(this.configurations.current());
 		form.setBookingHorizonDays(40);
@@ -61,8 +63,6 @@ class ClinicConfigurationWebTests {
 		form.setMinimumDurationMinutes(20);
 		form.setDefaultDurationMinutes(40);
 		form.setMaximumDurationMinutes(80);
-		form.setMorningStart("08:00");
-		form.setEveningEnd("19:00");
 		form.setTimeZone("Europe/Paris");
 		form.setLeavePeriods("2,2026-09-28,2026-09-29");
 		form.setClosures("2026-12-25");
@@ -164,12 +164,6 @@ class ClinicConfigurationWebTests {
 			.param("minimumDurationMinutes", form.getMinimumDurationMinutes().toString())
 			.param("defaultDurationMinutes", form.getDefaultDurationMinutes().toString())
 			.param("maximumDurationMinutes", form.getMaximumDurationMinutes().toString())
-			.param("morningStart", form.getMorningStart())
-			.param("morningEnd", form.getMorningEnd())
-			.param("afternoonStart", form.getAfternoonStart())
-			.param("afternoonEnd", form.getAfternoonEnd())
-			.param("eveningStart", form.getEveningStart())
-			.param("eveningEnd", form.getEveningEnd())
 			.param("timeZone", form.getTimeZone())
 			.param("workingPeriods", form.getWorkingPeriods())
 			.param("exceptions", form.getExceptions())

@@ -24,18 +24,6 @@ public class ClinicConfigurationForm {
 
 	private Integer maximumDurationMinutes;
 
-	private String morningStart;
-
-	private String morningEnd;
-
-	private String afternoonStart;
-
-	private String afternoonEnd;
-
-	private String eveningStart;
-
-	private String eveningEnd;
-
 	private String timeZone;
 
 	private List<OpeningHoursValue> openingHours = new ArrayList<>();
@@ -55,12 +43,6 @@ public class ClinicConfigurationForm {
 		form.minimumDurationMinutes = source.minimumDurationMinutes();
 		form.defaultDurationMinutes = source.defaultDurationMinutes();
 		form.maximumDurationMinutes = source.maximumDurationMinutes();
-		form.morningStart = format(source.morningStart());
-		form.morningEnd = format(source.morningEnd());
-		form.afternoonStart = format(source.afternoonStart());
-		form.afternoonEnd = format(source.afternoonEnd());
-		form.eveningStart = format(source.eveningStart());
-		form.eveningEnd = format(source.eveningEnd());
 		form.timeZone = source.timeZone();
 		form.openingHours = source.openingHours()
 			.stream()
@@ -92,10 +74,8 @@ public class ClinicConfigurationForm {
 			.map(OpeningHoursValue::toValue)
 			.toList();
 		return new ClinicConfiguration(this.bookingHorizonDays, this.minimumLeadDays, this.minimumDurationMinutes,
-				this.defaultDurationMinutes, this.maximumDurationMinutes, gridMinutes, parseTime(this.morningStart),
-				parseTime(this.morningEnd), parseTime(this.afternoonStart), parseTime(this.afternoonEnd),
-				parseTime(this.eveningStart), parseTime(this.eveningEnd), blankToNull(this.timeZone), parsedHours,
-				parseWorkingPeriods(this.workingPeriods), parseExceptions(this.exceptions),
+				this.defaultDurationMinutes, this.maximumDurationMinutes, gridMinutes, blankToNull(this.timeZone),
+				parsedHours, parseWorkingPeriods(this.workingPeriods), parseExceptions(this.exceptions),
 				parseLeave(this.leavePeriods), parseClosures(this.closures));
 	}
 
@@ -237,54 +217,6 @@ public class ClinicConfigurationForm {
 
 	public void setMaximumDurationMinutes(Integer maximumDurationMinutes) {
 		this.maximumDurationMinutes = maximumDurationMinutes;
-	}
-
-	public String getMorningStart() {
-		return this.morningStart;
-	}
-
-	public void setMorningStart(String morningStart) {
-		this.morningStart = morningStart;
-	}
-
-	public String getMorningEnd() {
-		return this.morningEnd;
-	}
-
-	public void setMorningEnd(String morningEnd) {
-		this.morningEnd = morningEnd;
-	}
-
-	public String getAfternoonStart() {
-		return this.afternoonStart;
-	}
-
-	public void setAfternoonStart(String afternoonStart) {
-		this.afternoonStart = afternoonStart;
-	}
-
-	public String getAfternoonEnd() {
-		return this.afternoonEnd;
-	}
-
-	public void setAfternoonEnd(String afternoonEnd) {
-		this.afternoonEnd = afternoonEnd;
-	}
-
-	public String getEveningStart() {
-		return this.eveningStart;
-	}
-
-	public void setEveningStart(String eveningStart) {
-		this.eveningStart = eveningStart;
-	}
-
-	public String getEveningEnd() {
-		return this.eveningEnd;
-	}
-
-	public void setEveningEnd(String eveningEnd) {
-		this.eveningEnd = eveningEnd;
 	}
 
 	public String getTimeZone() {

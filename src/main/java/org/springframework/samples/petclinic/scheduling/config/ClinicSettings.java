@@ -139,20 +139,12 @@ public class ClinicSettings {
 	}
 
 	public void update(int bookingHorizonDays, int minimumLeadDays, int minimumDurationMinutes,
-			int defaultDurationMinutes, int maximumDurationMinutes, LocalTime morningStart, LocalTime morningEnd,
-			LocalTime afternoonStart, LocalTime afternoonEnd, LocalTime eveningStart, LocalTime eveningEnd,
-			String timeZone) {
+			int defaultDurationMinutes, int maximumDurationMinutes, String timeZone) {
 		this.bookingHorizonDays = bookingHorizonDays;
 		this.minimumLeadDays = minimumLeadDays;
 		this.minimumDurationMinutes = minimumDurationMinutes;
 		this.defaultDurationMinutes = defaultDurationMinutes;
 		this.maximumDurationMinutes = maximumDurationMinutes;
-		this.morningStart = morningStart;
-		this.morningEnd = morningEnd;
-		this.afternoonStart = afternoonStart;
-		this.afternoonEnd = afternoonEnd;
-		this.eveningStart = eveningStart;
-		this.eveningEnd = eveningEnd;
 		this.timeZone = timeZone;
 	}
 

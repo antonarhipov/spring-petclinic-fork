@@ -91,7 +91,7 @@ class InterpreterContractTests {
 						specialties=radiology,surgery,dentistry
 						veterinarians=1:James Carter[];2:Helen Leary[radiology];3:Linda Douglas[surgery,dentistry];4:Rafael Ortega[surgery];5:Henry Stevens[radiology];6:Sharon Jenkins[]
 						openingHours=MONDAY:09:00-17:00;TUESDAY:09:00-17:00;WEDNESDAY:09:00-18:00;THURSDAY:09:00-17:00;FRIDAY:10:00-16:00;SATURDAY:closed;SUNDAY:closed
-						partsOfDay=morning:09:00-12:00,afternoon:12:00-17:00,evening:17:00-18:00
+						partsOfDay=MONDAY:morning=09:00-12:00,afternoon=12:00-17:00,evening=closed;TUESDAY:morning=09:00-12:00,afternoon=12:00-17:00,evening=closed;WEDNESDAY:morning=09:00-12:00,afternoon=12:00-17:00,evening=17:00-18:00;THURSDAY:morning=09:00-12:00,afternoon=12:00-17:00,evening=closed;FRIDAY:morning=10:00-12:00,afternoon=12:00-16:00,evening=closed;SATURDAY:morning=closed,afternoon=closed,evening=closed;SUNDAY:morning=closed,afternoon=closed,evening=closed
 						today=2026-09-07
 						upcomingWeekdayDates=MONDAY:2026-09-14;TUESDAY:2026-09-08;WEDNESDAY:2026-09-09;THURSDAY:2026-09-10;FRIDAY:2026-09-11;SATURDAY:2026-09-12;SUNDAY:2026-09-13
 						zone=Europe/Amsterdam

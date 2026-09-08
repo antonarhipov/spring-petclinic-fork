@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 public record ClinicConfiguration(int bookingHorizonDays, int minimumLeadDays, int minimumDurationMinutes,
-		int defaultDurationMinutes, int maximumDurationMinutes, int gridMinutes, LocalTime morningStart,
-		LocalTime morningEnd, LocalTime afternoonStart, LocalTime afternoonEnd, LocalTime eveningStart,
-		LocalTime eveningEnd, String timeZone, List<OpeningPeriod> openingHours, List<WorkingPeriod> workingPeriods,
-		List<VetExceptionDate> exceptions, List<LeavePeriod> leavePeriods, List<LocalDate> closures) {
+		int defaultDurationMinutes, int maximumDurationMinutes, int gridMinutes, String timeZone,
+		List<OpeningPeriod> openingHours, List<WorkingPeriod> workingPeriods, List<VetExceptionDate> exceptions,
+		List<LeavePeriod> leavePeriods, List<LocalDate> closures) {
 
 	public ClinicConfiguration {
 		openingHours = List.copyOf(openingHours);

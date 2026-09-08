@@ -152,9 +152,8 @@ class ClinicConfigurationServiceTests {
 			.add(new ClinicConfiguration.WorkingPeriod(4, DayOfWeek.THURSDAY, LocalTime.of(8, 0), LocalTime.of(12, 0)));
 		periods.add(
 				new ClinicConfiguration.WorkingPeriod(4, DayOfWeek.THURSDAY, LocalTime.of(13, 0), LocalTime.of(18, 0)));
-		ClinicConfiguration proposed = new ClinicConfiguration(45, 2, 20, 45, 75, current.gridMinutes(),
-				LocalTime.of(8, 0), LocalTime.NOON, LocalTime.NOON, LocalTime.of(17, 0), LocalTime.of(17, 0),
-				LocalTime.of(19, 0), "Europe/Paris", hours, periods, current.exceptions(),
+		ClinicConfiguration proposed = new ClinicConfiguration(45, 2, 20, 45, 75, current.gridMinutes(), "Europe/Paris",
+				hours, periods, current.exceptions(),
 				append(current.leavePeriods(),
 						new ClinicConfiguration.LeavePeriod(2, LocalDate.of(2026, 9, 28), LocalDate.of(2026, 9, 29))),
 				append(current.closures(), LocalDate.of(2026, 12, 25)));
@@ -176,7 +175,9 @@ class ClinicConfigurationServiceTests {
 		assertThat(saved.closures()).contains(LocalDate.of(2026, 12, 25));
 
 		assertThat(this.prompts.build("visit", TODAY)).contains("THURSDAY:08:00-18:00",
-				"morning:08:00-12:00,afternoon:12:00-17:00,evening:17:00-19:00", "zone=Europe/Paris",
+				"THURSDAY:morning=08:00-12:00,afternoon=12:00-17:00,evening=17:00-18:00",
+				"FRIDAY:morning=10:00-12:00,afternoon=12:00-16:00,evening=closed",
+				"SATURDAY:morning=closed,afternoon=closed,evening=closed", "zone=Europe/Paris",
 				"durationMinutes=min:20,default:45,max:75");
 		assertThat(this.availability.getEffectiveAvailability(4, THURSDAY))
 			.extracting(EffectiveAvailability::startTime, EffectiveAvailability::endTime)
@@ -199,10 +200,9 @@ class ClinicConfigurationServiceTests {
 		ClinicConfiguration current = this.configurations.current();
 		DatabaseSnapshot before = snapshot();
 		ClinicConfiguration badDuration = new ClinicConfiguration(current.bookingHorizonDays(),
-				current.minimumLeadDays(), 60, 30, 45, current.gridMinutes(), current.morningStart(),
-				current.morningEnd(), current.afternoonStart(), current.afternoonEnd(), current.eveningStart(),
-				current.eveningEnd(), current.timeZone(), current.openingHours(), current.workingPeriods(),
-				current.exceptions(), current.leavePeriods(), current.closures());
+				current.minimumLeadDays(), 60, 30, 45, current.gridMinutes(), current.timeZone(),
+				current.openingHours(), current.workingPeriods(), current.exceptions(), current.leavePeriods(),
+				current.closures());
 		assertRejectedWithoutMutation(badDuration, "scheduling.settings.validation.duration", before);
 
 		List<ClinicConfiguration.OpeningPeriod> reversed = current.openingHours()
@@ -308,9 +308,8 @@ class ClinicConfigurationServiceTests {
 			List<LocalDate> closures) {
 		return new ClinicConfiguration(source.bookingHorizonDays(), source.minimumLeadDays(),
 				source.minimumDurationMinutes(), source.defaultDurationMinutes(), source.maximumDurationMinutes(),
-				source.gridMinutes(), source.morningStart(), source.morningEnd(), source.afternoonStart(),
-				source.afternoonEnd(), source.eveningStart(), source.eveningEnd(), source.timeZone(), openingHours,
-				workingPeriods, exceptions, leavePeriods, closures);
+				source.gridMinutes(), source.timeZone(), openingHours, workingPeriods, exceptions, leavePeriods,
+				closures);
 	}
 
 	private record DatabaseSnapshot(List<Map<String, Object>> settings, List<Map<String, Object>> openingHours,

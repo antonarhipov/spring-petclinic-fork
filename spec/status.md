@@ -3,8 +3,8 @@
 ## Current
 
 - Use case: UC-7
-- Status: NEEDS_REVISION
-- Next eligible: none until UC-7 C-1 is revised and converged
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none until UC-7 converges
 
 ## Progress
 
@@ -16,7 +16,7 @@
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
 | UC-6 | APPROVED | UC-1 | `737d8ea` | [APPROVED](convergence/UC-6.md) - walkthrough passed |
-| UC-7 | NEEDS_REVISION | UC-1 | `6c1a1a9` | [REJECT](convergence/UC-7.md) - C-1 |
+| UC-7 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence (revision of `6c1a1a9`) | [RECHECK](convergence/UC-7.md) - C-1 revision submitted |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
 
 ## UC-1 Evidence
@@ -400,6 +400,7 @@
 
 - Started: 2026-09-08T23:19:10+02:00
 - Started from: `c0ffe098c38c1b3176a4913e0e519e1ca986621d`
+- Revision started from: `4ecf34f` for convergence finding C-1
 - Pre-existing dirty files: none
 - Implementation submission: HEAD at convergence
 - Convergence findings: C-1.
@@ -408,7 +409,10 @@
   - Shared scheduling configuration: `ClinicSettings.java`, `OpeningHours.java`, `ClockConfig.java`, `ClinicZoneClock.java`, `AvailabilityCalculatorConfiguration.java`, `AvailabilityService.java`, `EffectiveAvailabilityCalculator.java`, and `AppointmentRepository.java`.
   - Presentation and security: all eleven `messages*.properties` bundles, `PresentationShellTests.java`, and `SecurityMatrixWebTests.java`.
   - Verification and evidence: `ClinicConfigurationE2ETests.java`, `ClinicConfigurationServiceTests.java`, `ClinicConfigurationWebTests.java`, `ClinicZoneClockTests.java`, `EffectiveAvailabilityCalculatorTests.java`, `spec/status.md`, and `spec/checkpoints/UC-7.md`.
+  - C-1 revision: `ClinicConfiguration.java`, `ClinicConfigurationForm.java`, `ClinicConfigurationService.java`, `ClinicSettings.java`, `PromptBuilder.java`, `templates/staff/settings.html`, all eleven `messages*.properties` bundles, the four focused configuration/interpreter tests, `spec/status.md`, and `spec/checkpoints/UC-7.md`.
 - Commands and results:
+  - C-1 focused revision: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -Dtest=ClinicConfigurationServiceTests,ClinicConfigurationWebTests,ClinicConfigurationE2ETests,InterpreterContractTests test`: 16 tests, 0 failures, 0 errors, 0 skipped.
+  - C-1 full regression: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true test`: 369 tests, 0 failures, 0 errors, 0 skipped.
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test`: 369 tests, 0 failures, 0 errors, 0 skipped.
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:validate`: passed.
   - `git diff --check`: passed.
@@ -418,11 +422,11 @@
 |---|---|
 | UC-7 main steps 1-3 | Staff settings GET/POST renders and accepts every configuration type in `ClinicConfigurationWebTests.java:47`; the real form-login journey begins at `ClinicConfigurationE2ETests.java:63`. |
 | UC-7 main steps 4-6 | `ClinicConfigurationService.java:109` locks veterinarians, finds all protected appointments, rejects confirmed conflicts, or persists and routes invalidated holds; database assertions are at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112`. |
-| UC-7 main step 7 | Saved settings drive prompt context, matching, staff validation, calendar rendering, and persisted suggestions in `ClinicConfigurationServiceTests.java:139`; the real server observes a newly saved closure in the staff calendar at `ClinicConfigurationE2ETests.java:88`. |
+| UC-7 main step 7 | Saved settings drive prompt context, matching, staff validation, calendar rendering, and persisted suggestions in `ClinicConfigurationServiceTests.java:139`; `PromptBuilder.java:123` derives weekday-specific day parts from those saved opening hours; the real server observes a newly saved closure in the staff calendar at `ClinicConfigurationE2ETests.java:91`. |
 | UC-7 extension 3a | Exact input formats are enforced by `ClinicConfigurationForm.java:86`; structural ranges and overlap validation are at `ClinicConfigurationService.java:201`; service and rendered error tests preserve database snapshots at `ClinicConfigurationServiceTests.java:198` and `ClinicConfigurationWebTests.java:90`. |
 | UC-7 extension 4a | All confirmed conflicts are returned before persistence at `ClinicConfigurationService.java:124`; web and service tests list both conflicts and prove the complete configuration and holds remain unchanged at `ClinicConfigurationWebTests.java:112` and `ClinicConfigurationServiceTests.java:62`. |
 | UC-7 extension 5a | Clean changes save and render the no-affected-requests result at `ClinicConfigurationWebTests.java:47`; cross-consumer persistence is verified at `ClinicConfigurationServiceTests.java:139`. |
-| UC-7 G1-G2 | The pure calculator intersects split shifts with opening hours and removes exceptions, leave, and closures at `EffectiveAvailabilityCalculatorTests.java:21`; saved openings and named day parts appear in AI clinic context and effective availability at `ClinicConfigurationServiceTests.java:139`. |
+| UC-7 G1-G2 | The pure calculator intersects split shifts with opening hours and removes exceptions, leave, and closures at `EffectiveAvailabilityCalculatorTests.java:21`; `PromptBuilder.java:123` derives morning, afternoon, and evening independently for every weekday and emits `closed` for empty intervals; value-level assertions cover changed Thursday hours, differently opened Friday, and closed Saturday at `ClinicConfigurationServiceTests.java:177` and the full seed disclosure at `InterpreterContractTests.java:88`. The settings boundary has no independent day-part fields, proved at `ClinicConfigurationWebTests.java:53`. |
 | UC-7 G3-G4 | Confirmed-care rejection and atomic hold deletion plus `WITH_STAFF/SCHEDULE_CHANGED` transitions are proved against complete snapshots at `ClinicConfigurationServiceTests.java:62` and `ClinicConfigurationServiceTests.java:112`. |
 | UC-7 G5 | `ClinicZoneClock.java:22` reads the saved clinic zone for each date calculation; opposite-side-of-midnight zones are verified at `ClinicZoneClockTests.java:19`. |
 | UC-7 G6-G7 | Unchanged Flyway migrations, exact seed values/passwords, fixed exception fixtures, persistence, and matching regressions pass in the 369-test suite. |

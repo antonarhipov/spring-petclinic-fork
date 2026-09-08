@@ -66,8 +66,11 @@ class ClinicConfigurationE2ETests {
 		this.browser.login("staff", "staff123");
 		HttpResponse<String> page = this.browser.get("/staff/settings");
 		assertThat(page.statusCode()).isEqualTo(200);
-		assertThat(page.body()).contains("Clinic settings", "Opening hours", "Veterinarian availability",
-				"1,MONDAY,09:00,17:00", "1,2026-09-15", "Europe/Amsterdam", ">staff</span>", ">Logout</button>");
+		assertThat(page.body())
+			.contains("Clinic settings", "Opening hours", "Veterinarian availability", "1,MONDAY,09:00,17:00",
+					"1,2026-09-15", "Europe/Amsterdam", "Derived from each weekday&#39;s opening hours",
+					">staff</span>", ">Logout</button>")
+			.doesNotContain("name=\"morningStart\"", "name=\"eveningEnd\"");
 
 		ClinicConfigurationForm form = ClinicConfigurationForm.from(this.configurations.current());
 		form.setClosures(THURSDAY.toString());
@@ -96,12 +99,6 @@ class ClinicConfigurationE2ETests {
 		values.put("minimumDurationMinutes", form.getMinimumDurationMinutes().toString());
 		values.put("defaultDurationMinutes", form.getDefaultDurationMinutes().toString());
 		values.put("maximumDurationMinutes", form.getMaximumDurationMinutes().toString());
-		values.put("morningStart", form.getMorningStart());
-		values.put("morningEnd", form.getMorningEnd());
-		values.put("afternoonStart", form.getAfternoonStart());
-		values.put("afternoonEnd", form.getAfternoonEnd());
-		values.put("eveningStart", form.getEveningStart());
-		values.put("eveningEnd", form.getEveningEnd());
 		values.put("timeZone", form.getTimeZone());
 		values.put("workingPeriods", form.getWorkingPeriods());
 		values.put("exceptions", form.getExceptions());

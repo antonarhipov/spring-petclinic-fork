@@ -92,9 +92,7 @@ public class ClinicConfigurationService {
 			.getResultList();
 		return new ClinicConfiguration(settings.getBookingHorizonDays(), settings.getMinimumLeadDays(),
 				settings.getMinimumDurationMinutes(), settings.getDefaultDurationMinutes(),
-				settings.getMaximumDurationMinutes(), settings.getGridMinutes(), settings.getMorningStart(),
-				settings.getMorningEnd(), settings.getAfternoonStart(), settings.getAfternoonEnd(),
-				settings.getEveningStart(), settings.getEveningEnd(), settings.getTimeZone(), openingHours,
+				settings.getMaximumDurationMinutes(), settings.getGridMinutes(), settings.getTimeZone(), openingHours,
 				workingPeriods, exceptions, leave, closures);
 	}
 
@@ -170,9 +168,7 @@ public class ClinicConfigurationService {
 	private void persist(ClinicConfiguration proposed, List<Vet> lockedVets) {
 		ClinicSettings settings = this.settingsRepository.getCurrentSettings();
 		settings.update(proposed.bookingHorizonDays(), proposed.minimumLeadDays(), proposed.minimumDurationMinutes(),
-				proposed.defaultDurationMinutes(), proposed.maximumDurationMinutes(), proposed.morningStart(),
-				proposed.morningEnd(), proposed.afternoonStart(), proposed.afternoonEnd(), proposed.eveningStart(),
-				proposed.eveningEnd(), proposed.timeZone());
+				proposed.defaultDurationMinutes(), proposed.maximumDurationMinutes(), proposed.timeZone());
 		for (OpeningHours current : settings.getOpeningHours()) {
 			ClinicConfiguration.OpeningPeriod replacement = proposed.openingHoursFor(current.getWeekday())
 				.orElseThrow(() -> new ConfigurationValidationException("scheduling.settings.validation.weekdays"));
@@ -206,13 +202,6 @@ public class ClinicConfigurationService {
 				|| proposed.minimumDurationMinutes() > proposed.defaultDurationMinutes()
 				|| proposed.defaultDurationMinutes() > proposed.maximumDurationMinutes()) {
 			throw new ConfigurationValidationException("scheduling.settings.validation.duration");
-		}
-		if (!ordered(proposed.morningStart(), proposed.morningEnd())
-				|| !ordered(proposed.afternoonStart(), proposed.afternoonEnd())
-				|| !ordered(proposed.eveningStart(), proposed.eveningEnd())
-				|| proposed.morningEnd().isAfter(proposed.afternoonStart())
-				|| proposed.afternoonEnd().isAfter(proposed.eveningStart())) {
-			throw new ConfigurationValidationException("scheduling.settings.validation.dayParts");
 		}
 		try {
 			ZoneId.of(proposed.timeZone());

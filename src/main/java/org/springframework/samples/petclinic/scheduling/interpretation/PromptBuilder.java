@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.scheduling.interpretation;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.List;
@@ -55,13 +56,10 @@ public class PromptBuilder {
 	@Transactional(readOnly = true)
 	public ConsentDisclosure disclosure(LocalDate referenceDate) {
 		Map<String, Object> settings = this.jdbc.queryForMap("select * from clinic_settings");
-		String partsOfDay = "morning:" + time(settings, "MORNING_START") + "-" + time(settings, "MORNING_END")
-				+ ",afternoon:" + time(settings, "AFTERNOON_START") + "-" + time(settings, "AFTERNOON_END")
-				+ ",evening:" + time(settings, "EVENING_START") + "-" + time(settings, "EVENING_END");
 		String durationBounds = "min:" + settings.get("MINIMUM_DURATION_MINUTES") + ",default:"
 				+ settings.get("DEFAULT_DURATION_MINUTES") + ",max:" + settings.get("MAXIMUM_DURATION_MINUTES");
 		return new ConsentDisclosure(String.join(",", values("select name from specialties order by id")),
-				veterinarians(), openingHours(), partsOfDay, referenceDate, settings.get("TIME_ZONE").toString(),
+				veterinarians(), openingHours(), partsOfDay(), referenceDate, settings.get("TIME_ZONE").toString(),
 				durationBounds);
 	}
 
@@ -122,12 +120,35 @@ public class PromptBuilder {
 				: result.getTime("open_time").toLocalTime() + "-" + result.getTime("close_time").toLocalTime())));
 	}
 
-	private Object time(Map<String, Object> settings, String key) {
-		Object value = settings.get(key);
-		if (value instanceof java.sql.Time sqlTime) {
-			return sqlTime.toLocalTime();
-		}
-		return value;
+	private String partsOfDay() {
+		return String.join(";", this.jdbc.query("""
+				select weekday, open_time, close_time from clinic_opening_hours
+				order by case weekday
+				 when 'MONDAY' then 1 when 'TUESDAY' then 2 when 'WEDNESDAY' then 3
+				 when 'THURSDAY' then 4 when 'FRIDAY' then 5 when 'SATURDAY' then 6 else 7 end
+				""", (result, row) -> {
+			String weekday = result.getString("weekday");
+			if (result.getTime("open_time") == null) {
+				return weekday + ":morning=closed,afternoon=closed,evening=closed";
+			}
+			LocalTime opening = result.getTime("open_time").toLocalTime();
+			LocalTime closing = result.getTime("close_time").toLocalTime();
+			return weekday + ":" + interval("morning", opening, earlier(closing, LocalTime.NOON)) + ","
+					+ interval("afternoon", later(opening, LocalTime.NOON), earlier(closing, LocalTime.of(17, 0))) + ","
+					+ interval("evening", later(opening, LocalTime.of(17, 0)), closing);
+		}));
+	}
+
+	private String interval(String name, LocalTime start, LocalTime end) {
+		return name + "=" + (end.isAfter(start) ? start + "-" + end : "closed");
+	}
+
+	private LocalTime earlier(LocalTime left, LocalTime right) {
+		return left.isBefore(right) ? left : right;
+	}
+
+	private LocalTime later(LocalTime left, LocalTime right) {
+		return left.isAfter(right) ? left : right;
 	}
 
 }
