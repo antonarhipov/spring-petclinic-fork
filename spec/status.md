@@ -3,8 +3,8 @@
 ## Current
 
 - Use case: UC-7
-- Status: READY_FOR_CONVERGENCE
-- Next eligible: none until UC-7 is approved; then UC-8
+- Status: NEEDS_REVISION
+- Next eligible: none until UC-7 C-1 is revised and converged
 
 ## Progress
 
@@ -16,7 +16,7 @@
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
 | UC-6 | APPROVED | UC-1 | `737d8ea` | [APPROVED](convergence/UC-6.md) - walkthrough passed |
-| UC-7 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | pending |
+| UC-7 | NEEDS_REVISION | UC-1 | `6c1a1a9` | [REJECT](convergence/UC-7.md) - C-1 |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
 
 ## UC-1 Evidence
@@ -402,6 +402,7 @@
 - Started from: `c0ffe098c38c1b3176a4913e0e519e1ca986621d`
 - Pre-existing dirty files: none
 - Implementation submission: HEAD at convergence
+- Convergence findings: C-1.
 - Changed files:
   - Configuration UI and application boundary: `ClinicConfigurationController.java`, `ClinicConfigurationForm.java`, `ClinicConfigurationService.java`, `ClinicConfiguration.java`, `ConfigurationValidationException.java`, and `templates/staff/settings.html`.
   - Shared scheduling configuration: `ClinicSettings.java`, `OpeningHours.java`, `ClockConfig.java`, `ClinicZoneClock.java`, `AvailabilityCalculatorConfiguration.java`, `AvailabilityService.java`, `EffectiveAvailabilityCalculator.java`, and `AppointmentRepository.java`.
