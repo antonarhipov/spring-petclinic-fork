@@ -3,8 +3,8 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-8.md` revision at `35fecaa`
-- Verdict: PENDING WALKTHROUGH
-- Findings: 0 critical, 0 gap, 0 protocol, 0 drift, 0 cosmetic
+- Verdict: APPROVE WITH NOTES
+- Findings: 0 critical, 0 gap, 0 protocol, 0 drift, 1 cosmetic
 - Suite: 38 focused tests and 373 full-suite tests passed with 0 failures, 0 errors, and 0 skipped
 - Working tree impact from verification: none; the tracked runtime database remained 126976 bytes with SHA-256 `6c80213d262edc022bdc86145788363da080cc2d03dd828717806410f7b66570`
 
@@ -84,9 +84,16 @@
 
 No blocking findings. Earlier C-1 is resolved by the exact form actions at `createOrUpdateOwnerForm.html:8`, `createOrUpdatePetForm.html:11`, and `createOrUpdateVisitForm.html:30`, plus target-form-only token extraction at `ClinicRecordsE2ETests.java:258` and `:291`.
 
+### K-1 COSMETIC - Stock owner-detail message timer logs a console error
+
+- Reference: UC-8 G5 carries UC-1 G5-G7 presentation behavior into the established owner-detail workflow.
+- Evidence: the pre-existing script at `ownerDetails.html:84-85` dereferences both optional message elements without checking whether they exist. Playwright logged `TypeError: Cannot read properties of null (reading 'style')` after the timer ran.
+- Impact: every UC-8 rendered result, form submission, validation response, visit history, and role denial remained correct. Git history places the script in the stock application before this feature, and UC-8 does not change that template.
+- Note: guard each optional element before changing its display state in a separate stock-template cleanup.
+
 ## Walkthrough
 
-The final staff presentation walkthrough will run with Playwright against an isolated migrated H2 database:
+The final staff presentation walkthrough ran in headed Chromium through Playwright CLI session `uc8-final` against port 18080 and a fresh `jdbc:h2:mem:uc8walkthrough` database:
 
 1. Sign in as `staff`; confirm the shared PetClinic shell shows `staff`, logout, **Find owners**, and **Veterinarians**.
 2. Search for `Franklin`; confirm George Franklin's contact details, Leo, and visit history render without a second visual system.
@@ -97,12 +104,21 @@ The final staff presentation walkthrough will run with Playwright against an iso
 7. Search for a missing owner and confirm the established not-found validation without an unrelated owner result.
 8. Sign out, sign in as `george`, and confirm direct navigation to `/owners/find`, `/vets.html`, and the Add visit route is denied.
 
-Playwright result: PENDING.
+Playwright result: PASS.
+
+- Staff login landed on Scheduling queue with the exact staff navigation, `staff` identity, and Logout action.
+- Franklin search opened George Franklin and displayed exact contact data, Leo, and visit history in the shared PetClinic layout.
+- The corrected browser forms created owner 11, edited its address and city, created pet 14, edited its name/date/type, and returned to owner detail with every saved value.
+- Blank pet submission showed required-field messages. Case-insensitive duplicate `pixelprime` showed `is already in use`, and owner detail still contained only `PixelPrime`.
+- Add Visit stored and displayed `2026-09-15` and `Walk-in vaccination` for pet 14.
+- Veterinarian pages displayed James Carter, Helen Leary/radiology, Linda Douglas/dentistry and surgery, Rafael Ortega/surgery, Henry Stevens/radiology, and Sharon Jenkins.
+- Missing-owner search displayed `has not been found` and no owner result.
+- After logout and owner login as `george`, `/owners/find`, `/vets.html`, and `/owners/1/pets/1/visits/new` each returned HTTP 403 with only the owner navigation visible.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no next use case is eligible because UC-8 is the final use case and its Playwright walkthrough remains.
+`PENDING_WALKTHROUGH` -> `APPROVED`; no next use case is eligible because UC-8 is the final use case and the feature is complete.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: run the UC-8 staff and owner presentation script with Playwright against an isolated database.
+APPROVED WITH NOTES: K-1 records a pre-existing stock owner-detail console error that did not affect any UC-8 outcome.
