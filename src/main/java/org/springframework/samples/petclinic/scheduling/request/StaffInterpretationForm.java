@@ -72,8 +72,8 @@ public class StaffInterpretationForm {
 			errors.add("scheduling.staff.interpretation.specialtyLabel.required");
 		}
 
-		Integer parsedDuration = parsePositiveInteger(this.durationMinutes,
-				"scheduling.staff.interpretation.duration.invalid", errors);
+		Integer parsedDuration = parseInteger(this.durationMinutes, "scheduling.staff.interpretation.duration.invalid",
+				errors);
 		Integer parsedVetId = parsePositiveInteger(this.preferredVetId, "scheduling.staff.interpretation.vet.invalid",
 				errors);
 		List<WindowValue> preferred = parseWindows(this.preferredWindows, "PREFERRED", errors);
@@ -91,14 +91,23 @@ public class StaffInterpretationForm {
 	}
 
 	private static Integer parsePositiveInteger(String value, String messageKey, List<String> errors) {
+		Integer parsed = parseInteger(value, messageKey, errors);
+		if (parsed == null) {
+			return null;
+		}
+		if (parsed > 0) {
+			return parsed;
+		}
+		errors.add(messageKey);
+		return null;
+	}
+
+	private static Integer parseInteger(String value, String messageKey, List<String> errors) {
 		if (value == null || value.isBlank()) {
 			return null;
 		}
 		try {
-			int parsed = Integer.parseInt(value.strip());
-			if (parsed > 0) {
-				return parsed;
-			}
+			return Integer.parseInt(value.strip());
 		}
 		catch (NumberFormatException ex) {
 			// Report the localized validation message below.

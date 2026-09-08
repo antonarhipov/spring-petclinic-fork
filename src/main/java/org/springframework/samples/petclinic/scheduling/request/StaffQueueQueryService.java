@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.samples.petclinic.scheduling.config.ClinicSettings;
+import org.springframework.samples.petclinic.scheduling.config.ClinicSettingsRepository;
+import org.springframework.samples.petclinic.scheduling.matching.DurationPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,9 +48,12 @@ public class StaffQueueQueryService {
 
 	private final Clock clock;
 
-	public StaffQueueQueryService(JdbcTemplate jdbc, Clock clock) {
+	private final ClinicSettingsRepository settings;
+
+	public StaffQueueQueryService(JdbcTemplate jdbc, Clock clock, ClinicSettingsRepository settings) {
 		this.jdbc = jdbc;
 		this.clock = clock;
+		this.settings = settings;
 	}
 
 	@Transactional(readOnly = true)
@@ -82,8 +88,17 @@ public class StaffQueueQueryService {
 		InterpretationView current = versions.stream().filter(InterpretationView::current).findFirst().orElse(null);
 		List<InterpretationView> history = versions.stream().filter(version -> !version.current()).toList();
 		List<VeterinarianOption> vets = veterinarians(current);
-		return Optional
-			.of(new RequestDetail(summaries.get(0), current, history, vets, specialties(), isComplete(current)));
+		int staffDefaultDurationMinutes = staffDefaultDuration(current, this.settings.getCurrentSettings());
+		return Optional.of(new RequestDetail(summaries.get(0), current, history, vets, specialties(),
+				isComplete(current), staffDefaultDurationMinutes));
+	}
+
+	private int staffDefaultDuration(InterpretationView current, ClinicSettings settings) {
+		Integer rawDuration = current != null ? current.durationMinutes() : null;
+		return DurationPolicy
+			.resolve(rawDuration, settings.getMinimumDurationMinutes(), settings.getDefaultDurationMinutes(),
+					settings.getMaximumDurationMinutes())
+			.effectiveDuration();
 	}
 
 	private RequestSummary summary(java.sql.ResultSet result) throws java.sql.SQLException {
@@ -275,7 +290,8 @@ public class StaffQueueQueryService {
 	}
 
 	public record RequestDetail(RequestSummary request, InterpretationView current, List<InterpretationView> history,
-			List<VeterinarianOption> veterinarians, List<String> specialties, boolean currentComplete) {
+			List<VeterinarianOption> veterinarians, List<String> specialties, boolean currentComplete,
+			int staffDefaultDurationMinutes) {
 	}
 
 	public record RequestSummary(int id, RequestState state, String stateMessageKey, long version, String requestText,

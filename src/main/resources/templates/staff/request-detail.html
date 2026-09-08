@@ -184,7 +184,7 @@
             <div class="col-12"><ul class="small"><li th:each="vet : ${detail.veterinarians}"><span th:text="${vet.name}">Vet</span>: <span th:text="#{${vet.matchMessageKey}}">match</span></li></ul></div>
             <div class="col-md-6"><label for="suggest-date" class="form-label" th:text="#{scheduling.slot.date}">Date</label><input id="suggest-date" type="date" name="date" class="form-control" required></div>
             <div class="col-md-6"><label for="suggest-time" class="form-label" th:text="#{scheduling.slot.time}">Time</label><input id="suggest-time" type="time" step="900" name="startTime" class="form-control" required></div>
-            <div class="col-12"><label for="suggest-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="suggest-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.current.durationMinutes != null ? detail.current.durationMinutes : 30}"></div>
+            <div class="col-12"><label for="suggest-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="suggest-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.staffDefaultDurationMinutes}"></div>
             <div class="col-12"><label for="suggest-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="suggest-reason" name="reason" class="form-control" required></div>
             <div class="col-12"><button type="submit" class="btn btn-primary" th:text="#{scheduling.staff.suggestion.place}">Place suggestion</button></div>
           </form>
@@ -201,7 +201,7 @@
             <div class="col-12"><ul class="small"><li th:each="vet : ${detail.veterinarians}"><span th:text="${vet.name}">Vet</span>: <span th:text="#{${vet.matchMessageKey}}">match</span></li></ul></div>
             <div class="col-md-6"><label for="book-date" class="form-label" th:text="#{scheduling.slot.date}">Date</label><input id="book-date" type="date" name="date" class="form-control" required></div>
             <div class="col-md-6"><label for="book-time" class="form-label" th:text="#{scheduling.slot.time}">Time</label><input id="book-time" type="time" step="900" name="startTime" class="form-control" required></div>
-            <div class="col-md-6"><label for="book-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="book-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.current.durationMinutes != null ? detail.current.durationMinutes : 30}"></div>
+            <div class="col-md-6"><label for="book-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="book-duration" type="number" name="durationMinutes" class="form-control" required th:value="${detail.staffDefaultDurationMinutes}"></div>
             <div class="col-md-6"><label for="book-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="book-reason" name="reason" class="form-control" required></div>
             <div class="col-12"><button type="submit" class="btn btn-success" th:text="#{scheduling.appointment.book}">Book appointment</button></div>
           </form>

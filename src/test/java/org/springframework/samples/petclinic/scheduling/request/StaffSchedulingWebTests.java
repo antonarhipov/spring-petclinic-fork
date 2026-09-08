@@ -5,9 +5,13 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -162,6 +166,78 @@ class StaffSchedulingWebTests {
 					"/staff/requests/" + request.getId() + "/suggest");
 	}
 
+	@ParameterizedTest(name = "raw duration {1} uses configured staff default {2}")
+	@MethodSource("staffDurationBoundaries")
+	void rawStaffDurationIsPersistedAndSlotFormsUseConfiguredBoundedDefault(String submittedDuration,
+			Integer expectedRawDuration, int expectedStaffDefault) throws Exception {
+		this.jdbc.update("""
+				update clinic_settings
+				set minimum_duration_minutes = 20,
+				    default_duration_minutes = 35,
+				    maximum_duration_minutes = 50
+				""");
+		try {
+			SchedulingRequest request = this.requestService.createForStaff(1, "Duration boundary").request();
+
+			this.mvc
+				.perform(post("/staff/requests/{id}/interpretation", request.getId()).with(user("staff").roles("STAFF"))
+					.with(csrf())
+					.param("version", Long.toString(request.getVersion()))
+					.param("careType", "GENERAL")
+					.param("specialty", "")
+					.param("specialtyLabel", "")
+					.param("durationMinutes", submittedDuration)
+					.param("preferredVetId", "")
+					.param("preferredWindows", "MONDAY 09:00 12:00")
+					.param("allowedWindows", "")
+					.param("excludedWindows", ""))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/staff/requests/" + request.getId()));
+
+			Integer storedDuration = this.jdbc.queryForObject(
+					"select duration_minutes from interpretations where request_id = ?", Integer.class,
+					request.getId());
+			assertThat(storedDuration).isEqualTo(expectedRawDuration);
+
+			String html = rendered(get("/staff/requests/{id}", request.getId()).with(user("staff").roles("STAFF")));
+			assertInputValue(html, "durationMinutes", submittedDuration);
+			assertInputValue(html, "suggest-duration", Integer.toString(expectedStaffDefault));
+			assertInputValue(html, "book-duration", Integer.toString(expectedStaffDefault));
+		}
+		finally {
+			this.jdbc.update("""
+					update clinic_settings
+					set minimum_duration_minutes = 15,
+					    default_duration_minutes = 30,
+					    maximum_duration_minutes = 60
+					""");
+		}
+	}
+
+	@Test
+	void rawDurationAndPreferredVeterinarianHaveIndependentValidation() throws Exception {
+		SchedulingRequest request = this.requestService.createForStaff(1, "Independent integer validation").request();
+
+		MvcResult result = this.mvc
+			.perform(post("/staff/requests/{id}/interpretation", request.getId()).with(user("staff").roles("STAFF"))
+				.with(csrf())
+				.param("version", Long.toString(request.getVersion()))
+				.param("careType", "GENERAL")
+				.param("specialty", "")
+				.param("specialtyLabel", "")
+				.param("durationMinutes", "0")
+				.param("preferredVetId", "0")
+				.param("preferredWindows", "MONDAY 09:00 12:00")
+				.param("allowedWindows", "")
+				.param("excludedWindows", ""))
+			.andExpect(status().isOk())
+			.andReturn();
+
+		assertThat(result.getResponse().getContentAsString()).contains("Choose a valid veterinarian")
+			.doesNotContain("Duration must be a whole number");
+		assertThat(count("select count(*) from interpretations where request_id = ?", request.getId())).isZero();
+	}
+
 	@Test
 	void staffConstraintBoundariesReturnSpecificRefusalsAndPreserveExistingCapacity() {
 		assertStaffSlotRefusal(1,
@@ -209,7 +285,7 @@ class StaffSchedulingWebTests {
 			.andReturn();
 
 		assertThat(result.getResponse().getContentAsString()).contains("Choose a specialty for specialty care",
-				"Duration must be a positive whole number", "Add at least one preferred or allowed window");
+				"Duration must be a whole number", "Add at least one preferred or allowed window");
 		assertThat(count("select count(*) from interpretations where request_id = ?", request.getId())).isZero();
 		assertThat(this.requests.findById(request.getId()).orElseThrow().getState()).isEqualTo(RequestState.WITH_STAFF);
 	}
@@ -435,6 +511,16 @@ class StaffSchedulingWebTests {
 			.isInstanceOf(StaffSlotUnavailableException.class)
 			.hasMessage(expectedMessageKey);
 		assertThat(count("select count(*) from appointments where request_id = ?", request.getId())).isZero();
+	}
+
+	private void assertInputValue(String html, String id, String value) {
+		assertThat(html).containsPattern("<input[^>]*id=\"" + id + "\"[^>]*value=\"" + value + "\"");
+	}
+
+	private static Stream<Arguments> staffDurationBoundaries() {
+		return Stream.of(Arguments.of("", null, 35), Arguments.of("0", 0, 20), Arguments.of("19", 19, 20),
+				Arguments.of("20", 20, 20), Arguments.of("35", 35, 35), Arguments.of("50", 50, 50),
+				Arguments.of("51", 51, 50));
 	}
 
 	private Interpretation interpretation(InterpretationOrigin origin, CareType careType, String specialty,

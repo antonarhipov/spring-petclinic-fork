@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -23,6 +24,8 @@ import org.springframework.ai.model.ollama.autoconfigure.OllamaChatProperties;
 import org.springframework.ai.retry.autoconfigure.SpringAiRetryProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.samples.petclinic.scheduling.interpretation.Interpreter.InterpretationException;
@@ -44,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@ExtendWith(OutputCaptureExtension.class)
 class InterpreterContractTests {
 
 	private static final String MODEL_JSON = """
@@ -152,6 +156,21 @@ class InterpreterContractTests {
 			assertThat(pool.getThreadPoolExecutor().getQueue().remainingCapacity()).isEqualTo(Integer.MAX_VALUE);
 			pool.shutdown();
 		});
+	}
+
+	@Test
+	void llmInteractionLogsRequestPayloadAndStructuredResponseWithoutRawProviderJson(CapturedOutput output) {
+		RecordingChatModel model = new RecordingChatModel();
+		OllamaInterpreter interpreter = new OllamaInterpreter(ChatClient.create(model), "ministral-3:14b");
+
+		interpreter.interpret("allowed prompt").toCompletableFuture().join();
+
+		assertThat(output)
+			.contains("LLM request payload", "model=ministral-3:14b", "temperature=0.0",
+					"systemPrompt=" + OllamaInterpreter.SYSTEM_PROMPT, "userPrompt=allowed prompt",
+					"responseType=" + InterpretationResult.ModelOutput.class.getName(), "LLM structured response",
+					"response=ModelOutput[understood=true")
+			.doesNotContain(MODEL_JSON);
 	}
 
 	@Test
