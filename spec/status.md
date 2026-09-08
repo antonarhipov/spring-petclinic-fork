@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: UC-3
-- Status: READY_FOR_CONVERGENCE
-- Next eligible: none until UC-3 convergence completes
+- Use case: none
+- Status: APPROVED
+- Next eligible: UC-5, UC-6, UC-7, UC-8
 
 ## Progress
 
@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | APPROVED | UC-1 | `72f152e` | [APPROVED](convergence/UC-2.md) - walkthrough passed |
-| UC-3 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | Prior [APPROVED](convergence/UC-3.md); corrective revision submitted for immediate reconvergence |
+| UC-3 | APPROVED | UC-1 | `f9b39db` | [APPROVED](convergence/UC-3.md) - corrective structured-output revision converged; prior walkthrough remains valid |
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
