@@ -3,8 +3,8 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-5.md` at `509578bd75470b47b4b9293c910129b4e91d8fd8`
-- Verdict: PENDING WALKTHROUGH
-- Findings: 0 critical, 0 gap, 0 protocol; human UI walkthrough pending
+- Verdict: APPROVE
+- Findings: 0 critical, 0 gap, 0 protocol
 - Suite: 355 run, 0 failed, 0 errors, 0 skipped across 46 suites
 - Working tree impact from verification: none; the tracked runtime database remained unchanged
 
@@ -99,7 +99,7 @@
 
 ## Findings
 
-No critical, gap, protocol, drift, or cosmetic finding remains. Human confirmation of the UI-bearing flow is the only open gate.
+No critical, gap, protocol, drift, or cosmetic finding remains. The user confirmed the complete UI walkthrough.
 
 ## Walkthrough
 
@@ -111,12 +111,12 @@ No critical, gap, protocol, drift, or cosmetic finding remains. Human confirmati
 6. For appointments whose start has passed, complete one using the prefilled description and mark another No-show. Confirm final statuses and no further actions; confirm the owner sees both outcomes.
 7. On a future Confirmed appointment, confirm completion and No-show actions are absent. On each final appointment, confirm reschedule/cancel/complete/no-show actions are absent.
 
-User result: pending.
+User result: PASS on 2026-09-08.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no use case is eligible until the UC-5 walkthrough passes.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-6, UC-7, and UC-8 are eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: complete the UC-5 calendar and lifecycle script above, then report PASS or the failing step.
+APPROVED
