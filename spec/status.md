@@ -3,7 +3,7 @@
 ## Current
 
 - Use case: UC-4
-- Status: READY_FOR_CONVERGENCE
+- Status: PENDING_WALKTHROUGH
 - Next eligible: none
 
 ## Progress
@@ -13,7 +13,7 @@
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | APPROVED | UC-1 | `72f152e` | [APPROVED](convergence/UC-2.md) - walkthrough passed |
 | UC-3 | APPROVED | UC-1 | `4477d22` | [APPROVED](convergence/UC-3.md) - walkthrough passed |
-| UC-4 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence (C-1 revision) | [REJECT](convergence/UC-4.md) - C-1 addressed |
+| UC-4 | PENDING_WALKTHROUGH | UC-1 | `b5dd39d` | [PENDING_WALKTHROUGH](convergence/UC-4.md) - automated checks passed |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
 | UC-7 | NOT_STARTED | UC-1 | - | - |

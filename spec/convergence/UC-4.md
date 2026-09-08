@@ -2,20 +2,20 @@
 
 ## Summary
 
-- Submission: `spec/checkpoints/UC-4.md` at `4c8d3079f300ade92d9e3e6c4df412e0e2269923`
-- Verdict: REJECT
-- Findings: 1 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
-- Suite: 338 run, 0 failed, 0 errors, 0 skipped; focused convergence run 33/0/0/0
+- Submission: `spec/checkpoints/UC-4.md` at `b5dd39d35207a76207e70ccf5502ff534d8dca68`
+- Verdict: PENDING WALKTHROUGH
+- Findings: 0 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
+- Suite: 347 run, 0 failed, 0 errors, 0 skipped; focused convergence run 52/0/0/0
 - Working tree impact from verification: none
 
 ## Protocol Gate
 
 1. PASS - UC-4 is the only target and was `READY_FOR_CONVERGENCE` before this report.
-2. PASS - `spec/checkpoints/UC-4.md` and the implementation are committed together at `4c8d3079f300ade92d9e3e6c4df412e0e2269923`, based on `04a2776db29429e8aa926313dd21bde6e5b8e460`.
+2. PASS - `spec/checkpoints/UC-4.md` and the revision are committed together at `b5dd39d35207a76207e70ccf5502ff534d8dca68`, based on rejection commit `85a4217aba7b348cbfcdf80560ce0d178eae8648`.
 3. PASS - UC-4 requires only UC-1, which is `APPROVED` at `0261b04` with its walkthrough passed.
 4. PASS - UC-5 through UC-8 are `NOT_STARTED`; no other use case is active or ready.
 5. PASS - The checkpoint maps all ten main steps, all 15 extensions, all eight guarantees, both postconditions, the UC-1 relationship, all applicable rules, validation commands, changed files, and approved-UC regression evidence.
-6. PASS - Inspection of all 36 changed files found only the UC-4 staff-assisted scheduling slice, its required shared request/appointment behavior, presentation/localization, status/checkpoint artifacts, and verification. No later-UC or unrelated change is included.
+6. PASS - Inspection of all 19 revision files found only the C-1 duration correction, its presentation/localization and tests, the requested privacy-bounded LLM interaction logging, and executor artifacts. No later-UC or unrelated change is included.
 
 ## Runtime Reproduction
 
@@ -25,9 +25,10 @@
 | Staff `staff` and owner `betty` | Extension 7a and success alternative | Staff places one audited suggestion and the owner sees it. | The same real-server journey observed `SUGGESTION_OFFERED`, exactly one Held appointment, persisted staff reason, and the slot in Betty's request and appointments views. |
 | Staff `staff` | Extensions 5c, 7b, 8a, and 8b | Incomplete/malformed input is localized; allowed overrides succeed; clinic constraints refuse atomically. | MVC and real persistence evidence reproduced missing-field and malformed-input feedback, owner-window/specialty/horizon/lead overrides, and duration/grid/opening/block/overlap refusals with unchanged losing state. |
 | Concurrent staff actions | Extensions 1b, 9a, and 9b | Active-request, request-version, and same-slot races have one winner. | Real two-thread transactions observed one active request, one optimistic request action, and one overlapping hold/booking winner; losing requests and capacity remained unchanged. |
-| Staff `staff` | UC-4 G4 and RULE-21 raw duration boundary | Staff-authored raw values are preserved verbatim and bounded only for the staff default. | Production-class reproduction with care `GENERAL`, raw duration `0`, and a valid preferred window returned `[scheduling.staff.interpretation.duration.invalid]`. Code inspection also found the raw duration copied directly into both slot forms rather than resolved through `DurationPolicy`. This contradicts the contract; see C-1. |
+| Staff `staff` | UC-4 G4 and RULE-21 raw duration boundary | Staff-authored raw values are preserved verbatim and bounded only for the staff default. | Authenticated MVC submissions preserved absent, `0`, `19`, `20`, `35`, `50`, and `51` exactly with configured bounds `20/35/50`; the rendered suggestion and booking defaults were respectively `35`, `20`, `20`, `20`, `35`, `50`, and `50`. Preferred-veterinarian `0` remained independently invalid. |
+| Interpreter adapter | RULE-12 LLM interaction observability | Log the allowed request payload and mapped response without raw provider JSON. | A recording `ChatModel` observed the production adapter call. Captured output contained model, temperature, system prompt, user prompt, response type, and mapped `ModelOutput`; it excluded the raw provider JSON and identity/credential fields remain absent from the prompt contract. |
 
-The focused convergence command ran `StaffSchedulingWebTests`, `ConcurrencyInvariantTests`, `SchedulingE2eTests`, and `I18nPropertiesSyncTest` together and passed 33/0/0/0. The independent full suite passed 338/0/0/0 across 45 suites. Both runs left Git clean and preserved `data/petclinic.mv.db` at 114688 bytes, timestamp `2026-09-08T15:16:05+0200`, and SHA-256 `6bd75c0c92324582c86d98d90eada9612d7b40f8711cedf2d8f79c08e37a6820`.
+The focused convergence command ran `StaffSchedulingWebTests`, `InterpreterContractTests`, `I18nPropertiesSyncTest`, `DurationAndTimeTests`, `ConcurrencyInvariantTests`, and `SchedulingE2eTests` together and passed 52/0/0/0. The independent full suite passed 347/0/0/0 across 45 suites. Both runs left Git clean and preserved `data/petclinic.mv.db` at 126976 bytes, timestamp `2026-09-08T15:40:44+0200`, and SHA-256 `745f17b36795677662e6fa7593f60e78fe2006bd39ab9428c7b488c550f9cc86`.
 
 ## Evidence Ledger
 
@@ -61,7 +62,7 @@ The focused convergence command ran `StaffSchedulingWebTests`, `ConcurrencyInvar
 | UC-4 G1 | Queue partition/order/fields are exact. | Query-model and rendered DOM evidence compares all required values and exact membership. | STRONG | yes |
 | UC-4 G2 | No assignment state; stale action cannot overwrite. | Diff/schema inspection finds no assignment/claim field; optimistic bulk claim and concurrency tests prove overwrite prevention. | STRONG | yes |
 | UC-4 G3 | Staff never invokes AI/consent or mutates forbidden states. | Zero-call assertions and the complete action-by-state matrix cover all staff paths and forbidden states. | STRONG | yes |
-| UC-4 G4 | STAFF versions preserve every structured field and history; latest is used. | Normal values/history pass, but raw duration `0` is rejected by `StaffInterpretationForm.parse()` before a version can be stored. | STRONG | no - C-1 |
+| UC-4 G4 | STAFF versions preserve every structured field and history; latest is used. | `StaffInterpretationForm.java:75-116` accepts any parseable duration independently of positive veterinarian ids. `StaffSchedulingWebTests.java:169-239` proves exact stored raw values and configured bounded defaults at the authenticated HTTP boundary. | STRONG | yes |
 | UC-4 G5 | Staff overrides only owner constraints. | Exact accepted override and refused clinic-constraint fixtures use the production availability and overlap path. | STRONG | yes |
 | UC-4 G6 | Active-request and slot races retain one winner. | Three real two-thread tests assert the exact durable winner and unchanged loser. | STRONG | yes |
 | UC-4 G7 | Owner can view/abandon With staff but cannot edit. | Owner HTTP/service evidence covers view/abandon; the lifecycle matrix refuses edit from With staff without mutation. | STRONG | yes |
@@ -84,14 +85,14 @@ The focused convergence command ran `StaffSchedulingWebTests`, `ConcurrencyInvar
 | RULE-8 | Normative sets and BCrypt credentials are exact. | `SeedMigrationTests` passes by-value set and credential comparisons in the full suite. | PASS |
 | RULE-9 | Single exact security chain, form login, CSRF, BCrypt, and logout. | Route inventory includes every new staff endpoint and checks anonymous/owner/staff response plus no mutation. | PASS |
 | RULE-10 | `/my/**` derives owner scope from principal with indistinguishable not-found. | No owner id was added; all approved owner-isolation tests pass. | PASS |
-| RULE-12 | Staff paths cannot disclose to or invoke the interpreter. | Real HTTP and negative staff tests observe zero interpreter calls; existing prompt/log scans remain green. | PASS |
+| RULE-12 | Staff paths cannot disclose to or invoke the interpreter; interpreter logs exclude identities, credentials, and raw model output. | Real HTTP and negative staff tests observe zero interpreter calls. `OllamaInterpreter.java:44-60` logs the allowed semantic payload and mapped response; `InterpreterContractTests.java:161-174` proves raw provider JSON is absent, while the existing complete-prompt test rejects identity and credential fields. | PASS |
 | RULE-15 | Current time comes only from injected `Clock`. | Queue hold age uses injected `Clock`; fixed-clock matching and lifecycle tests pass. | PASS |
 | RULE-16 | Pages use the shared PetClinic presentation and exact actions. | Both templates use the shared layout; rendered role/state action tests pass. | PASS |
 | RULE-17 | Visible text and validation are keyed in all eleven bundles. | Key-set parity, source scans, malformed-field message, and German weekday rendering pass. | PASS |
-| RULE-18 | Real-server and direct evidence cover the complete UC without repository impact. | Dynamic-port actor journey, evidence ledger, 338-test suite, clean Git state, and unchanged runtime database. | PASS |
+| RULE-18 | Real-server and direct evidence cover the complete UC without repository impact. | Dynamic-port actor journey, evidence ledger, 347-test suite, clean Git state, and unchanged runtime database. | PASS |
 | RULE-19 | Staff constraints enforce hours, effective work, grid, duration bounds, and overlap but not owner constraints. | Exact production boundary and accepted-override tests. | PASS |
 | RULE-20 | One effective-availability function serves all consumers. | Staff validation calls `AvailabilityService`; approved cross-boundary matching parity remains green. | PASS |
-| RULE-21 | Preserve every raw structured value; default/clamp only while building a match or staff default. | `StaffInterpretationForm.java:75` uses a positive-only parser and rejects zero at lines 93-107, although `DurationAndTimeTests.java:113` establishes zero as a raw clamped boundary. `request-detail.html:187` and `request-detail.html:204` copy the raw value directly into both staff defaults. | FAIL C-1 |
+| RULE-21 | Preserve every raw structured value; default/clamp only while building a match or staff default. | `StaffInterpretationForm.java:75-116` preserves every parseable integer. `StaffQueueQueryService.java:91-101` resolves only the staff slot default through `DurationPolicy` and current clinic settings; the template consumes that derived value. Authenticated boundary tests cover absent, zero, below, minimum, inside, maximum, and above values by exact persisted/rendered value. | PASS |
 | RULE-22 | Exact rejection survives all request versions and later candidate sets. | UC-4 does not mutate rejections; approved edit/reinterpret/rematch and restart evidence stays green. | PASS |
 | RULE-24 | Maven/H2-only support with isolated in-memory tests and documented runtime. | Repository, dependency, README, restart, and test-isolation suites pass; runtime DB is unchanged. | PASS |
 
@@ -99,23 +100,30 @@ The focused convergence command ran `StaffSchedulingWebTests`, `ConcurrencyInvar
 
 | Use case | Relationship/shared surface | Evidence | Result |
 |---|---|---|---|
-| UC-1 | Required authentication, staff-only routes, shared shell, localization, Flyway, and H2/Maven boundary. | Full 338-test suite includes approved security, navigation, localization, seed, repository, and real-server authentication evidence. | PASS |
+| UC-1 | Required authentication, staff-only routes, shared shell, localization, Flyway, and H2/Maven boundary. | Full 347-test suite includes approved security, navigation, localization, seed, repository, and real-server authentication evidence. | PASS |
 | UC-2 | Owner appointment/activity views consume staff outcomes. | Owner activity and real-server owner rendering regressions pass, including the staff-created Confirmed appointment. | PASS |
 | UC-3 | Shared request/interpretation/hold/booking lifecycle, matching, rejection fidelity, and staff continuation. | Full owner-guided, matching, interpretation, lifecycle, concurrency, and real-server suites pass with no regression. | PASS |
 
 ## Findings
 
-### C-1 CRITICAL - Staff raw duration is rejected and not converted into a bounded staff default
+None. Prior C-1 is resolved by the exact persistence and bounded-default evidence above.
 
-- Contract: UC-4 G4 requires that “Staff-authored versions preserve all interpretation fields defined in UC-3 G8,” and RULE-21 requires the implementation to “preserve every accepted structured value verbatim, including ... out-of-range raw duration” while making “defaults and clamping ... only while building a match or staff default.”
-- Evidence: `StaffInterpretationForm.java:75` sends duration through `parsePositiveInteger`; lines 93-107 reject `0`. Direct production-class reproduction with otherwise complete values returned `scheduling.staff.interpretation.duration.invalid`, while the already-approved boundary at `DurationAndTimeTests.java:113` proves raw `0` resolves to the configured minimum rather than being invalid. For existing AI versions, `request-detail.html:187` and `request-detail.html:204` use the raw duration directly as the suggestion and booking defaults, bypassing `DurationPolicy` and clinic settings.
-- Why this fails: Staff cannot persist every valid raw out-of-range interpretation value, and an existing raw out-of-range version presents an invalid slot duration rather than a bounded staff default. Normal-path tests with duration 30 or 45 stay green, so the full suite does not detect the contract breach.
-- Revision outcome: accept and persist any parseable raw duration, including zero and other out-of-range values, separately validate veterinarian ids, and derive the suggestion/booking default through the shared configured `DurationPolicy`. Add outer-boundary field-by-field tests for absent, below, at, inside, at, and above bounds proving the STAFF row retains the raw value while the rendered staff default is bounded.
+## Walkthrough
+
+Result: pending user confirmation.
+
+1. Start the application with `./mvnw spring-boot:run`, sign in as `staff` / `staff123`, and open Scheduling queue. Confirm Needs staff contains only With staff requests oldest first with reason/origin, while In progress contains every other active request with state and any held-slot age.
+2. Create a request for a pet. Confirm it opens directly in With staff with reason Request created by staff, appears in Needs staff, and no consent or AI action is offered.
+3. Open its detail. Confirm owner, pet, hand-off reason, request version, current origin, latest interpretation, and immutable history are visible. Submit incomplete interpretation values and confirm the page identifies them while creating no usable version or booking action.
+4. Author a complete interpretation with raw duration `0` and a valid preferred or allowed window. Confirm the interpretation field remains `0`, while the suggestion and booking duration fields use the clinic minimum rather than `0`. Confirm veterinarian specialty match/mismatch labels are visible.
+5. Direct-book a clinic-valid veterinarian/date/time with a reason. Confirm the request becomes Accepted, disappears from the active queue, and the Confirmed appointment is visible after signing in as the corresponding owner.
+6. For another With staff request, place a clinic-valid suggestion with a reason. Confirm it moves to In progress as Suggestion offered with exactly one held slot; sign in as the owner and confirm the standard accept, reject, staff-help, edit, and abandon actions are shown.
+7. Sign back in as staff, inspect that held request, and release its hold with a reason. Confirm the hold disappears and the request returns to Needs staff with reason Hold released by staff. Report PASS, or provide the step number and observed mismatch.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `NEEDS_REVISION`; no later use case is eligible until C-1 is resolved and UC-4 converges again.
+`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no later use case is eligible until the walkthrough is confirmed.
 
 ## Response to execute
 
-REVISE UC-4: C-1 requires raw staff duration fidelity and a bounded configured staff default.
+PENDING WALKTHROUGH: automated UC-4 convergence passed; confirm the seven-step staff/owner walkthrough.
