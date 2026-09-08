@@ -20,10 +20,8 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
-import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -54,9 +52,12 @@ class PetController {
 
 	private final PetTypeRepository types;
 
-	public PetController(OwnerRepository owners, PetTypeRepository types) {
+	private final ClinicRecordService clinicRecords;
+
+	public PetController(OwnerRepository owners, PetTypeRepository types, ClinicRecordService clinicRecords) {
 		this.owners = owners;
 		this.types = types;
+		this.clinicRecords = clinicRecords;
 	}
 
 	@ModelAttribute("types")
@@ -122,13 +123,9 @@ class PetController {
 		}
 
 		try {
-			owner.addPet(pet);
-			this.owners.saveAndFlush(owner);
+			this.clinicRecords.createPet(owner, pet);
 		}
-		catch (DataIntegrityViolationException ex) {
-			if (!isDuplicatePetNameViolation(ex)) {
-				throw ex;
-			}
+		catch (DuplicatePetNameException ex) {
 			result.rejectValue("name", "duplicate");
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
@@ -165,43 +162,14 @@ class PetController {
 		}
 
 		try {
-			updatePetDetails(owner, pet);
+			this.clinicRecords.updatePet(owner, pet);
 		}
-		catch (DataIntegrityViolationException ex) {
-			if (!isDuplicatePetNameViolation(ex)) {
-				throw ex;
-			}
+		catch (DuplicatePetNameException ex) {
 			result.rejectValue("name", "duplicate");
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 		redirectAttributes.addFlashAttribute("message", "scheduling.pet.updated");
 		return "redirect:/owners/{ownerId}";
-	}
-
-	/**
-	 * Updates the pet details if it exists or adds a new pet to the owner.
-	 * @param owner The owner of the pet
-	 * @param pet The pet with updated details
-	 */
-	private void updatePetDetails(Owner owner, Pet pet) {
-		Integer id = pet.getId();
-		Assert.state(id != null, "'pet.getId()' must not be null");
-		Pet existingPet = owner.getPet(id);
-		if (existingPet != null) {
-			// Update existing pet's properties
-			existingPet.setName(pet.getName());
-			existingPet.setBirthDate(pet.getBirthDate());
-			existingPet.setType(pet.getType());
-		}
-		else {
-			owner.addPet(pet);
-		}
-		this.owners.saveAndFlush(owner);
-	}
-
-	private boolean isDuplicatePetNameViolation(DataIntegrityViolationException ex) {
-		String message = ex.getMessage();
-		return message != null && message.toLowerCase().contains("unique_owner_pet_name");
 	}
 
 }

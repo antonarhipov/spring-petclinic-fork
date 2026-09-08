@@ -16,7 +16,11 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
@@ -59,6 +63,9 @@ class VisitControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	@MockitoBean
+	private ClinicRecordService clinicRecords;
+
 	@BeforeEach
 	void init() {
 		Owner owner = new Owner();
@@ -85,6 +92,7 @@ class VisitControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(flash().attribute("message", "scheduling.visit.created"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+		verify(this.clinicRecords).addWalkInVisit(any(Owner.class), eq(TEST_PET_ID), any(Visit.class));
 	}
 
 	@Test
@@ -95,6 +103,7 @@ class VisitControllerTests {
 			.andExpect(model().attributeHasErrors("visit"))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+		verifyNoInteractions(this.clinicRecords);
 	}
 
 	@Test

@@ -12,6 +12,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +42,7 @@ public class PetClinicConcurrencyTests {
 	private JdbcTemplate jdbc;
 
 	@Test
-	public void testDuplicatePetNameRaceConditionIsBlocked() throws Exception {
+	public void uc8Extension3bConcurrentDuplicatePetNameRaceHasOneWinnerAndOneValidationResponse() throws Exception {
 		int ownerId = 1;
 		String duplicatePetName = "ConcurrencyTestPet";
 		this.jdbc.update("delete from pets where owner_id = ? and lower(name) = lower(?)", ownerId, duplicatePetName);
@@ -54,7 +55,8 @@ public class PetClinicConcurrencyTests {
 		CountDownLatch doneLatch = new CountDownLatch(threadCount);
 
 		AtomicInteger successCount = new AtomicInteger(0);
-		AtomicInteger failureCount = new AtomicInteger(0);
+		AtomicInteger duplicateCount = new AtomicInteger(0);
+		ConcurrentLinkedQueue<Throwable> unexpectedFailures = new ConcurrentLinkedQueue<>();
 
 		for (int i = 0; i < threadCount; i++) {
 			executorService.submit(() -> {
@@ -73,11 +75,11 @@ public class PetClinicConcurrencyTests {
 					else {
 						assertThat(response.statusCode()).isEqualTo(200);
 						assertThat(response.body()).contains("is already in use");
-						failureCount.incrementAndGet();
+						duplicateCount.incrementAndGet();
 					}
 				}
-				catch (Exception e) {
-					failureCount.incrementAndGet();
+				catch (Throwable failure) {
+					unexpectedFailures.add(failure);
 				}
 				finally {
 					doneLatch.countDown();
@@ -98,8 +100,9 @@ public class PetClinicConcurrencyTests {
 		}
 
 		try {
+			assertThat(unexpectedFailures).isEmpty();
 			assertThat(successCount.get()).isEqualTo(1);
-			assertThat(failureCount.get()).isEqualTo(1);
+			assertThat(duplicateCount.get()).isEqualTo(1);
 			assertThat(petCount(ownerId)).isEqualTo(initialPetCount + 1);
 			assertThat(
 					this.jdbc.queryForObject("select count(*) from pets where owner_id = ? and lower(name) = lower(?)",

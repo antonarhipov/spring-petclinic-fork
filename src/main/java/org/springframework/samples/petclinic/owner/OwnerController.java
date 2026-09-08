@@ -52,8 +52,11 @@ class OwnerController {
 
 	private final OwnerRepository owners;
 
-	public OwnerController(OwnerRepository owners) {
+	private final ClinicRecordService clinicRecords;
+
+	public OwnerController(OwnerRepository owners, ClinicRecordService clinicRecords) {
 		this.owners = owners;
+		this.clinicRecords = clinicRecords;
 	}
 
 	@InitBinder
@@ -81,7 +84,7 @@ class OwnerController {
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
-		this.owners.save(owner);
+		this.clinicRecords.saveOwner(owner);
 		redirectAttributes.addFlashAttribute("message", "scheduling.owner.created");
 		return "redirect:/owners/" + owner.getId();
 	}
@@ -156,7 +159,7 @@ class OwnerController {
 		}
 
 		owner.setId(ownerId);
-		this.owners.save(owner);
+		this.clinicRecords.saveOwner(owner);
 		redirectAttributes.addFlashAttribute("message", "scheduling.owner.updated");
 		return "redirect:/owners/{ownerId}";
 	}

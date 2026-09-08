@@ -33,10 +33,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.dao.DataIntegrityViolationException;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
@@ -69,6 +70,9 @@ class PetControllerTests {
 
 	@MockitoBean
 	private PetTypeRepository types;
+
+	@MockitoBean
+	private ClinicRecordService clinicRecords;
 
 	@BeforeEach
 	void setup() {
@@ -106,6 +110,7 @@ class PetControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(flash().attribute("message", "scheduling.pet.created"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+		verify(this.clinicRecords).createPet(any(Owner.class), any(Pet.class));
 	}
 
 	@Nested
@@ -122,6 +127,7 @@ class PetControllerTests {
 				.andExpect(model().attributeHasFieldErrorCode("pet", "name", "required"))
 				.andExpect(status().isOk())
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
+			verifyNoInteractions(clinicRecords);
 		}
 
 		@Test
@@ -168,8 +174,7 @@ class PetControllerTests {
 
 		@Test
 		void processCreationFormWithDataIntegrityViolation() throws Exception {
-			given(owners.saveAndFlush(any(Owner.class)))
-				.willThrow(new DataIntegrityViolationException("Duplicate key: unique_owner_pet_name"));
+			willThrow(new DuplicatePetNameException()).given(clinicRecords).createPet(any(Owner.class), any(Pet.class));
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/new", TEST_OWNER_ID).param("name", "Betty")
 					.param("type", "hamster")
@@ -201,6 +206,7 @@ class PetControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(flash().attribute("message", "scheduling.pet.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+		verify(this.clinicRecords).updatePet(any(Owner.class), any(Pet.class));
 	}
 
 	@Test
@@ -261,8 +267,7 @@ class PetControllerTests {
 
 		@Test
 		void processUpdateFormWithDataIntegrityViolation() throws Exception {
-			given(owners.saveAndFlush(any(Owner.class)))
-				.willThrow(new DataIntegrityViolationException("Duplicate key: unique_owner_pet_name"));
+			willThrow(new DuplicatePetNameException()).given(clinicRecords).updatePet(any(Owner.class), any(Pet.class));
 			mockMvc
 				.perform(post("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID).param("name", "Betty")
 					.param("type", "hamster")

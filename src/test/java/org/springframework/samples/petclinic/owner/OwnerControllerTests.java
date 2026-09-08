@@ -47,6 +47,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -71,6 +72,9 @@ class OwnerControllerTests {
 
 	@MockitoBean
 	private OwnerRepository owners;
+
+	@MockitoBean
+	private ClinicRecordService clinicRecords;
 
 	private Owner george() {
 		Owner george = new Owner();
@@ -123,6 +127,7 @@ class OwnerControllerTests {
 				.param("telephone", "1316761638"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(flash().attribute("message", "scheduling.owner.created"));
+		verify(this.clinicRecords).saveOwner(any(Owner.class));
 	}
 
 	@Test
@@ -134,6 +139,7 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrors("owner", "address"))
 			.andExpect(model().attributeHasFieldErrors("owner", "telephone"))
 			.andExpect(view().name("owners/createOrUpdateOwnerForm"));
+		verifyNoInteractions(this.clinicRecords);
 	}
 
 	@Test
@@ -222,6 +228,7 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(flash().attribute("message", "scheduling.owner.updated"))
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+		verify(this.clinicRecords).saveOwner(any(Owner.class));
 	}
 
 	@Test
@@ -244,6 +251,7 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrors("owner", "address"))
 			.andExpect(model().attributeHasFieldErrors("owner", "telephone"))
 			.andExpect(view().name("owners/createOrUpdateOwnerForm"));
+		verifyNoInteractions(this.clinicRecords);
 	}
 
 	@Test

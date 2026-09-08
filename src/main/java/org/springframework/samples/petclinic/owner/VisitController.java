@@ -44,8 +44,11 @@ class VisitController {
 
 	private final OwnerRepository owners;
 
-	public VisitController(OwnerRepository owners) {
+	private final ClinicRecordService clinicRecords;
+
+	public VisitController(OwnerRepository owners, ClinicRecordService clinicRecords) {
 		this.owners = owners;
+		this.clinicRecords = clinicRecords;
 	}
 
 	@InitBinder
@@ -76,7 +79,6 @@ class VisitController {
 		model.put("owner", owner);
 
 		Visit visit = new Visit();
-		pet.addVisit(visit);
 		return visit;
 	}
 
@@ -105,8 +107,7 @@ class VisitController {
 			return "pets/createOrUpdateVisitForm";
 		}
 
-		owner.addVisit(petId, visit);
-		this.owners.save(owner);
+		this.clinicRecords.addWalkInVisit(owner, petId, visit);
 		redirectAttributes.addFlashAttribute("message", "scheduling.visit.created");
 		return "redirect:/owners/{ownerId}";
 	}

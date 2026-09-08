@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-8
+- Use case: UC-8
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none while UC-8 awaits convergence
 
 ## Progress
 
@@ -17,7 +17,7 @@
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
 | UC-6 | APPROVED | UC-1 | `737d8ea` | [APPROVED](convergence/UC-6.md) - walkthrough passed |
 | UC-7 | APPROVED | UC-1 | `cd34791` (revision of `6c1a1a9`) | [APPROVED](convergence/UC-7.md) - walkthrough passed |
-| UC-8 | NOT_STARTED | UC-1 | - | - |
+| UC-8 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | pending |
 
 ## UC-1 Evidence
 
@@ -444,6 +444,45 @@
 | RULE-18 | `ClinicConfigurationE2ETests.java:63` supplies the real-server actor journey; every extension and guarantee maps above; 369 tests pass and runtime H2 is unchanged. |
 | RULE-23 | Invalid, confirmed-conflict, hold-only-conflict, and clean changes are covered across settings, weekly blocks, exceptions, leave, and closures with all-or-nothing assertions. |
 | RULE-24 | Maven/H2 inventory, in-memory test isolation, formatting, and unchanged file-backed runtime H2 regressions pass. |
+
+## UC-8 Evidence
+
+- Started: 2026-09-09T00:21:59+02:00
+- Started from: `b6ba23d4fef01d5c17580f3f14726430e5d8ef64`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Production: `ClinicRecordService.java`, `DuplicatePetNameException.java`, `OwnerController.java`, `PetController.java`, and `VisitController.java`.
+  - Verification: `ClinicRecordsE2ETests.java`, `PetClinicConcurrencyTests.java`, `OwnerControllerTests.java`, `PetControllerTests.java`, and `VisitControllerTests.java`.
+  - Evidence: `spec/status.md` and `spec/checkpoints/UC-8.md`.
+- Commands and results:
+  - Focused: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=ClinicRecordsE2ETests,PetClinicConcurrencyTests,OwnerControllerTests,PetControllerTests,VisitControllerTests test` passed 38 tests with 0 failures, 0 errors, and 0 skipped.
+  - Full relevant suite: the same Java and agent configuration with `test` passed 373 tests with 0 failures, 0 errors, and 0 skipped.
+  - `spring-javaformat:validate` and `git diff --check` passed.
+  - The file-backed runtime H2 database remained 126976 bytes with SHA-256 `6c80213d262edc022bdc86145788363da080cc2d03dd828717806410f7b66570`.
+
+| Contract element | Evidence |
+|---|---|
+| UC-8 main steps 1-4 | Seeded staff form login, owner search/detail, owner create/edit, pet create/edit, redirects, rendered values, and persisted rows run through real HTTP at `ClinicRecordsE2ETests.java:57`; controller mutations delegate to `ClinicRecordService.java:21`. |
+| UC-8 main steps 5-6 | Both veterinarian pages are fetched through real HTTP and assert all six exact veterinarian names and specialties at `ClinicRecordsE2ETests.java:94`. |
+| UC-8 extension 1a | No-match search renders the established validation, discloses no unrelated owner, and preserves the database snapshot at `ClinicRecordsE2ETests.java:106`. |
+| UC-8 extension 3a | Invalid owner and pet posts render validation and preserve owners, pets, visits, and appointments at `ClinicRecordsE2ETests.java:111`; MVC tests also prove no service invocation. |
+| UC-8 extension 3b | Sequential case-insensitive duplicates render the localized duplicate error and preserve the database at `ClinicRecordsE2ETests.java:123`; concurrent real HTTP posts produce exactly one winner, one validation response, and one row at `PetClinicConcurrencyTests.java:45`. |
+| UC-8 extension 2a | The established Add visit form stores the exact date and description with a null `appointment_id` and renders it in pet history at `ClinicRecordsE2ETests.java:145`; `ClinicRecordService.java:50` explicitly clears any link. |
+| UC-8 extension 2b | Completing a Confirmed appointment through the approved UC-5 route stores one linked visit with the appointment date and changes the appointment to `COMPLETED` at `ClinicRecordsE2ETests.java:158`. |
+| UC-8 G1-G3 | The main, duplicate/reuse, walk-in, and completion journeys assert established behavior and every named owner, pet, veterinarian, specialty, visit, and appointment-link value. |
+| UC-8 G4 | An authenticated owner receives 403 for owner, pet, veterinarian, and visit reads/mutations, and the complete clinic-record snapshot is unchanged at `ClinicRecordsE2ETests.java:176`. |
+| UC-8 G5 | Existing pages retain the shared localized PetClinic layout; presentation, message-key parity, security, identity, logout, and CSRF regressions pass in the full suite. |
+| UC-8 success postcondition | The real-server journeys re-read every valid owner, pet, and walk-in mutation through the staff workflow and assert exact persisted values. |
+| UC-8 minimal guarantee | No-match, invalid, duplicate, and unauthorized paths compare full before/after database snapshots; the concurrency race proves only one duplicate-name mutation wins. |
+| UC-8 Requires UC-1 | Every journey uses seeded form login; staff reaches established routes while an owner receives 403 and cannot mutate state. |
+| RULE-1, RULE-2 | Established MVC controllers delegate each mutation to one transactional `ClinicRecordService` operation; duplicate decisions and walk-in link clearing are below MVC. |
+| RULE-5, RULE-25 | Scheduled completion uses the approved appointment lifecycle, while stock walk-ins are explicitly unlinked; exact fields and one linked visit pass lifecycle and real-server tests. |
+| RULE-7, RULE-8 | No migration changes were required; fresh Flyway, exact normative seeds, specialties, stock visits, and BCrypt password checks pass. |
+| RULE-9 | The single security chain, full handler inventory, role matrix, CSRF, form-login, and mutation-absence tests pass, including UC-8's real owner denial journey. |
+| RULE-16, RULE-17 | The unchanged established pages use the shared layout/forms/styles and localized message keys; DOM/source scans and all eleven bundles pass. |
+| RULE-18 | Four UC-8 real-server tests plus the concurrent real-server race cover every extension, guarantee, postcondition, and relation; 373 tests pass without runtime H2 impact. |
+| RULE-24 | Maven/H2-only repository checks pass; tests use in-memory H2 and leave the gitignored file-backed H2 database unchanged. |
 
 ## Blockers
 
