@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-5, UC-6, UC-7, UC-8
+- Use case: UC-3
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none until UC-3 convergence completes
 
 ## Progress
 
@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | UC-1 | APPROVED | none | `0261b04` | [APPROVED](convergence/UC-1.md) - walkthrough passed |
 | UC-2 | APPROVED | UC-1 | `72f152e` | [APPROVED](convergence/UC-2.md) - walkthrough passed |
-| UC-3 | APPROVED | UC-1 | `4477d22` | [APPROVED](convergence/UC-3.md) - walkthrough passed |
+| UC-3 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | Prior [APPROVED](convergence/UC-3.md); corrective revision submitted for immediate reconvergence |
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | NOT_STARTED | UC-1 | - | - |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
@@ -136,8 +136,10 @@
 
 - Started: 2026-09-07T22:58:42+02:00
 - Started from: `e556a93874f10d79237d47e444ea6b4b2dade5ff`
+- Corrective revision resumed: 2026-09-08T16:21:03+02:00 from `c3cc9075b4502993c7d0b0c96ec7142952476436` after a live Ollama response used offset-bearing times that matched JSON Schema `format: time` but could not deserialize to clinic-local `LocalTime`; no pre-existing dirty files.
 - Pre-existing dirty files: `.agents/` (untracked environment-mounted skill files; excluded from implementation)
 - Implementation submission: HEAD at convergence
+- Corrective revision changed files: `src/main/java/org/springframework/samples/petclinic/scheduling/interpretation/InterpretationResult.java`, `OllamaInterpretationResponse.java`, `OllamaInterpreter.java`, `PromptBuilder.java`, `src/test/java/org/springframework/samples/petclinic/scheduling/interpretation/InterpreterContractTests.java`, `spec/status.md`, and `spec/checkpoints/UC-3.md`.
 - Changed files:
   - Build and runtime configuration: `pom.xml`, `src/main/resources/application.properties`, `src/test/resources/application-test.properties`.
   - Scheduling domain and services: `src/main/java/org/springframework/samples/petclinic/scheduling/appointment/Appointment.java`, `AppointmentRepository.java`, `AppointmentService.java`, `AppointmentStatus.java`, `CancelledBy.java`, `IllegalAppointmentTransitionException.java`, `StaffAppointmentController.java`; every file under `scheduling/config`, `scheduling/interpretation`, and `scheduling/matching`; and `CareType.java`, `DuplicateActiveRequestException.java`, `HeldSlotInvalidationService.java`, `IllegalRequestTransitionException.java`, `Interpretation.java`, `InterpretationFailure.java`, `InterpretationFailureKind.java`, `InterpretationLauncher.java`, `InterpretationOrigin.java`, `InterpretationRepository.java`, `InterpretationViewMapper.java`, `InterpretationWindow.java`, `MyRequestController.java`, `Rejection.java`, `RequestService.java`, `SlotSuggestionPort.java`, `StaffRequestController.java`, and `WithStaffReason.java` under `scheduling/request`.
@@ -150,6 +152,10 @@
   - Broad UC-3 plus UC-1 regression run - PASS, 231 tests, 0 failures, 0 errors, 0 skipped.
   - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` - PASS, 315 tests, 0 failures, 0 errors, 0 skipped.
   - `git diff --check` - PASS; `data/petclinic.mv.db` remained at `2026-09-07T22:56:54+0200`; test execution created no tracked runtime-data change and made no live Ollama call.
+  - Corrective focused `-Dtest=InterpreterContractTests test` - PASS, 7 tests, 0 failures, 0 errors, 0 skipped.
+  - Corrective one-off live Ollama smoke for `Schedule a visit for next Thursday`, pinned to `today=2026-09-08` - PASS; mapped response was one allowed window on `2026-09-10` from `09:00` to `17:00`; the temporary smoke source was removed before the automated suite.
+  - Corrective full JDK 21 suite - PASS, 348 tests, 0 failures, 0 errors, 0 skipped; includes the approved UC-4 regression surface and made no live Ollama call.
+  - Corrective `spring-javaformat:validate` and `git diff --check` - PASS; `data/petclinic.mv.db` remained 122880 bytes with SHA-256 `86e6f652cd4f220a089378fba479946a055a9de04b5270d7f6d75be9199831b6`.
 
 | Contract element | Evidence |
 |---|---|
@@ -183,10 +189,10 @@
 | UC-3 extension 3b | Wrong-state actions preserve the complete request/interpretation/rejection/hold/appointment/visit snapshots in `RequestStateTransitionTests.java:108` and through HTTP in `SchedulingE2eTests.java:333`. |
 | UC-3 G1 | Suggestion DOM contains exactly one slot and no staff calendar in `ConsentAndSuggestionWebTests.java:177`. |
 | UC-3 G2-G4 | Exact 15-minute, window, exclusion, opening-hours, effective-block, overlap, specialty, rejection, lead, and inclusive-horizon boundaries are asserted in `FeasibilityCheckerTests.java:22` and `FeasibilityBoundaryTests.java:40`. |
-| UC-3 G3 | Prompt contract defines relative-date, named-day-part, and exclusion expansion; stored weekday/date windows round-trip exactly in `InterpreterContractTests.java:79` and `InterpretationPersistenceTests.java:119`. |
+| UC-3 G3 | `PromptBuilder.java:35` supplies deterministic next-occurrence weekday dates; `OllamaInterpreter.java:23` requires those exact dates for one-off weekday phrases; strict date/weekday and `HH:mm` mapping is proved in `InterpreterContractTests.java:85`; stored windows still round-trip exactly in `InterpretationPersistenceTests.java:119`. |
 | UC-3 G5-G6 | Every lexicographic tie-break and localized rank-reason key is asserted without weights or model prose in `SlotRankerTests.java:44` and `SlotRankerTests.java:129`; only Confirmed appointments affect workload in `SlotSuggestionPortTests.java:124`. |
 | UC-3 G7 | Raced bookings and raced owner confirmations leave exactly one live overlapping booking/hold in `ConcurrencyInvariantTests.java:91` and `ConcurrencyInvariantTests.java:114`. |
-| UC-3 G8-G9 | Field-by-field immutable persistence is proved in `InterpretationPersistenceTests.java:119`; exact prompt minimization, schema, model, temperature, timeout, and one-call behavior in `InterpreterContractTests.java:79` and `InterpreterContractTests.java:104`. |
+| UC-3 G8-G9 | Field-by-field immutable persistence is proved in `InterpretationPersistenceTests.java:119`; provider DTO patterns and deterministic mapping enforce `YYYY-MM-DD` or uppercase weekday plus exact offset-free `HH:mm` in `OllamaInterpretationResponse.java:19`; prompt, schema, model, temperature, timeout, one-call, logging, and privacy behavior are asserted in `InterpreterContractTests.java:85`. |
 | UC-3 G10 | Every request state plus new-request and My appointments pages render urgent-care guidance/contact in `ConsentAndSuggestionWebTests.java:128`. |
 | UC-3 G11 | Complete request and appointment action-by-state matrices refuse all unlisted transitions without side effects in `RequestStateTransitionTests.java:108` and `AppointmentStateTransitionTests.java:82`. |
 | UC-3 G12 | Test profile pins `2026-09-07 09:00 Europe/Amsterdam`; seeded exceptions and DST-stable local time affect matching in `TestClockProfileIntegrationTests.java:41`, `SlotSuggestionPortTests.java:142`, and `DurationAndTimeTests.java:175`. |
@@ -210,14 +216,14 @@
 | RULE-8 | Every normative row and all BCrypt passwords are compared by value in `SeedMigrationTests.java:47`. |
 | RULE-9 | Owner/staff/anonymous route behavior, disclosure absence, and mutation absence are checked in `SecurityMatrixWebTests.java:60` and the real-server access legs in `SchedulingE2eTests.java:349`. |
 | RULE-10 | All `/my/**` controllers resolve the principal through `AuthenticatedOwnerService`; foreign/unknown parity is proved in `SchedulingE2eTests.java:133` and `InterpretationWebTests.java:103`. |
-| RULE-11 | Spring AI 2.0.1 starter/property shape, schema, temperature zero, five/120-second timeouts, model default, and zero retries are asserted in `InterpreterContractTests.java:104`; tests inject the deterministic adapter. |
-| RULE-12 | Exact allowed prompt and prohibited identity fields are compared in `InterpreterContractTests.java:79`; the consent disclosure repeats the privacy boundary in `ConsentAndSuggestionWebTests.java:91`. |
+| RULE-11 | Spring AI 2.0.1 starter/property shape, provider schema regexes, temperature zero, five/120-second timeouts, model default, and zero retries are asserted in `InterpreterContractTests.java:116`; tests inject the deterministic adapter. |
+| RULE-12 | Exact allowed prompt and prohibited identity fields are compared in `InterpreterContractTests.java:85`; request payload, mapped response, and privacy-safe failures are logged without raw provider JSON at `InterpreterContractTests.java:188`; the consent disclosure repeats the privacy boundary in `ConsentAndSuggestionWebTests.java:91`. |
 | RULE-13 | Duplicate job, two-worker/unbounded-queue, semantic/unavailable/late/startup cases are covered in `InterpretationConcurrencyTests.java:63`, `InterpreterContractTests.java:159`, and `InterpretationPersistenceTests.java:289`. |
 | RULE-14 | Exact JSON-only owner-scoped status plus external script and Refresh link are asserted in `InterpretationWebTests.java:86` and `InterpretationWebTests.java:103`. |
 | RULE-15 | Production scheduling paths use injected `Clock`; pinned-clock and exception evidence is in `TestClockProfileIntegrationTests.java:41` and `SlotSuggestionPortTests.java:142`. |
 | RULE-16 | Every new template uses the shared layout; role/state actions and real rendered journeys are covered by `ConsentAndSuggestionWebTests.java:91` and `SchedulingE2eTests.java:72`; walkthrough remains for convergence. |
 | RULE-17 | All new text uses keys present in eleven identical key sets, enforced by `I18nPropertiesSyncTest.java:85`; temporal labels localize in `InterpretationWebTests.java:293`. |
-| RULE-18 | `SchedulingE2eTests` supplies the real-server boundary; every extension/guarantee maps above; 315 tests pass and runtime data is unchanged. |
+| RULE-18 | `SchedulingE2eTests` supplies the real-server boundary; every extension/guarantee maps above; the corrective full suite passes 348/0/0/0 and runtime data is unchanged. |
 | RULE-20 | Matching and staff continuation use `AvailabilityService`; parity/refusal evidence is `SlotSuggestionPortTests.java:162`. |
 | RULE-21 | Exact absent/raw values and duration boundaries are covered in `InterpretationPersistenceTests.java:119`, `InterpretationPersistenceTests.java:213`, and `DurationAndTimeTests.java:93`. |
 | RULE-22 | The exact rejected vet/date/time survives edit, reinterpretation, restart, and rematch in `SlotSuggestionPortTests.java:301` and `RuntimePersistenceRestartTests.java:41`. |

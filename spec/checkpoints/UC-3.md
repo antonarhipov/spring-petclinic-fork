@@ -3,8 +3,9 @@
 ## Summary
 
 - Status: READY_FOR_CONVERGENCE
-- Base commit: `f393f8d`
+- Base commit: `c3cc9075b4502993c7d0b0c96ec7142952476436`
 - Submission commit: HEAD at convergence
+- Prior approval reopened: live Ollama exposed an offset-bearing time that the former provider schema accepted but the domain could not deserialize
 - Relations verified: Requires UC-1; every actor journey uses the approved form-login and role-scoped session boundary
 
 ## Contract Evidence
@@ -41,10 +42,10 @@
 | Extension 3b | Complete wrong-state snapshots and HTTP refusal at `RequestStateTransitionTests.java:108` and `SchedulingE2eTests.java:333` | PASS |
 | G1 | One suggestion and no calendar at `ConsentAndSuggestionWebTests.java:177` | PASS |
 | G2-G4 | Exact feasibility boundaries at `FeasibilityCheckerTests.java:22` and `FeasibilityBoundaryTests.java:40` | PASS |
-| G3 | Relative/day-part/exclusion interpretation contract and exact local windows at `InterpreterContractTests.java:79` and `InterpretationPersistenceTests.java:119` | PASS |
+| G3 | Deterministic next-weekday payload, exact one-off weekday instructions, schema-enforced date/weekday and offset-free `HH:mm` values at `PromptBuilder.java:35`, `OllamaInterpreter.java:23`, and `InterpreterContractTests.java:85`; persistence remains exact at `InterpretationPersistenceTests.java:119` | PASS |
 | G5-G6 | Ordered tie-breaks, workload semantics, and localized rank keys at `SlotRankerTests.java:44`, `SlotRankerTests.java:129`, and `SlotSuggestionPortTests.java:124` | PASS |
 | G7 | One-winner booking/hold races at `ConcurrencyInvariantTests.java:91` and `ConcurrencyInvariantTests.java:114` | PASS |
-| G8-G9 | Field-perfect persistence plus prompt/schema/model/temperature/privacy at `InterpretationPersistenceTests.java:119` and `InterpreterContractTests.java:79` | PASS |
+| G8-G9 | Field-perfect persistence plus strict provider value format/mapping, prompt/schema/model/temperature/privacy, and request/response logging without raw JSON at `InterpretationPersistenceTests.java:119`, `OllamaInterpretationResponse.java:19`, and `InterpreterContractTests.java:85` | PASS |
 | G10 | Urgent-care guidance on every scheduling page/state at `ConsentAndSuggestionWebTests.java:128` | PASS |
 | G11 | Complete request and appointment state matrices at `RequestStateTransitionTests.java:108` and `AppointmentStateTransitionTests.java:82` | PASS |
 | G12 | Pinned clinic clock, seeded exception, DST stability at `TestClockProfileIntegrationTests.java:41`, `SlotSuggestionPortTests.java:142`, `DurationAndTimeTests.java:175` | PASS |
@@ -73,14 +74,14 @@
 | RULE-8 | `SeedMigrationTests.java:47` through `SeedMigrationTests.java:272` | PASS |
 | RULE-9 | `SecurityMatrixWebTests.java:60`, `SchedulingE2eTests.java:349` | PASS |
 | RULE-10 | `AuthenticatedOwnerService`, `SchedulingE2eTests.java:133`, `InterpretationWebTests.java:103` | PASS |
-| RULE-11 | `InterpreterContractTests.java:104`, production/test properties | PASS |
-| RULE-12 | `InterpreterContractTests.java:79`, `ConsentAndSuggestionWebTests.java:91` | PASS |
+| RULE-11 | Provider-structured regex schema, deterministic mapping, Spring AI options, timeouts, and no retry at `InterpreterContractTests.java:116` and production/test properties | PASS |
+| RULE-12 | Exact prompt minimization plus payload/mapped-response and privacy-safe failure logging at `InterpreterContractTests.java:85` and `InterpreterContractTests.java:188`; consent disclosure at `ConsentAndSuggestionWebTests.java:91` | PASS |
 | RULE-13 | `InterpretationConcurrencyTests.java:63`, `InterpreterContractTests.java:159`, `InterpretationPersistenceTests.java:289` | PASS |
 | RULE-14 | `InterpretationWebTests.java:86`, `InterpretationWebTests.java:103` | PASS |
 | RULE-15 | Injected `Clock`; `TestClockProfileIntegrationTests.java:41`, `SlotSuggestionPortTests.java:142` | PASS |
 | RULE-16 | Shared-layout templates, DOM tests, real-server pages; human walkthrough deferred to convergence | PASS |
 | RULE-17 | `I18nPropertiesSyncTest.java:85`, `InterpretationWebTests.java:293` | PASS |
-| RULE-18 | Mapped boundary evidence above; 315/0/0/0 suite; no runtime-data change | PASS |
+| RULE-18 | Mapped boundary evidence above; corrective 348/0/0/0 suite; no runtime-data change | PASS |
 | RULE-20 | Shared `AvailabilityService`; `SlotSuggestionPortTests.java:162` | PASS |
 | RULE-21 | `InterpretationPersistenceTests.java:119`, `DurationAndTimeTests.java:93` | PASS |
 | RULE-22 | `SlotSuggestionPortTests.java:301`, `RuntimePersistenceRestartTests.java:41` | PASS |
@@ -88,15 +89,18 @@
 
 ## Validation
 
-- Focused commands: `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=SchedulingE2eTests test` - 14/0/0/0 PASS; focused interpretation suite - 47/0/0/0 PASS.
-- Full relevant suite: same Maven/JDK/agent invocation without `-Dtest` - 315 tests run, 0 failures, 0 errors, 0 skipped.
-- Working tree impact from tests: none; `data/petclinic.mv.db` timestamp remains `2026-09-07T22:56:54+0200`; `.agents/` excluded.
-- Runtime evidence: owner and staff actors use real form login, cookies, CSRF, dynamically allocated HTTP port, rendered HTML, state queries after each response, and deterministic interpretation; no Ollama call.
-- Changed files: exact categorized inventory is recorded in `spec/status.md` under UC-3 Evidence; no unrelated file is included.
-- Approved UCs regression-tested: UC-1 authentication, authorization, role navigation, layout, localization, repository, and stock PetClinic tests all pass within the 315-test suite.
+- Focused command: JDK 21 `-Dtest=InterpreterContractTests test` - 7 tests, 0 failures, 0 errors, 0 skipped.
+- Full relevant suite: JDK 21 Maven test with the Byte Buddy agent - 348 tests, 0 failures, 0 errors, 0 skipped.
+- Format and diff: `spring-javaformat:validate` and `git diff --check` - PASS.
+- Working tree impact from tests: none; `data/petclinic.mv.db` remains 122880 bytes with SHA-256 `86e6f652cd4f220a089378fba479946a055a9de04b5270d7f6d75be9199831b6`.
+- Runtime evidence: one-off live Ollama smoke for `Schedule a visit for next Thursday`, pinned to `today=2026-09-08`, returned one mapped allowed window on `2026-09-10` from `09:00` to `17:00`; the temporary smoke source was removed before the automated suite.
+- Changed files: `InterpretationResult.java`, new `OllamaInterpretationResponse.java`, `OllamaInterpreter.java`, `PromptBuilder.java`, `InterpreterContractTests.java`, `spec/status.md`, and this checkpoint.
+- Approved UCs regression-tested: UC-1, UC-2, and UC-4 plus stock PetClinic pass within the 348-test suite.
 
 ## Notes
 
-None.
+The provider DTO deliberately separates wire values from the domain model so the generated schema can require exact
+string formats while the domain continues to store typed local dates and times. Invalid formats fail once without
+logging raw provider JSON.
 
 READY FOR CONVERGENCE: UC-3

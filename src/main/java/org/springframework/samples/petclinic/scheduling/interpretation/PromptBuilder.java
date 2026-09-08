@@ -1,10 +1,14 @@
 package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -37,6 +41,7 @@ public class PromptBuilder {
 		prompt.add("openingHours=" + disclosure.openingHours());
 		prompt.add("partsOfDay=" + disclosure.partsOfDay());
 		prompt.add("today=" + disclosure.today());
+		prompt.add("upcomingWeekdayDates=" + upcomingWeekdayDates(disclosure.today()));
 		prompt.add("zone=" + disclosure.zone());
 		prompt.add("durationMinutes=" + disclosure.durationBounds());
 		return prompt.toString();
@@ -62,6 +67,12 @@ public class PromptBuilder {
 
 	public record ConsentDisclosure(String specialties, String veterinarians, String openingHours, String partsOfDay,
 			LocalDate today, String zone, String durationBounds) {
+	}
+
+	private static String upcomingWeekdayDates(LocalDate referenceDate) {
+		return Arrays.stream(DayOfWeek.values())
+			.map(day -> day + ":" + referenceDate.with(TemporalAdjusters.next(day)))
+			.collect(Collectors.joining(";"));
 	}
 
 	private List<String> values(String sql) {

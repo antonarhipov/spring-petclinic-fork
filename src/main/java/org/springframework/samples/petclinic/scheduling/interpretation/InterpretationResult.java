@@ -29,6 +29,15 @@ public record InterpretationResult(ModelOutput output, String rawJson) {
 	}
 
 	public record Window(@Nullable DayOfWeek weekday, @Nullable LocalDate date, LocalTime start, LocalTime end) {
+
+		public Window {
+			if ((weekday == null) == (date == null)) {
+				throw new IllegalArgumentException("A window requires exactly one of weekday or date");
+			}
+			if (start == null || end == null || !start.isBefore(end)) {
+				throw new IllegalArgumentException("A window requires an increasing clinic-local time range");
+			}
+		}
 	}
 
 }

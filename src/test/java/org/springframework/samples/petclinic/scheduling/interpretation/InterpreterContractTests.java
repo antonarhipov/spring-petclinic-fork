@@ -2,7 +2,9 @@ package org.springframework.samples.petclinic.scheduling.interpretation;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
@@ -53,7 +55,7 @@ class InterpreterContractTests {
 	private static final String MODEL_JSON = """
 			{"understood":true,"careType":"SPECIALTY","specialty":"surgery",
 			 "durationMinutes":30,"preferredVetId":3,
-			 "preferredWindows":[{"weekday":"MONDAY","start":"09:00:00","end":"12:00:00"}],
+			 "preferredWindows":[{"day":"MONDAY","start":"09:00","end":"12:00"}],
 			 "allowedWindows":[],"excludedWindows":[]}
 			""";
 
@@ -91,16 +93,22 @@ class InterpreterContractTests {
 						openingHours=MONDAY:09:00-17:00;TUESDAY:09:00-17:00;WEDNESDAY:09:00-18:00;THURSDAY:09:00-17:00;FRIDAY:10:00-16:00;SATURDAY:closed;SUNDAY:closed
 						partsOfDay=morning:09:00-12:00,afternoon:12:00-17:00,evening:17:00-18:00
 						today=2026-09-07
+						upcomingWeekdayDates=MONDAY:2026-09-14;TUESDAY:2026-09-08;WEDNESDAY:2026-09-09;THURSDAY:2026-09-10;FRIDAY:2026-09-11;SATURDAY:2026-09-12;SUNDAY:2026-09-13
 						zone=Europe/Amsterdam
 						durationMinutes=min:15,default:30,max:60""");
 		assertThat(prompt).doesNotContain("George Franklin", "Leo", "6085551023", "george123", "password_hash",
 				"owner_id", "pet_id", "SchedulingRequest", "Owner", "Pet");
-		assertThat(this.prompts.build("Tomorrow morning", LocalDate.of(2026, 9, 5)))
-			.contains("requestText=Tomorrow morning", "today=2026-09-05")
+		assertThat(this.prompts.build("Tomorrow morning", LocalDate.of(2026, 9, 5))).contains(
+				"requestText=Tomorrow morning", "today=2026-09-05",
+				"upcomingWeekdayDates=MONDAY:2026-09-07;TUESDAY:2026-09-08;WEDNESDAY:2026-09-09;THURSDAY:2026-09-10;FRIDAY:2026-09-11;SATURDAY:2026-09-12;SUNDAY:2026-09-06")
 			.doesNotContain("today=2026-09-07");
-		assertThat(OllamaInterpreter.SYSTEM_PROMPT).contains("relative dates against today",
-				"absolute clinic-local dates", "named parts of day", "any day except Wednesday",
-				"application defaults apply", "Do not infer urgency");
+		assertThat(this.prompts.build("Next Thursday", LocalDate.of(2026, 9, 10))).contains("today=2026-09-10",
+				"THURSDAY:2026-09-17");
+		assertThat(OllamaInterpreter.SYSTEM_PROMPT).contains("relative dates against today", "copy",
+				"upcomingWeekdayDates", "do not calculate it", "absolute clinic-local dates", "named parts of day",
+				"any day except", "Wednesday", "application defaults", "apply", "set day to YYYY-MM-DD",
+				"uppercase weekday", "every Thursday", "clinic-local HH:mm", "without seconds", "UTC offset",
+				"Do not infer urgency");
 	}
 
 	@Test
@@ -118,7 +126,9 @@ class InterpreterContractTests {
 		assertThat(model.prompt().getOptions()).isInstanceOfSatisfying(OllamaChatOptions.class, options -> {
 			assertThat(options.getModel()).isEqualTo("ministral-3:14b");
 			assertThat(options.getTemperature()).isZero();
-			assertThat(options.getOutputSchema()).contains("preferredWindows", "allowedWindows", "excludedWindows");
+			assertThat(options.getOutputSchema()).contains("preferredWindows", "allowedWindows", "excludedWindows",
+					OllamaInterpretationResponse.DAY_PATTERN, OllamaInterpretationResponse.TIME_PATTERN,
+					"Clinic-local start time in exact HH:mm format, without seconds or an offset");
 		});
 		RecordingChatModel invalidModel = new RecordingChatModel("not-json");
 		OllamaInterpreter invalidInterpreter = new OllamaInterpreter(ChatClient.create(invalidModel),
@@ -129,6 +139,23 @@ class InterpreterContractTests {
 			.satisfies(failure -> assertThat(((InterpretationException) failure.getCause()).getKind())
 				.isEqualTo(Interpreter.FailureKind.UNPARSEABLE));
 		assertThat(invalidModel.calls()).isOne();
+		assertThatThrownBy(() -> new OllamaInterpretationResponse.WindowValue("2026-09-10", "09:00:00+02:00", "17:00"))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("exact clinic-local HH:mm");
+		assertThatThrownBy(() -> new OllamaInterpretationResponse.WindowValue("THURSDAY", "17:00", "09:00"))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("increasing");
+		assertThat(new OllamaInterpretationResponse.WindowValue("2026-09-10", "09:00", "17:00").toWindow())
+			.isEqualTo(new InterpretationResult.Window(null, LocalDate.of(2026, 9, 10), LocalTime.of(9, 0),
+					LocalTime.of(17, 0)));
+		assertThatThrownBy(() -> new InterpretationResult.Window(DayOfWeek.THURSDAY, LocalDate.of(2026, 9, 11),
+				LocalTime.of(9, 0), LocalTime.of(17, 0)))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("exactly one");
+		assertThatThrownBy(() -> new InterpretationResult.Window(null, LocalDate.of(2026, 9, 10), LocalTime.of(17, 0),
+				LocalTime.of(9, 0)))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("increasing");
 
 		InterpretationExecutorConfiguration configuration = new InterpretationExecutorConfiguration();
 		RestClient.Builder builder = RestClient.builder();
@@ -168,9 +195,25 @@ class InterpreterContractTests {
 		assertThat(output)
 			.contains("LLM request payload", "model=ministral-3:14b", "temperature=0.0",
 					"systemPrompt=" + OllamaInterpreter.SYSTEM_PROMPT, "userPrompt=allowed prompt",
-					"responseType=" + InterpretationResult.ModelOutput.class.getName(), "LLM structured response",
+					"responseType=" + OllamaInterpretationResponse.class.getName(), "LLM structured response",
 					"response=ModelOutput[understood=true")
 			.doesNotContain(MODEL_JSON);
+	}
+
+	@Test
+	void llmInteractionLogsSafeFailureCategoryWithoutRawProviderJson(CapturedOutput output) {
+		String invalidTemporalJson = MODEL_JSON.replace("\"09:00\"", "\"09:00:00+02:00\"");
+		RecordingChatModel model = new RecordingChatModel(invalidTemporalJson);
+		OllamaInterpreter interpreter = new OllamaInterpreter(ChatClient.create(model), "ministral-3:14b");
+
+		assertThatThrownBy(() -> interpreter.interpret("allowed prompt").toCompletableFuture().join())
+			.isInstanceOf(CompletionException.class)
+			.hasCauseInstanceOf(InterpretationException.class);
+
+		assertThat(output)
+			.contains("LLM interaction failed", "model=ministral-3:14b", "category=UNPARSEABLE", "exception=")
+			.doesNotContain(invalidTemporalJson, "09:00:00+02:00");
+		assertThat(model.calls()).isOne();
 	}
 
 	@Test
