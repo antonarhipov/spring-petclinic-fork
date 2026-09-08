@@ -37,6 +37,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
 
 	long countByStatusIn(List<AppointmentStatus> statuses);
 
+	List<Appointment> findByDateAndStatusInOrderByVetIdAscStartTimeAsc(LocalDate date,
+			List<AppointmentStatus> statuses);
+
 	@Query("select appointment from Appointment appointment, Owner owner join owner.pets pet where owner.id = :ownerId and appointment.pet = pet order by appointment.date, appointment.startTime")
 	List<Appointment> findByPetOwnerIdOrderByDateAscStartTimeAsc(@Param("ownerId") Integer ownerId);
 

@@ -42,6 +42,7 @@ public class AppointmentService {
 	@Transactional
 	public Optional<Appointment> tryBook(int petId, int vetId, LocalDate date, LocalTime startTime, LocalTime endTime,
 			String reason, String changedBy) {
+		requireReason(reason);
 		Vet vet = this.vets.findByIdForUpdate(vetId).orElseThrow(() -> new IllegalArgumentException("Unknown vet"));
 		if (!this.appointments.findOverlapping(vetId, date, startTime, endTime, BLOCKING_STATUSES).isEmpty()) {
 			return Optional.empty();
@@ -74,6 +75,7 @@ public class AppointmentService {
 	@Transactional
 	public Optional<Appointment> bookDirectly(SchedulingRequest request, int vetId, LocalDate date, LocalTime startTime,
 			LocalTime endTime, String reason, String changedBy) {
+		requireReason(reason);
 		Vet vet = lockAvailableVet(vetId, date, startTime, endTime, null);
 		if (vet == null) {
 			return Optional.empty();
@@ -104,6 +106,7 @@ public class AppointmentService {
 	@Transactional
 	public Optional<Appointment> reschedule(int appointmentId, int vetId, LocalDate date, LocalTime startTime,
 			LocalTime endTime, String reason, String changedBy) {
+		requireReason(reason);
 		Appointment appointment = requireInStatus(appointmentId, "RESCHEDULE", AppointmentStatus.CONFIRMED);
 		Vet vet = lockAvailableVet(vetId, date, startTime, endTime, appointmentId);
 		if (vet == null) {
@@ -139,6 +142,7 @@ public class AppointmentService {
 
 	@Transactional
 	public Appointment cancelByStaff(int appointmentId, String reason, String changedBy) {
+		requireReason(reason);
 		Appointment appointment = requireInStatus(appointmentId, "STAFF_CANCEL", AppointmentStatus.CONFIRMED);
 		appointment.cancel(CancelledBy.STAFF, reason, changedBy, today(), now());
 		return this.appointments.save(appointment);
@@ -146,6 +150,9 @@ public class AppointmentService {
 
 	@Transactional
 	public Appointment complete(int appointmentId, String description) {
+		if (description == null || description.isBlank() || description.length() > 255) {
+			throw new IllegalArgumentException("A visit description of at most 255 characters is required");
+		}
 		Appointment appointment = requireInStatus(appointmentId, "COMPLETE", AppointmentStatus.CONFIRMED);
 		requireAfterStart(appointment, "COMPLETE_BEFORE_START");
 		Visit visit = new Visit();
@@ -203,6 +210,12 @@ public class AppointmentService {
 
 	private LocalTime now() {
 		return LocalTime.now(this.clock);
+	}
+
+	private void requireReason(String reason) {
+		if (reason == null || reason.isBlank()) {
+			throw new IllegalArgumentException("A reason is required");
+		}
 	}
 
 }

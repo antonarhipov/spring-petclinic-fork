@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body>
+<h2 th:text="#{scheduling.appointment.detail}">Appointment detail</h2>
+
+<div th:if="${actionErrorKey}" class="alert alert-danger" role="alert" th:text="#{${actionErrorKey}}">Error</div>
+<div th:if="${actionNoticeKey}" class="alert alert-info" role="status" th:text="#{${actionNoticeKey}}">Notice</div>
+
+<p><a th:href="@{/staff/calendar(date=${appointment.date})}" th:text="#{scheduling.calendar.return}">Return to calendar</a></p>
+<dl class="row">
+  <dt class="col-sm-3" th:text="#{scheduling.queue.owner}">Owner</dt><dd class="col-sm-9" th:text="${appointment.ownerName}">Owner</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.queue.pet}">Pet</dt><dd class="col-sm-9" th:text="${appointment.petName}">Pet</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.slot.veterinarian}">Veterinarian</dt><dd class="col-sm-9" th:text="${appointment.veterinarianName}">Veterinarian</dd>
+  <dt class="col-sm-3" th:text="#{date}">Date</dt><dd class="col-sm-9" th:text="${appointment.date}">Date</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.time}">Time</dt><dd class="col-sm-9" th:text="|${appointment.startTime}-${appointment.endTime}|">Time</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.status}">Status</dt><dd class="col-sm-9" th:text="#{${appointment.statusMessageKey}}">Status</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.interpretation.origin}">Origin</dt><dd class="col-sm-9" th:text="#{${appointment.originMessageKey}}">Origin</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.reason}">Reason</dt><dd class="col-sm-9"><span th:if="${appointment.reason}" th:text="${appointment.reason}">Reason</span><span th:unless="${appointment.reason}" th:text="#{none}">none</span></dd>
+  <dt class="col-sm-3" th:if="${appointment.cancelledBy}" th:text="#{scheduling.appointment.status}">Status</dt><dd class="col-sm-9" th:if="${appointment.cancelledBy}"><span th:if="${appointment.cancelledBy.name() == 'STAFF'}" th:text="#{scheduling.appointment.cancelled.staff}">Cancelled by clinic staff</span><span th:if="${appointment.cancelledBy.name() == 'OWNER'}" th:text="#{scheduling.appointment.cancelled.owner}">Cancelled by owner</span></dd>
+  <dt class="col-sm-3" th:if="${appointment.cancelledDate}" th:text="#{scheduling.appointment.changed}">Changed at</dt><dd class="col-sm-9" th:if="${appointment.cancelledDate}" th:text="|${appointment.cancelledDate} ${appointment.cancelledTime}|">Changed at</dd>
+</dl>
+
+<section th:if="${appointment.held}" class="card" id="held-actions">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.calendar.held}">Held</h3>
+    <p><span th:text="#{scheduling.queue.holdAge}">Hold age</span>: <span th:text="#{scheduling.unit.minutes(${appointment.holdAgeMinutes})}">0 minutes</span></p>
+    <p><span th:text="#{scheduling.queue.request}">Request</span>: <span th:text="${appointment.requestText}">Request text</span></p>
+    <p><a th:href="@{/staff/requests/{id}(id=${appointment.requestId})}" th:text="#{scheduling.staff.request.open}">Open request</a></p>
+    <form th:action="@{/staff/requests/{id}/release-hold(id=${appointment.requestId})}" method="post">
+      <input type="hidden" name="version" th:value="${appointment.requestVersion}">
+      <label for="release-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label>
+      <input id="release-reason" name="reason" class="form-control" maxlength="255" required>
+      <button type="submit" class="btn btn-warning mt-2" th:text="#{scheduling.queue.release}">Release hold</button>
+    </form>
+  </div>
+</section>
+
+<div th:if="${appointment.changeAvailable}" class="row g-4">
+  <section class="col-lg-7" id="reschedule-action">
+    <div class="card h-100"><div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.appointment.reschedule}">Reschedule</h3>
+      <p th:if="${appointment.requestedSpecialty}" th:text="|#{scheduling.interpretation.specialty}: ${appointment.requestedSpecialty}|">Specialty</p>
+      <form th:action="@{/staff/appointments/{id}/reschedule(id=${appointment.id})}" method="post" class="row g-3">
+        <div class="col-12"><label for="reschedule-vet" class="form-label" th:text="#{scheduling.slot.veterinarian}">Veterinarian</label>
+          <select id="reschedule-vet" name="veterinarianId" class="form-select" required>
+            <option th:each="vet : ${appointment.veterinarians}" th:value="${vet.id}" th:text="${vet.name}" th:selected="${vet.name == appointment.veterinarianName}">Veterinarian</option>
+          </select>
+          <ul th:if="${appointment.requestedSpecialty}" class="small text-warning"><li th:each="vet : ${appointment.veterinarians}" th:unless="${vet.specialtyMatch}"><span th:text="${vet.name}">Veterinarian</span>: <span th:text="#{scheduling.slot.specialty.warning}">Warning</span></li></ul>
+        </div>
+        <div class="col-md-6"><label for="reschedule-date" class="form-label" th:text="#{date}">Date</label><input id="reschedule-date" name="date" type="date" class="form-control" th:value="${appointment.date}" required></div>
+        <div class="col-md-6"><label for="reschedule-time" class="form-label" th:text="#{scheduling.appointment.time}">Time</label><input id="reschedule-time" name="startTime" type="time" step="900" class="form-control" th:value="${appointment.startTime}" required></div>
+        <div class="col-12"><label for="reschedule-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="reschedule-reason" name="reason" class="form-control" maxlength="255" required></div>
+        <div class="col-12"><button type="submit" class="btn btn-primary" th:text="#{scheduling.appointment.reschedule}">Reschedule</button></div>
+      </form>
+    </div></div>
+  </section>
+  <section class="col-lg-5" id="cancel-action">
+    <div class="card h-100"><div class="card-body">
+      <h3 class="h5" th:text="#{scheduling.appointment.cancel}">Cancel appointment</h3>
+      <form th:action="@{/staff/appointments/{id}/cancel(id=${appointment.id})}" method="post">
+        <label for="cancel-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label>
+        <input id="cancel-reason" name="reason" class="form-control" maxlength="255" required>
+        <button type="submit" class="btn btn-danger mt-2" th:text="#{scheduling.appointment.cancel}">Cancel appointment</button>
+      </form>
+    </div></div>
+  </section>
+</div>
+
+<section th:if="${appointment.finalizationAvailable}" class="card mt-4" id="finalization-actions">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.appointment.complete}">Complete appointment</h3>
+    <form th:action="@{/staff/appointments/{id}/complete(id=${appointment.id})}" method="post" class="mb-3">
+      <label for="description" class="form-label" th:text="#{scheduling.appointment.description}">Visit description</label>
+      <input id="description" name="description" class="form-control" maxlength="255" th:value="${appointment.completionDescription}" required>
+      <button type="submit" class="btn btn-success mt-2" th:text="#{scheduling.appointment.complete}">Complete appointment</button>
+    </form>
+    <form th:action="@{/staff/appointments/{id}/no-show(id=${appointment.id})}" method="post">
+      <button type="submit" class="btn btn-warning" th:text="#{scheduling.appointment.noShow}">Mark no-show</button>
+    </form>
+  </div>
+</section>
+</body>
+</html>

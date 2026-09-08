@@ -43,9 +43,11 @@ class SecurityMatrixWebTests {
 			route("/owners/1/pets/1/edit"), route("/owners/1/pets/1/visits/new"), route("/vets"), route("/vets.html"),
 			route("/staff/queue"), route("/staff/requests"), route("/staff/requests/1"),
 			route("/staff/requests/1/interpretation"), route("/staff/requests/1/release-hold"),
-			route("/staff/requests/1/suggest"), route("/staff/requests/1/book"),
-			route("/staff/appointments/1/complete"), route("/staff/appointments/1/no-show"), route("/actuator"),
-			route("/actuator/env"), route("/h2-console"), route("/oups"));
+			route("/staff/requests/1/suggest"), route("/staff/requests/1/book"), route("/staff/calendar"),
+			route("/staff/calendar/book"), route("/staff/appointments/1"), route("/staff/appointments/1/reschedule"),
+			route("/staff/appointments/1/cancel"), route("/staff/appointments/1/complete"),
+			route("/staff/appointments/1/no-show"), route("/actuator"), route("/actuator/env"), route("/h2-console"),
+			route("/oups"));
 
 	private static final List<Route> AUTHENTICATED_ROUTES = List.of(route("/"), route("/error"),
 			route("/definitely-not-a-route"));

@@ -531,6 +531,43 @@ class SchedulingE2eTests {
 		staffBrowser.get("/vets.html", 200);
 	}
 
+	@Test
+	void uc5RealServerStaffViewsBooksAndReschedulesWhileOwnerImmediatelySeesTheChange() throws Exception {
+		this.browser.loginAsNewSession("staff", "staff123", "/staff/queue");
+		HttpResponse<String> calendar = this.browser.get("/staff/calendar?date=2026-09-08", 200);
+		assertThat(calendar.body()).contains("09:00-17:00", "James Carter", "Helen Leary", "Linda Douglas",
+				"Rafael Ortega", "Henry Stevens", "Sharon Jenkins", "Book appointment");
+
+		HttpResponse<String> booked = this.browser.post("/staff/calendar/book", calendar,
+				Map.of("petId", "1", "veterinarianId", "1", "date", "2026-09-08", "startTime", "15:00",
+						"durationMinutes", "30", "reason", "Booked during the owner call"),
+				302);
+		int appointmentId = ((Number) value(
+				"select id from appointments where pet_id = 1 and request_id is null and status = 'CONFIRMED'"))
+			.intValue();
+		assertThat(booked.headers().firstValue("Location").orElseThrow())
+			.endsWith("/staff/appointments/" + appointmentId);
+		HttpResponse<String> detail = this.browser.follow(booked, 200);
+		assertThat(detail.body()).contains("George Franklin", "Leo", "James Carter", "Direct staff booking",
+				"Booked during the owner call", "Reschedule", "Cancel appointment");
+
+		HttpResponse<String> moved = this.browser.post("/staff/appointments/" + appointmentId + "/reschedule", detail,
+				Map.of("veterinarianId", "2", "date", "2026-09-08", "startTime", "15:30", "reason",
+						"Owner requested a later time"),
+				302);
+		assertThat(this.browser.follow(moved, 200).body()).contains("Helen Leary", "15:30-16:00",
+				"Owner requested a later time");
+		assertThat(row(
+				"select vet_id, appointment_date, start_time, end_time, status, last_change_reason from appointments where id = ?",
+				appointmentId))
+			.containsEntry("VET_ID", 2)
+			.containsEntry("STATUS", "CONFIRMED")
+			.containsEntry("LAST_CHANGE_REASON", "Owner requested a later time");
+
+		HttpResponse<String> owner = this.browser.loginAsNewSession("george", "george123", "/my/appointments");
+		assertThat(owner.body()).contains("Helen Leary", "2026-09-08", "15:30-16:00", "Owner requested a later time");
+	}
+
 	private int startRequest(int petId, String requestText) throws Exception {
 		HttpResponse<String> form = this.browser.get("/my/requests/new", 200);
 		return requestId(this.browser.post("/my/requests/new", form,

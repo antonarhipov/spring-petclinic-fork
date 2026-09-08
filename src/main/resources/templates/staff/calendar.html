@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'calendar')}">
+<body>
+<h2 th:text="#{scheduling.calendar}">Calendar</h2>
+
+<div th:if="${actionErrorKey}" class="alert alert-danger" role="alert" th:text="#{${actionErrorKey}}">Error</div>
+<div th:if="${actionNoticeKey}" class="alert alert-info" role="status" th:text="#{${actionNoticeKey}}">Notice</div>
+
+<nav class="d-flex justify-content-between align-items-end mb-3" th:aria-label="#{scheduling.calendar.navigation}">
+  <a class="btn btn-secondary" th:href="@{/staff/calendar(date=${calendar.previousDate})}" th:text="#{scheduling.calendar.previous}">Previous day</a>
+  <form method="get" th:action="@{/staff/calendar}">
+    <label for="calendar-date" class="form-label" th:text="#{scheduling.calendar.chooseDate}">Choose date</label>
+    <div class="input-group">
+      <input id="calendar-date" name="date" type="date" class="form-control" th:value="${calendar.date}" required>
+      <button class="btn btn-primary" type="submit" th:text="#{scheduling.calendar.open}">Open day</button>
+    </div>
+  </form>
+  <a class="btn btn-secondary" th:href="@{/staff/calendar(date=${calendar.nextDate})}" th:text="#{scheduling.calendar.next}">Next day</a>
+</nav>
+
+<p th:if="${calendar.clinicClosed}" class="alert alert-secondary" th:text="#{scheduling.calendar.closed}">Clinic closed</p>
+<p th:unless="${calendar.clinicClosed}"><span th:text="#{scheduling.settings.openingHours}">Opening hours</span>:
+  <span th:text="|${calendar.openingTime}-${calendar.closingTime}|">09:00-17:00</span></p>
+
+<div class="table-responsive">
+  <table class="table table-bordered align-middle" id="clinic-day-calendar">
+    <thead><tr>
+      <th th:text="#{scheduling.appointment.time}">Time</th>
+      <th th:each="vet : ${calendar.veterinarians}" th:attr="data-vet-id=${vet.id}">
+        <span th:text="${vet.name}">Veterinarian</span>
+        <small class="d-block" th:if="${!#lists.isEmpty(vet.specialties)}" th:text="${#strings.listJoin(vet.specialties, ', ')}">Specialties</small>
+        <small class="d-block" th:if="${#lists.isEmpty(vet.specialties)}" th:text="#{none}">none</small>
+      </th>
+    </tr></thead>
+    <tbody>
+    <tr th:each="row : ${calendar.rows}" th:attr="data-time=${row.time}">
+      <th th:text="${row.time}">09:00</th>
+      <td th:each="cell : ${row.cells}" th:attr="data-kind=${cell.kind},data-vet-id=${cell.veterinarianId}"
+          th:classappend="${cell.kind == 'UNAVAILABLE'} ? 'table-secondary' : (${cell.kind == 'HELD'} ? 'table-warning' : (${cell.kind == 'CONFIRMED'} ? 'table-primary' : ''))">
+        <a th:if="${cell.appointmentId != null and !cell.continuation}" th:href="@{/staff/appointments/{id}(id=${cell.appointmentId})}">
+          <span th:if="${cell.kind == 'HELD'}" th:text="#{scheduling.calendar.held}">Held</span>
+          <span th:if="${cell.kind == 'CONFIRMED'}" th:text="#{scheduling.calendar.confirmed}">Confirmed</span>
+          <span class="d-block" th:text="|${cell.ownerName} - ${cell.petName}|">Owner - pet</span>
+          <span class="d-block" th:text="|${cell.startTime}-${cell.endTime}|">09:00-09:30</span>
+          <span class="d-block" th:if="${cell.holdAgeMinutes != null}" th:text="#{scheduling.unit.minutes(${cell.holdAgeMinutes})}">0 minutes</span>
+        </a>
+        <a th:if="${cell.available}" class="btn btn-link btn-sm"
+           th:href="@{/staff/calendar(date=${calendar.date},veterinarianId=${cell.veterinarianId},startTime=${cell.startTime})} + '#direct-booking'"
+           th:text="#{scheduling.calendar.free}">Book</a>
+        <span th:if="${cell.kind == 'UNAVAILABLE'}" class="visually-hidden" th:text="#{scheduling.calendar.unavailable}">Unavailable</span>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+<section class="card mt-4" id="direct-booking">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.appointment.book}">Book appointment</h3>
+    <form th:action="@{/staff/calendar/book}" method="post" class="row g-3">
+      <div class="col-md-6">
+        <label for="petId" class="form-label" th:text="#{scheduling.request.pet}">Pet</label>
+        <select id="petId" name="petId" class="form-select" required>
+          <option value="" th:text="#{scheduling.staff.request.pet.choose}">Choose a pet</option>
+          <option th:each="pet : ${calendar.pets}" th:value="${pet.id}" th:text="|${pet.ownerName} - ${pet.petName}|">Owner - pet</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="veterinarianId" class="form-label" th:text="#{scheduling.slot.veterinarian}">Veterinarian</label>
+        <select id="veterinarianId" name="veterinarianId" class="form-select" required>
+          <option th:each="vet : ${calendar.veterinarians}" th:value="${vet.id}" th:text="${vet.name}"
+                  th:selected="${selectedVeterinarianId == vet.id}">Veterinarian</option>
+        </select>
+      </div>
+      <div class="col-md-4"><label for="booking-date" class="form-label" th:text="#{date}">Date</label><input id="booking-date" name="date" type="date" class="form-control" th:value="${calendar.date}" required></div>
+      <div class="col-md-4"><label for="booking-time" class="form-label" th:text="#{scheduling.appointment.time}">Time</label><input id="booking-time" name="startTime" type="time" step="900" class="form-control" th:value="${selectedStartTime}" required></div>
+      <div class="col-md-4"><label for="booking-duration" class="form-label" th:text="#{scheduling.slot.duration}">Duration</label><input id="booking-duration" name="durationMinutes" type="number" class="form-control" th:min="${calendar.minimumDurationMinutes}" th:max="${calendar.maximumDurationMinutes}" th:value="${calendar.defaultDurationMinutes}" required></div>
+      <div class="col-12"><label for="booking-reason" class="form-label" th:text="#{scheduling.appointment.reason}">Reason</label><input id="booking-reason" name="reason" class="form-control" maxlength="255" required></div>
+      <div class="col-12"><button type="submit" class="btn btn-success" th:text="#{scheduling.appointment.book}">Book appointment</button></div>
+    </form>
+  </div>
+</section>
+</body>
+</html>

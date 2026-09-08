@@ -23,6 +23,7 @@ import org.springframework.samples.petclinic.scheduling.appointment.Appointment;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentRepository;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentService;
 import org.springframework.samples.petclinic.scheduling.appointment.AppointmentStatus;
+import org.springframework.samples.petclinic.scheduling.appointment.StaffCalendarService;
 import org.springframework.samples.petclinic.scheduling.request.RequestService;
 import org.springframework.samples.petclinic.scheduling.request.CareType;
 import org.springframework.samples.petclinic.scheduling.request.Interpretation;
@@ -32,6 +33,7 @@ import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
 import org.springframework.samples.petclinic.scheduling.request.SlotSuggestionPort;
+import org.springframework.samples.petclinic.scheduling.request.StaffSlotUnavailableException;
 import org.springframework.samples.petclinic.scheduling.support.TestClockConfiguration;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -50,6 +52,9 @@ class ConcurrencyInvariantTests {
 
 	@Autowired
 	private AppointmentService appointmentService;
+
+	@Autowired
+	private StaffCalendarService staffCalendarService;
 
 	@Autowired
 	private AppointmentRepository appointments;
@@ -181,6 +186,32 @@ class ConcurrencyInvariantTests {
 	}
 
 	@Test
+	void uc5G7ConcurrentReschedulesYieldOneWinnerAndPreserveTheLosingAppointment() throws Exception {
+		LocalDate date = LocalDate.of(2026, 9, 8);
+		Appointment first = this.staffCalendarService.book(1, 1, date, LocalTime.of(9, 0), 30, "First booking",
+				"staff");
+		Appointment second = this.staffCalendarService.book(2, 2, date, LocalTime.of(9, 0), 30, "Second booking",
+				"staff");
+
+		List<String> results = race(() -> rescheduleOutcome(first.getId(), "First moved"),
+				() -> rescheduleOutcome(second.getId(), "Second moved"));
+
+		assertThat(results).containsExactlyInAnyOrder("MOVED", "UNAVAILABLE");
+		assertThat(this.appointments.findAll()).hasSize(2);
+		assertThat(this.appointments.findAll())
+			.filteredOn(appointment -> appointment.getVet().getId() == 3
+					&& appointment.getStartTime().equals(LocalTime.of(10, 0)))
+			.singleElement()
+			.satisfies(
+					appointment -> assertThat(appointment.getLastChangeReason()).isIn("First moved", "Second moved"));
+		assertThat(this.appointments.findAll())
+			.filteredOn(appointment -> appointment.getStartTime().equals(LocalTime.of(9, 0)))
+			.singleElement()
+			.satisfies(appointment -> assertThat(appointment.getLastChangeReason()).isIn("First booking",
+					"Second booking"));
+	}
+
+	@Test
 	void uc3G7_concurrentOwnerConfirmationsYieldOneDentistryHold() throws Exception {
 		int first = interpretedDentistryRequest(1);
 		int second = interpretedDentistryRequest(2);
@@ -220,6 +251,17 @@ class ConcurrencyInvariantTests {
 			return result.messageKey() == null ? "COMPLETED" : result.messageKey();
 		}
 		catch (IllegalStateException ex) {
+			return "UNAVAILABLE";
+		}
+	}
+
+	private String rescheduleOutcome(int appointmentId, String reason) {
+		try {
+			this.staffCalendarService.reschedule(appointmentId, 3, LocalDate.of(2026, 9, 8), LocalTime.of(10, 0),
+					reason, "staff");
+			return "MOVED";
+		}
+		catch (StaffSlotUnavailableException ex) {
 			return "UNAVAILABLE";
 		}
 	}

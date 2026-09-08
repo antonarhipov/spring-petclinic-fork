@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-5, UC-6, UC-7, UC-8
+- Use case: UC-5
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none until UC-5 converges
 
 ## Progress
 
@@ -14,7 +14,7 @@
 | UC-2 | APPROVED | UC-1 | `72f152e` | [APPROVED](convergence/UC-2.md) - walkthrough passed |
 | UC-3 | APPROVED | UC-1 | `f9b39db` | [APPROVED](convergence/UC-3.md) - corrective structured-output revision converged; prior walkthrough remains valid |
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
-| UC-5 | NOT_STARTED | UC-1 | - | - |
+| UC-5 | READY_FOR_CONVERGENCE | UC-1 | HEAD at convergence | pending |
 | UC-6 | NOT_STARTED | UC-1 | - | - |
 | UC-7 | NOT_STARTED | UC-1 | - | - |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
@@ -303,6 +303,57 @@
 | RULE-21 | `StaffSchedulingWebTests.rawStaffDurationIsPersistedAndSlotFormsUseConfiguredBoundedDefault` proves raw absent/zero/below/at/inside/at/above values persist verbatim while `StaffQueueQueryService` derives only the booking/suggestion defaults through configured `DurationPolicy`; veterinarian-id validation remains independently positive-only. |
 | RULE-22 | UC-4 does not mutate rejection history; edit/history and durable-rejection regressions remain green in `OwnerTransitionServiceTests.java:111` and `SlotSuggestionPortTests`. |
 | RULE-24 | Repository-scope, H2 isolation, restart, README, and unsupported-stack absence tests pass in the full suite. |
+
+## UC-5 Evidence
+
+- Started: 2026-09-08T16:56:00+02:00
+- Started from: `27a45aa35d004d2d413a07ee2dcb810356881a8f`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Calendar and lifecycle behavior: `AppointmentRepository.java`, `AppointmentService.java`, `StaffAppointmentController.java`, `StaffCalendarQueryService.java`, and `StaffCalendarService.java` under `src/main/java/org/springframework/samples/petclinic/scheduling/appointment`.
+  - Shared staff validation: `DefaultSlotSuggestionPort.java` and `StaffSlotValidator.java` under `src/main/java/org/springframework/samples/petclinic/scheduling/matching`.
+  - Presentation and localization: `src/main/resources/templates/staff/calendar.html`, `src/main/resources/templates/staff/appointment-detail.html`, and all eleven `src/main/resources/messages/messages*.properties` bundles.
+  - Verification: `StaffCalendarWebTests.java`, `ConcurrencyInvariantTests.java`, `SchedulingE2eTests.java`, and `SecurityMatrixWebTests.java` under `src/test/java/org/springframework/samples/petclinic`.
+  - Execution evidence: `spec/status.md` and `spec/checkpoints/UC-5.md`.
+- Commands and results:
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=StaffCalendarWebTests,StaffSchedulingWebTests,AppointmentStateTransitionTests,SecurityMatrixWebTests,SchedulingE2eTests test` - PASS, 75 tests, 0 failures, 0 errors, 0 skipped.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar -Dtest=SchedulingE2eTests test` - PASS, 16 tests, 0 failures, 0 errors, 0 skipped at the real HTTP-server boundary.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q -Dspring-javaformat.skip=true -DargLine=-javaagent:/Users/anton/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.10/byte-buddy-agent-1.18.10.jar test` - PASS, 355 tests, 0 failures, 0 errors, 0 skipped across 46 suites.
+  - `JAVA_HOME=/Users/anton/Library/Java/JavaVirtualMachines/jbr-21.0.8/Contents/Home ./mvnw -q spring-javaformat:validate` and `git diff --check` - PASS.
+  - `data/petclinic.mv.db` remained 122880 bytes with SHA-256 `86e6f652cd4f220a089378fba479946a055a9de04b5270d7f6d75be9199831b6` across the final test run.
+
+| Contract element | Evidence |
+|---|---|
+| UC-5 main steps 1-3 | Six veterinarian columns, 32 quarter-hour rows, exact opening hours, effective availability, Confirmed/Held blocks, free capacity, and navigation are asserted in `StaffCalendarWebTests.java:90`; the real-server calendar boundary is exercised in `SchedulingE2eTests.java:535`. |
+| UC-5 main steps 4-8 | Staff detail, mandatory reason, current-state validation, immediate reschedule, audit fields, and owner visibility are asserted in `StaffCalendarWebTests.java:116` and `SchedulingE2eTests.java:535`. |
+| UC-5 extension 3a | Held detail discloses owner/pet/request/age to staff and the approved UC-4 release path deletes the hold and routes the request to `WITH_STAFF/HOLD_RELEASED` with its reason in `StaffCalendarWebTests.java:163`. |
+| UC-5 extension 3b | Free-capacity selection and direct booking create a reasoned Confirmed appointment with no request and render it to staff in `StaffCalendarWebTests.java:186`; owner visibility is covered by the real-server journey. |
+| UC-5 extension 5a | Staff cancellation persists final `CANCELLED`, staff actor, trusted cancellation time, reason, and owner-visible outcome in `StaffCalendarWebTests.java:211`. |
+| UC-5 extensions 5b-5c | Completion prefill/truncation, exactly one linked dated visit, finality, and no-show without a visit are asserted in `StaffCalendarWebTests.java:251`. |
+| UC-5 extensions 5d-5e | Premature completion/no-show and changes to final appointments throw typed lifecycle refusals and preserve full database snapshots in `StaffCalendarWebTests.java:233`. |
+| UC-5 extension 7a | Overlap and unavailable-working-block inputs are refused with complete appointment/request/visit snapshots unchanged in `StaffCalendarWebTests.java:203`; all exact staff-constraint boundaries remain covered by `StaffSchedulingWebTests.java:166`. |
+| UC-5 extension 7b | Two concurrent reschedules to one veterinarian-and-time yield one winner while the loser remains at its prior time in `ConcurrencyInvariantTests.java:189`. |
+| UC-5 extension 8a | Specialty mismatch is displayed before selection and warned after reschedule without blocking a valid change in `StaffCalendarWebTests.java:116`. |
+| UC-5 G1-G3 | Complete calendar contents and staff-only held details are asserted in `StaffCalendarWebTests.java:90` and `StaffCalendarWebTests.java:163`; shared `StaffSlotValidator.java:23` enforces only the bounded staff constraints using the common effective-availability service. |
+| UC-5 G4-G6 | Required reasons, immediate owner-visible changes, lifecycle finality, linked-visit exclusivity, and clock-derived local values are asserted across `StaffCalendarWebTests.java:116`, `StaffCalendarWebTests.java:211`, and `StaffCalendarWebTests.java:251`. |
+| UC-5 G7 | Pessimistic veterinarian locking plus overlap recheck is exercised by the two-thread race at `ConcurrencyInvariantTests.java:189`. |
+| UC-5 G8 | Both pages use the shared layout and localized keys; all eleven bundles have exact key-set parity in `I18nPropertiesSyncTest`; route/action rendering is covered in `StaffCalendarWebTests`. |
+| UC-5 success postcondition | The real-server journey authenticates staff, renders the complete day, books and reschedules, then authenticates the affected owner and observes the new veterinarian/time/reason in `SchedulingE2eTests.java:535`. |
+| UC-5 minimal guarantee | Blank reasons, conflicts, premature/final transitions, duplicate completion, and the losing concurrent action compare unchanged snapshots or exact prior state in `StaffCalendarWebTests.java:124`, `StaffCalendarWebTests.java:203`, `StaffCalendarWebTests.java:233`, and `ConcurrencyInvariantTests.java:189`. |
+| UC-5 Requires UC-1 | Seeded staff and owner form-login sessions and staff-only routes are exercised by `SchedulingE2eTests.java:535` and the full `SecurityMatrixWebTests` route matrix. |
+| RULE-1, RULE-2 | `StaffAppointmentController.java:35` delegates to a read-only query service and transactional `StaffCalendarService.java:28` operations. |
+| RULE-3, RULE-19, RULE-20 | `StaffSlotValidator.java:23` reuses framework-free `FeasibilityChecker` plus the one `AvailabilityService` effective-block calculation for UC-4 and UC-5; exact boundary and no-side-effect tests pass. |
+| RULE-4, RULE-5 | Held release uses the approved request path; the appointment aggregate and real-state lifecycle matrix enforce finality and typed refusals below MVC. |
+| RULE-6 | `AppointmentService` pessimistically locks the veterinarian and rechecks overlap; `ConcurrencyInvariantTests.java:189` proves one reschedule winner and an unchanged loser. |
+| RULE-7, RULE-8 | Local date/time mappings, fresh Flyway seeds, exact normative values, restart, and data-fidelity regression suites pass without schema changes. |
+| RULE-9, RULE-10 | Every added staff route is in `SecurityMatrixWebTests.java:43`; no owner-id parameter or new `/my/**` operation is introduced, and principal-scoped owner visibility passes at the real-server boundary. |
+| RULE-15 | Calendar today, hold age, action availability, and lifecycle timestamps use injected `Clock` in `StaffAppointmentController.java:35`, `StaffCalendarQueryService.java:83`, and `AppointmentService`. |
+| RULE-16, RULE-17 | New templates use the shared PetClinic layout with state-dependent actions and message keys present identically in all eleven bundles; automated DOM and localization tests pass. |
+| RULE-18 | `SchedulingE2eTests.java:535` supplies the real-server actor journey; every extension and guarantee maps above; 355 tests pass and the runtime database is unchanged. |
+| RULE-23 | UC-5 exposes no configuration mutation; calendar queries consume current settings read-only, so atomic configuration-change behavior remains outside this UC and is preserved for UC-7. |
+| RULE-24 | Maven/H2 inventory, restart, in-memory isolation, README, and unsupported-stack absence regressions pass; runtime H2 is unchanged. |
+| RULE-25 | `StaffCalendarWebTests.java:251` proves request-text prefill capped at 255 characters, exactly one linked visit dated from the appointment, empty direct-booking prefill, and no visit for No-show. |
 
 ## Blockers
 

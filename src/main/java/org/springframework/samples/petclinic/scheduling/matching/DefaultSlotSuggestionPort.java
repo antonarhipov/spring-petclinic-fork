@@ -35,6 +35,8 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 
 	private final AvailabilityService availabilityService;
 
+	private final StaffSlotValidator staffSlotValidator;
+
 	private final AppointmentRepository appointmentRepository;
 
 	private final AppointmentService appointmentService;
@@ -47,9 +49,11 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 
 	public DefaultSlotSuggestionPort(ClinicSettingsRepository settingsRepository,
 			AvailabilityService availabilityService, AppointmentRepository appointmentRepository,
-			AppointmentService appointmentService, EntityManager entityManager, Clock clock, JdbcTemplate jdbc) {
+			AppointmentService appointmentService, StaffSlotValidator staffSlotValidator, EntityManager entityManager,
+			Clock clock, JdbcTemplate jdbc) {
 		this.settingsRepository = settingsRepository;
 		this.availabilityService = availabilityService;
+		this.staffSlotValidator = staffSlotValidator;
 		this.appointmentRepository = appointmentRepository;
 		this.appointmentService = appointmentService;
 		this.entityManager = entityManager;
@@ -181,8 +185,8 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 	public boolean placeStaffSuggestion(SchedulingRequest request, StaffSuggestionCommand command, String reason,
 			String changedBy) {
 		LocalTime end = command.startTime().plusMinutes(command.durationMinutes());
-		String refusal = staffSlotRefusal(command.veterinarianId(), command.date(), command.startTime(), end,
-				command.durationMinutes());
+		String refusal = this.staffSlotValidator.refusalFor(command.veterinarianId(), command.date(),
+				command.startTime(), command.durationMinutes());
 		if (refusal != null) {
 			throw new StaffSlotUnavailableException(refusal);
 		}
@@ -195,8 +199,8 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 	@Override
 	public boolean bookDirectly(SchedulingRequest request, StaffDirectBookingCommand command) {
 		LocalTime end = command.startTime().plusMinutes(command.durationMinutes());
-		String refusal = staffSlotRefusal(command.veterinarianId(), command.date(), command.startTime(), end,
-				command.durationMinutes());
+		String refusal = this.staffSlotValidator.refusalFor(command.veterinarianId(), command.date(),
+				command.startTime(), command.durationMinutes());
 		if (refusal != null) {
 			throw new StaffSlotUnavailableException(refusal);
 		}
@@ -268,28 +272,6 @@ public class DefaultSlotSuggestionPort implements SlotSuggestionPort {
 				"select count(*) from appointments where vet_id = ? and appointment_date = ? and status = 'CONFIRMED'",
 				Integer.class, vetId, date);
 		return count != null ? count : 0;
-	}
-
-	private String staffSlotRefusal(int vetId, LocalDate date, LocalTime start, LocalTime end, int durationMinutes) {
-		ClinicSettings settings = this.settingsRepository.getCurrentSettings();
-		if (durationMinutes < settings.getMinimumDurationMinutes()
-				|| durationMinutes > settings.getMaximumDurationMinutes() || !end.isAfter(start)) {
-			return "scheduling.slot.invalid.duration";
-		}
-		if (!FeasibilityChecker.isGridAligned(start)) {
-			return "scheduling.slot.invalid.grid";
-		}
-		boolean open = this.availabilityService.getOpeningHours(date)
-			.filter(opening -> FeasibilityChecker.isInsideOpeningHours(start, end,
-					new FeasibilityChecker.OpeningHours(opening.getWeekday(), opening.getOpenTime(),
-							opening.getCloseTime())))
-			.isPresent();
-		if (!open) {
-			return "scheduling.slot.invalid.opening";
-		}
-		return FeasibilityChecker.isInsideEffectiveBlock(vetId, date, start, end,
-				this.availabilityService.getEffectiveAvailability(vetId, date)) ? null
-						: "scheduling.slot.invalid.block";
 	}
 
 }
