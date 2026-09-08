@@ -16,7 +16,7 @@
       <td><span th:if="${!#lists.isEmpty(appointment.specialties)}" th:text="${#strings.listJoin(appointment.specialties, ', ')}">Specialties</span><span th:if="${#lists.isEmpty(appointment.specialties)}" th:text="#{none}">none</span></td>
       <td th:text="#{${appointment.statusMessageKey}}">Status</td>
       <td><span th:if="${appointment.staffReason != null}" th:text="${appointment.staffReason}">Reason</span><span th:if="${appointment.staffReason == null}" th:text="#{none}">none</span></td>
-      <td><form th:if="${appointment.cancelAvailable}" th:action="@{/my/appointments/{id}/cancel(id=${appointment.id})}" method="post" class="d-inline" data-appointment-action="cancel"><button class="btn btn-link" type="submit" th:text="#{scheduling.appointment.cancel}">Cancel appointment</button></form><span th:unless="${appointment.cancelAvailable}" th:text="#{none}">none</span></td>
+      <td><a th:if="${appointment.cancelAvailable}" th:href="@{/my/appointments/{id}(id=${appointment.id})}" data-appointment-action="cancel" th:text="#{scheduling.appointment.cancel}">Cancel appointment</a><a th:unless="${appointment.cancelAvailable}" th:href="@{/my/appointments/{id}(id=${appointment.id})}" data-appointment-action="view" th:text="#{scheduling.appointment.view}">View appointment</a></td>
     </tr></tbody>
   </table>
   <div th:if="${petAppointments.activeRequest != null}" data-active-request>

@@ -2,9 +2,9 @@
 
 ## Current
 
-- Use case: none
-- Status: APPROVED
-- Next eligible: UC-6, UC-7, UC-8
+- Use case: UC-6
+- Status: READY_FOR_CONVERGENCE
+- Next eligible: none until UC-6 converges
 
 ## Progress
 
@@ -15,7 +15,7 @@
 | UC-3 | APPROVED | UC-1 | `f9b39db` | [APPROVED](convergence/UC-3.md) - corrective structured-output revision converged; prior walkthrough remains valid |
 | UC-4 | APPROVED | UC-1 | `b5dd39d` | [APPROVED](convergence/UC-4.md) - walkthrough passed |
 | UC-5 | APPROVED | UC-1 | `509578b` | [APPROVED](convergence/UC-5.md) - walkthrough passed |
-| UC-6 | NOT_STARTED | UC-1 | - | - |
+| UC-6 | READY_FOR_CONVERGENCE | UC-1 | HEAD | pending |
 | UC-7 | NOT_STARTED | UC-1 | - | - |
 | UC-8 | NOT_STARTED | UC-1 | - | - |
 
@@ -354,6 +354,47 @@
 | RULE-23 | UC-5 exposes no configuration mutation; calendar queries consume current settings read-only, so atomic configuration-change behavior remains outside this UC and is preserved for UC-7. |
 | RULE-24 | Maven/H2 inventory, restart, in-memory isolation, README, and unsupported-stack absence regressions pass; runtime H2 is unchanged. |
 | RULE-25 | `StaffCalendarWebTests.java:251` proves request-text prefill capped at 255 characters, exactly one linked visit dated from the appointment, empty direct-booking prefill, and no visit for No-show. |
+
+## UC-6 Evidence
+
+- Started: 2026-09-08T20:44:46+02:00
+- Started from: `d425fad023f9ba0554e41450cc5e0b8699c8449e`
+- Pre-existing dirty files: none
+- Implementation submission: HEAD at convergence
+- Changed files:
+  - Owner appointment behavior: `Appointment.java`, `MyAppointmentsController.java`, and `OwnerActivityQueryService.java` under `src/main/java/org/springframework/samples/petclinic/scheduling/appointment`.
+  - Presentation and localization: `src/main/resources/templates/my/appointments.html`, `src/main/resources/templates/my/appointment-detail.html`, and all eleven `src/main/resources/messages/messages*.properties` bundles.
+  - Verification: `OwnerActivityWebTests.java` and `OwnerActivityE2ETests.java` under `src/test/java/org/springframework/samples/petclinic/scheduling/appointment`.
+  - Execution evidence: `spec/status.md` and `spec/checkpoints/UC-6.md`.
+- Commands and results:
+  - First focused run executed 49 tests with one assertion failure that exposed owner cancellation erasing a prior staff reschedule reason; preserving that audit text corrected UC-6 G4.
+  - Focused rerun with `OwnerActivityWebTests`, `AppointmentStateTransitionTests`, `SecurityMatrixWebTests`, and `I18nPropertiesSyncTest` - PASS, 49 tests, 0 failures, 0 errors, 0 skipped.
+  - First `OwnerActivityE2ETests` attempt could not bind a random localhost port inside the sandbox; the identical permitted run - PASS, 4 tests, 0 failures, 0 errors, 0 skipped.
+  - Full Maven/JDK 21/Byte Buddy suite - PASS, 358 tests, 0 failures, 0 errors, 0 skipped across 46 suites.
+  - `spring-javaformat:validate` and `git diff --check` - PASS.
+  - `data/petclinic.mv.db` remained 122880 bytes with SHA-256 `86e6f652cd4f220a089378fba479946a055a9de04b5270d7f6d75be9199831b6` across the full run.
+
+| Contract element | Evidence |
+|---|---|
+| UC-6 main steps 1-3 | Owner list-to-detail navigation, veterinarian/date/time, reason-free confirmation form, and CSRF submission at `OwnerActivityWebTests.java:139`; repeated through the real server at `OwnerActivityE2ETests.java:89`. |
+| UC-6 main steps 4-5 | Cancelled status, OWNER actor, trusted timestamp, removed action, retained history, and unchanged closed request at `OwnerActivityWebTests.java:160` and `OwnerActivityE2ETests.java:107`. |
+| UC-6 extension 1a | Foreign and unknown GET/POST responses are identical standard 404 pages with no disclosure or mutation at `OwnerActivityWebTests.java:225` and `OwnerActivityE2ETests.java:151`. |
+| UC-6 extension 2a | Started Confirmed, Cancelled, Completed, and No-show details omit cancellation at `OwnerActivityWebTests.java:193`. |
+| UC-6 extension 3a | Forged/stale cancellations for every ineligible state return conflict and preserve complete snapshots at `OwnerActivityWebTests.java:215`. |
+| UC-6 G1-G2 | One-minute notice remains eligible with no reason input; requests, interpretations, and visits remain unchanged at `OwnerActivityWebTests.java:193` and `OwnerActivityWebTests.java:176`. |
+| UC-6 G3-G4 | Principal scope prevents cross-owner access; prior staff reasons survive owner cancellation and staff cancellation outcomes render at `OwnerActivityWebTests.java:166`, `OwnerActivityWebTests.java:193`, and `OwnerActivityWebTests.java:225`. |
+| UC-6 G5 | The new page uses the shared layout and localized keys; all eleven bundles have exact key parity in `I18nPropertiesSyncTest`. |
+| UC-6 success postcondition | Real-server owner journey confirms the final audit fields, closed request, final detail, and retained history at `OwnerActivityE2ETests.java:89`. |
+| UC-6 minimal guarantee | Unauthorized and ineligible paths compare identical errors and complete unchanged database snapshots. |
+| UC-6 Requires UC-1 | Seeded owner login and full role/anonymous route matrix pass in the real-server and security suites. |
+| RULE-1, RULE-2 | Delegating MVC controller, read-only detached detail query, and one transactional cancellation operation. |
+| RULE-4, RULE-5 | Closed request stays unchanged and appointment aggregate refuses every stale/final transition below MVC. |
+| RULE-7, RULE-8 | Local date/time, Flyway, exact seed, fidelity, and restart regressions pass without schema or seed changes. |
+| RULE-9, RULE-10 | Single security chain, CSRF, full route matrix, principal-derived owner identity, scoped lookups, and equivalent foreign/unknown 404 evidence pass. |
+| RULE-15 | Eligibility and audit time come only from the injected clinic clock. |
+| RULE-16, RULE-17 | Shared PetClinic layout, state-dependent owner controls, localized template text, and eleven identical key sets pass. |
+| RULE-18 | `OwnerActivityE2ETests.java:89` supplies the real-server journey; every extension and guarantee maps above; 358 tests pass and runtime H2 is unchanged. |
+| RULE-24 | Maven/H2 inventory, test isolation, restart, and unchanged runtime database regressions pass. |
 
 ## Blockers
 

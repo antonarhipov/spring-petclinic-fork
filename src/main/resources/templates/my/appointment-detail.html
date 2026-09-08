@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'appointments')}">
+<body>
+<h2 th:text="#{scheduling.appointment.detail}">Appointment detail</h2>
+<p><a th:href="@{/my/appointments}" th:text="#{scheduling.appointment.return}">Return to My appointments</a></p>
+
+<dl class="row" data-appointment-detail th:attr="data-appointment-id=${appointment.id}">
+  <dt class="col-sm-3" th:text="#{scheduling.queue.pet}">Pet</dt><dd class="col-sm-9" th:text="${appointment.petName}">Pet</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.slot.veterinarian}">Veterinarian</dt><dd class="col-sm-9" th:text="${appointment.veterinarianName}">Veterinarian</dd>
+  <dt class="col-sm-3" th:text="#{specialties}">Specialties</dt><dd class="col-sm-9"><span th:if="${!#lists.isEmpty(appointment.specialties)}" th:text="${#strings.listJoin(appointment.specialties, ', ')}">Specialties</span><span th:if="${#lists.isEmpty(appointment.specialties)}" th:text="#{none}">none</span></dd>
+  <dt class="col-sm-3" th:text="#{date}">Date</dt><dd class="col-sm-9" th:text="${appointment.date}">Date</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.time}">Time</dt><dd class="col-sm-9" th:text="|${appointment.startTime}-${appointment.endTime}|">Time</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.status}">Status</dt><dd class="col-sm-9" th:text="#{${appointment.statusMessageKey}}">Status</dd>
+  <dt class="col-sm-3" th:text="#{scheduling.appointment.reason}">Reason</dt><dd class="col-sm-9"><span th:if="${appointment.staffReason != null}" th:text="${appointment.staffReason}">Reason</span><span th:if="${appointment.staffReason == null}" th:text="#{none}">none</span></dd>
+  <dt class="col-sm-3" th:if="${appointment.cancelledByMessageKey != null}" th:text="#{scheduling.appointment.cancelledBy}">Cancelled by</dt><dd class="col-sm-9" th:if="${appointment.cancelledByMessageKey != null}" th:text="#{${appointment.cancelledByMessageKey}}">Cancelled by owner</dd>
+  <dt class="col-sm-3" th:if="${appointment.cancelledDate != null}" th:text="#{scheduling.appointment.cancelledAt}">Cancelled at</dt><dd class="col-sm-9" th:if="${appointment.cancelledDate != null}" th:text="|${appointment.cancelledDate} ${appointment.cancelledTime}|">Cancelled at</dd>
+</dl>
+
+<section th:if="${appointment.cancelAvailable}" class="card" id="owner-cancel-action">
+  <div class="card-body">
+    <h3 class="h5" th:text="#{scheduling.appointment.cancel}">Cancel appointment</h3>
+    <p th:text="#{scheduling.appointment.cancel.confirmation}">Confirm that you want to cancel this appointment.</p>
+    <form th:action="@{/my/appointments/{id}/cancel(id=${appointment.id})}" method="post" data-appointment-action="cancel-confirmation">
+      <button type="submit" class="btn btn-danger" th:text="#{scheduling.appointment.cancel.confirm}">Confirm cancellation</button>
+    </form>
+  </div>
+</section>
+</body>
+</html>

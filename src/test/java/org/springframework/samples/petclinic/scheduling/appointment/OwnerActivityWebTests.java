@@ -63,8 +63,8 @@ class OwnerActivityWebTests {
 					"2026-09-06", "10:00-10:30", "James Carter", "Completed", "2026-09-08", "11:15-11:45",
 					"Linda Douglas", "dentistry, surgery", "Confirmed", "Moved for emergency coverage", "2026-09-09",
 					"Helen Leary", "Cancelled", "data-active-request", "Ready for confirmation", "AI interpretation",
-					"surgery", "radiology", "/my/requests/" + requestId, "Resume",
-					"/my/appointments/" + upcoming + "/cancel", "Cancel appointment")
+					"surgery", "radiology", "/my/requests/" + requestId, "Resume", "/my/appointments/" + upcoming,
+					"Cancel appointment")
 			.doesNotContain("Betty", "Basil", "/vets.html", "Start a request");
 		assertThat(occurrences(activity, "data-appointment-action=\"cancel\"")).isOne();
 
@@ -102,7 +102,7 @@ class OwnerActivityWebTests {
 		int held = insertAppointment(1, 2, TODAY.plusDays(3), LocalTime.of(9, 0), "HELD", null);
 
 		String activity = render("/my/appointments", "george");
-		assertThat(activity).contains("/my/appointments/" + eligible + "/cancel")
+		assertThat(activity).contains("/my/appointments/" + eligible)
 			.doesNotContain("data-appointment-id=\"" + held + "\"");
 		assertThat(occurrences(activity, "data-appointment-action=\"cancel\"")).isOne();
 	}
@@ -119,7 +119,7 @@ class OwnerActivityWebTests {
 		this.mvc
 			.perform(post("/my/appointments/{id}/cancel", eligible).with(user("george").roles("OWNER")).with(csrf()))
 			.andExpect(status().isFound())
-			.andExpect(redirectedUrl("/my/appointments"));
+			.andExpect(redirectedUrl("/my/appointments/" + eligible));
 
 		Map<String, Object> cancelled = this.jdbc.queryForMap("select * from appointments where id = ?", eligible);
 		assertThat(cancelled).containsEntry("STATUS", "CANCELLED")
@@ -133,6 +133,107 @@ class OwnerActivityWebTests {
 		assertThat(after.interpretations()).isEqualTo(before.interpretations());
 		assertThat(after.visits()).isEqualTo(before.visits());
 		assertThat(after.appointments()).hasSameSizeAs(before.appointments());
+	}
+
+	@Test
+	void uc6MainOpensConfirmsAndRetainsAnOwnerCancelledAppointmentWithItsClosedRequest() throws Exception {
+		int requestId = insertAcceptedRequest(1, "Check-up next week");
+		int appointmentId = insertAppointmentForRequest(requestId, 1, 2, TODAY, LocalTime.of(9, 1),
+				"Moved for clinic coverage");
+		DatabaseSnapshot before = snapshot();
+
+		String activity = render("/my/appointments", "george");
+		assertThat(activity)
+			.contains("data-appointment-id=\"" + appointmentId + "\"",
+					"href=\"/my/appointments/" + appointmentId + "\"", "Cancel appointment")
+			.doesNotContain("/my/appointments/" + appointmentId + "/cancel");
+
+		String detail = render("/my/appointments/" + appointmentId, "george");
+		assertThat(detail)
+			.contains("data-appointment-detail", "data-appointment-id=\"" + appointmentId + "\"", "Leo", "2026-09-07",
+					"09:01-09:31", "Helen Leary", "radiology", "Confirmed", "Moved for clinic coverage",
+					"/my/appointments/" + appointmentId + "/cancel", "Confirm cancellation",
+					"data-appointment-action=\"cancel-confirmation\"")
+			.doesNotContain("name=\"reason\"");
+		assertThat(snapshot()).isEqualTo(before);
+
+		this.mvc
+			.perform(post("/my/appointments/{id}/cancel", appointmentId).with(user("george").roles("OWNER"))
+				.with(csrf()))
+			.andExpect(status().isFound())
+			.andExpect(redirectedUrl("/my/appointments/" + appointmentId));
+
+		String cancelled = render("/my/appointments/" + appointmentId, "george");
+		assertThat(cancelled)
+			.contains("data-appointment-detail", "Cancelled", "Cancelled by owner", "2026-09-07 09:00",
+					"Moved for clinic coverage")
+			.doesNotContain("Confirm cancellation", "data-appointment-action=\"cancel-confirmation\"",
+					"/my/appointments/" + appointmentId + "/cancel");
+		assertThat(render("/my/appointments", "george"))
+			.contains("data-appointment-id=\"" + appointmentId + "\"", "Cancelled")
+			.doesNotContain("/my/appointments/" + appointmentId + "/cancel");
+
+		Map<String, Object> appointment = this.jdbc.queryForMap("select * from appointments where id = ?",
+				appointmentId);
+		assertThat(appointment).containsEntry("STATUS", "CANCELLED")
+			.containsEntry("CANCELLED_BY", "OWNER")
+			.containsEntry("CANCELLED_DATE", Date.valueOf(TODAY))
+			.containsEntry("CANCELLED_TIME", Time.valueOf(LocalTime.of(9, 0)));
+		Map<String, Object> request = this.jdbc.queryForMap("select * from scheduling_requests where id = ?",
+				requestId);
+		assertThat(request).containsEntry("STATE", "ACCEPTED").containsEntry("ACTIVE_PET_ID", null);
+		DatabaseSnapshot after = snapshot();
+		assertThat(after.requests()).isEqualTo(before.requests());
+		assertThat(after.interpretations()).isEqualTo(before.interpretations());
+		assertThat(after.visits()).isEqualTo(before.visits());
+		assertThat(after.appointments()).hasSameSizeAs(before.appointments());
+	}
+
+	@Test
+	void uc6ExtensionsHideCancellationForStartedAndFinalAppointmentsAndRejectForgedActions() throws Exception {
+		int oneMinuteNotice = insertAppointment(1, 2, TODAY, LocalTime.of(9, 1), "CONFIRMED", null);
+		int started = insertAppointment(1, 2, TODAY, LocalTime.of(9, 0), "CONFIRMED", null);
+		int cancelled = insertAppointment(1, 2, TODAY.plusDays(1), LocalTime.of(9, 0), "CANCELLED",
+				"Cancelled by clinic");
+		int completed = insertAppointment(1, 2, TODAY.minusDays(1), LocalTime.of(9, 0), "COMPLETED", null);
+		int noShow = insertAppointment(1, 2, TODAY.minusDays(2), LocalTime.of(9, 0), "NO_SHOW", null);
+		this.jdbc.update(
+				"update appointments set cancelled_by = 'STAFF', cancelled_date = ?, cancelled_time = ? where id = ?",
+				Date.valueOf(TODAY), Time.valueOf(LocalTime.of(8, 30)), cancelled);
+
+		assertThat(render("/my/appointments/" + oneMinuteNotice, "george"))
+			.contains("Confirm cancellation", "/my/appointments/" + oneMinuteNotice + "/cancel")
+			.doesNotContain("name=\"reason\"");
+		assertThat(render("/my/appointments/" + cancelled, "george"))
+			.contains("Cancelled", "Cancelled by clinic staff", "2026-09-07 08:30", "Cancelled by clinic")
+			.doesNotContain("Confirm cancellation", "/my/appointments/" + cancelled + "/cancel");
+		for (int ineligible : List.of(started, completed, noShow)) {
+			assertThat(render("/my/appointments/" + ineligible, "george")).doesNotContain("Confirm cancellation",
+					"/my/appointments/" + ineligible + "/cancel");
+		}
+
+		DatabaseSnapshot before = snapshot();
+		for (int ineligible : List.of(started, cancelled, completed, noShow)) {
+			this.mvc
+				.perform(post("/my/appointments/{id}/cancel", ineligible).with(user("george").roles("OWNER"))
+					.with(csrf()))
+				.andExpect(status().isConflict());
+			assertThat(snapshot()).isEqualTo(before);
+		}
+	}
+
+	@Test
+	void uc6ForeignAndUnknownDetailsAreIndistinguishableAndChangeNothing() throws Exception {
+		int foreign = insertAppointment(2, 2, TODAY.plusDays(1), LocalTime.of(14, 0), "CONFIRMED",
+				"Betty private reason");
+		DatabaseSnapshot before = snapshot();
+
+		MockHttpServletResponse foreignResponse = response("/my/appointments/" + foreign, "george", 404);
+		MockHttpServletResponse unknownResponse = response("/my/appointments/999999", "george", 404);
+		assertThat(normalizeCsrf(foreignResponse.getContentAsString()))
+			.isEqualTo(normalizeCsrf(unknownResponse.getContentAsString()))
+			.doesNotContain("Betty private reason", "Basil", "Betty");
+		assertThat(snapshot()).isEqualTo(before);
 	}
 
 	@Test
@@ -228,6 +329,26 @@ class OwnerActivityWebTests {
 		this.jdbc.update("update scheduling_requests set current_interpretation_id = ? where id = ?", interpretationId,
 				requestId);
 		return requestId;
+	}
+
+	private int insertAcceptedRequest(int petId, String text) {
+		int requestId = insertAwaitingRequest(petId, text);
+		this.jdbc.update("update scheduling_requests set state = 'ACCEPTED', active_pet_id = null where id = ?",
+				requestId);
+		return requestId;
+	}
+
+	private int insertAppointmentForRequest(int requestId, int petId, int vetId, LocalDate date, LocalTime start,
+			String reason) {
+		LocalTime end = start.plusMinutes(30);
+		this.jdbc.update("""
+				insert into appointments
+				(request_id, pet_id, vet_id, appointment_date, start_time, end_time, status,
+				 last_change_reason, last_changed_by, created_date, created_time)
+				values (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, 'staff', ?, ?)
+				""", requestId, petId, vetId, Date.valueOf(date), Time.valueOf(start), Time.valueOf(end), reason,
+				Date.valueOf(TODAY), Time.valueOf(LocalTime.of(8, 0)));
+		return this.jdbc.queryForObject("select max(id) from appointments", Integer.class);
 	}
 
 	private int insertAppointment(int petId, int vetId, LocalDate date, LocalTime start, String status, String reason) {

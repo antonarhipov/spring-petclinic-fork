@@ -230,8 +230,12 @@ public class Appointment extends BaseEntity {
 		this.cancelledBy = actor;
 		this.cancelledDate = date;
 		this.cancelledTime = time;
-		this.lastChangeReason = reason;
-		this.lastChangedBy = changedBy;
+		if (reason != null) {
+			this.lastChangeReason = reason;
+		}
+		if (changedBy != null) {
+			this.lastChangedBy = changedBy;
+		}
 	}
 
 	void complete() {

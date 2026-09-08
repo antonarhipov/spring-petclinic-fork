@@ -14,6 +14,7 @@ import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.scheduling.request.AuthenticatedOwnerService;
 import org.springframework.samples.petclinic.scheduling.request.Interpretation;
 import org.springframework.samples.petclinic.scheduling.request.InterpretationOrigin;
+import org.springframework.samples.petclinic.scheduling.request.OwnerResourceNotFoundException;
 import org.springframework.samples.petclinic.scheduling.request.RequestState;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequest;
 import org.springframework.samples.petclinic.scheduling.request.SchedulingRequestRepository;
@@ -76,6 +77,21 @@ public class OwnerActivityQueryService {
 			.toList();
 	}
 
+	public AppointmentDetailView appointmentFor(Principal principal, int appointmentId) {
+		Owner owner = this.owners.requireOwner(principal);
+		Appointment appointment = this.appointments.findByIdAndPetOwnerId(appointmentId, owner.getId())
+			.filter(candidate -> candidate.getStatus() != AppointmentStatus.HELD)
+			.orElseThrow(OwnerResourceNotFoundException::new);
+		LocalDate today = LocalDate.now(this.clock);
+		LocalTime now = LocalTime.now(this.clock);
+		Vet veterinarian = appointment.getVet();
+		return new AppointmentDetailView(appointment.getId(), appointment.getPet().getName(), appointment.getDate(),
+				appointment.getStartTime(), appointment.getEndTime(), veterinarianName(veterinarian),
+				specialties(veterinarian), statusMessageKey(appointment.getStatus()), appointment.getLastChangeReason(),
+				cancelledByMessageKey(appointment.getCancelledBy()), appointment.getCancelledDate(),
+				appointment.getCancelledTime(), appointment.isCancellableByOwnerAt(today, now));
+	}
+
 	private PetView petView(Pet pet) {
 		return new PetView(pet.getId(), pet.getName(), pet.getBirthDate(), pet.getType().getName());
 	}
@@ -121,6 +137,16 @@ public class OwnerActivityQueryService {
 		};
 	}
 
+	private String cancelledByMessageKey(CancelledBy cancelledBy) {
+		if (cancelledBy == null) {
+			return null;
+		}
+		return switch (cancelledBy) {
+			case OWNER -> "scheduling.appointment.cancelled.owner";
+			case STAFF -> "scheduling.appointment.cancelled.staff";
+		};
+	}
+
 	private String requestStateMessageKey(RequestState state) {
 		return switch (state) {
 			case AWAITING_CONSENT -> "scheduling.request.state.awaitingConsent";
@@ -153,6 +179,12 @@ public class OwnerActivityQueryService {
 
 	public record AppointmentView(Integer id, LocalDate date, LocalTime startTime, LocalTime endTime,
 			String veterinarianName, List<String> specialties, String statusMessageKey, String staffReason,
+			boolean cancelAvailable) {
+	}
+
+	public record AppointmentDetailView(Integer id, String petName, LocalDate date, LocalTime startTime,
+			LocalTime endTime, String veterinarianName, List<String> specialties, String statusMessageKey,
+			String staffReason, String cancelledByMessageKey, LocalDate cancelledDate, LocalTime cancelledTime,
 			boolean cancelAvailable) {
 	}
 

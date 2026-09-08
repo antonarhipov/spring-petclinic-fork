@@ -30,7 +30,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Outside-in executable specification for UC-2 and its UC-1 dependency. */
+/** Outside-in executable specification for UC-2, UC-6, and their UC-1 dependency. */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
@@ -76,7 +76,7 @@ class OwnerActivityE2ETests {
 			.contains("Leo", "2026-09-06", "Completed", "2026-09-08", "11:15-11:45", "Linda Douglas",
 					"dentistry, surgery", "Confirmed", "Moved for emergency coverage", "2026-09-09", "Cancelled",
 					"Ready for confirmation", "AI interpretation", "surgery", "Helen Leary", "radiology",
-					"/my/requests/" + requestId, "/my/appointments/" + upcoming + "/cancel")
+					"/my/requests/" + requestId, "/my/appointments/" + upcoming)
 			.doesNotContain("Betty", "Basil", "/vets.html", "Start a request");
 
 		HttpResponse<String> detailResponse = this.browser.get("/my/requests/" + requestId);
@@ -86,18 +86,29 @@ class OwnerActivityE2ETests {
 	}
 
 	@Test
-	void uc2MainOwnerCancelsDisplayedUpcomingAppointmentThroughRealHttp() throws Exception {
-		int appointmentId = insertAppointment(1, 2, TODAY.plusDays(1), LocalTime.of(11, 15), "CONFIRMED", null);
+	void uc6MainOwnerOpensConfirmsAndRetainsCancellationThroughRealHttp() throws Exception {
+		int requestId = insertAcceptedRequest(1, "Check-up next week");
+		int appointmentId = insertAppointmentForRequest(requestId, 1, 2, TODAY, LocalTime.of(9, 1),
+				"Moved for clinic coverage");
 		DatabaseSnapshot before = snapshot();
 		this.browser.login("george", "george123", "/my/appointments");
 
 		HttpResponse<String> page = this.browser.get("/my/appointments");
-		assertThat(page.body()).contains("/my/appointments/" + appointmentId + "/cancel", "method=\"post\"");
-		HttpResponse<String> cancelled = this.browser.post("/my/appointments/" + appointmentId + "/cancel", page,
+		assertThat(page.body()).contains("href=\"/my/appointments/" + appointmentId + "\"", "Cancel appointment")
+			.doesNotContain("/my/appointments/" + appointmentId + "/cancel");
+		HttpResponse<String> detail = this.browser.get("/my/appointments/" + appointmentId);
+		assertThat(detail.statusCode()).isEqualTo(200);
+		assertThat(detail.body())
+			.contains("Leo", "Helen Leary", "2026-09-07", "09:01-09:31", "Confirmed", "Moved for clinic coverage",
+					"/my/appointments/" + appointmentId + "/cancel", "Confirm cancellation")
+			.doesNotContain("name=\"reason\"");
+		assertThat(snapshot()).isEqualTo(before);
+
+		HttpResponse<String> cancelled = this.browser.post("/my/appointments/" + appointmentId + "/cancel", detail,
 				Map.of());
 		assertThat(cancelled.statusCode()).isEqualTo(302);
 		assertThat(cancelled.headers().firstValue("Location"))
-			.hasValue("http://localhost:" + this.port + "/my/appointments");
+			.hasValue("http://localhost:" + this.port + "/my/appointments/" + appointmentId);
 
 		Map<String, Object> row = this.jdbc.queryForMap("select * from appointments where id = ?", appointmentId);
 		assertThat(row).containsEntry("STATUS", "CANCELLED")
@@ -111,6 +122,12 @@ class OwnerActivityE2ETests {
 		assertThat(after.interpretations()).isEqualTo(before.interpretations());
 		assertThat(after.visits()).isEqualTo(before.visits());
 		assertThat(after.appointments()).hasSameSizeAs(before.appointments());
+		assertThat(this.jdbc.queryForMap("select * from scheduling_requests where id = ?", requestId))
+			.containsEntry("STATE", "ACCEPTED")
+			.containsEntry("ACTIVE_PET_ID", null);
+		assertThat(this.browser.get("/my/appointments/" + appointmentId).body())
+			.contains("Cancelled", "Cancelled by owner", "2026-09-07 09:00", "Moved for clinic coverage")
+			.doesNotContain("Confirm cancellation", "/my/appointments/" + appointmentId + "/cancel");
 		assertThat(this.browser.get("/my/appointments").body())
 			.contains("data-appointment-id=\"" + appointmentId + "\"", "Cancelled")
 			.doesNotContain("/my/appointments/" + appointmentId + "/cancel");
@@ -151,6 +168,13 @@ class OwnerActivityE2ETests {
 		assertThat(unknown.statusCode()).isEqualTo(404);
 		assertThat(normalizeCsrf(foreign.body())).isEqualTo(normalizeCsrf(unknown.body()))
 			.doesNotContain("Betty private request", "Betty private reason", "Basil", "Betty");
+		HttpResponse<String> foreignAppointmentDetail = this.browser.get("/my/appointments/" + foreignAppointment);
+		HttpResponse<String> unknownAppointmentDetail = this.browser.get("/my/appointments/999999");
+		assertThat(foreignAppointmentDetail.statusCode()).isEqualTo(404);
+		assertThat(unknownAppointmentDetail.statusCode()).isEqualTo(404);
+		assertThat(normalizeCsrf(foreignAppointmentDetail.body()))
+			.isEqualTo(normalizeCsrf(unknownAppointmentDetail.body()))
+			.doesNotContain("Betty private reason", "Basil", "Betty");
 		HttpResponse<String> appointmentsPage = this.browser.get("/my/appointments");
 		HttpResponse<String> foreignAppointmentResponse = this.browser
 			.post("/my/appointments/" + foreignAppointment + "/cancel", appointmentsPage, Map.of());
@@ -199,6 +223,26 @@ class OwnerActivityE2ETests {
 		this.jdbc.update("update scheduling_requests set current_interpretation_id = ? where id = ?", interpretationId,
 				requestId);
 		return requestId;
+	}
+
+	private int insertAcceptedRequest(int petId, String text) {
+		int requestId = insertAwaitingRequest(petId, text);
+		this.jdbc.update("update scheduling_requests set state = 'ACCEPTED', active_pet_id = null where id = ?",
+				requestId);
+		return requestId;
+	}
+
+	private int insertAppointmentForRequest(int requestId, int petId, int vetId, LocalDate date, LocalTime start,
+			String reason) {
+		LocalTime end = start.plusMinutes(30);
+		this.jdbc.update("""
+				insert into appointments
+				(request_id, pet_id, vet_id, appointment_date, start_time, end_time, status,
+				 last_change_reason, last_changed_by, created_date, created_time)
+				values (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, 'staff', ?, ?)
+				""", requestId, petId, vetId, Date.valueOf(date), Time.valueOf(start), Time.valueOf(end), reason,
+				Date.valueOf(TODAY), Time.valueOf(LocalTime.of(8, 0)));
+		return this.jdbc.queryForObject("select max(id) from appointments", Integer.class);
 	}
 
 	private int insertAppointment(int petId, int vetId, LocalDate date, LocalTime start, String status, String reason) {

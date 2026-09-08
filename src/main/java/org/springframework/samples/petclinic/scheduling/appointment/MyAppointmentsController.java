@@ -31,11 +31,17 @@ public class MyAppointmentsController {
 		return "my/appointments";
 	}
 
+	@GetMapping("/my/appointments/{id}")
+	String appointment(@PathVariable int id, Principal principal, Model model) {
+		model.addAttribute("appointment", this.activity.appointmentFor(principal, id));
+		return "my/appointment-detail";
+	}
+
 	@PostMapping("/my/appointments/{id}/cancel")
 	String cancel(@PathVariable int id, Principal principal) {
 		int ownerId = this.owners.requireOwner(principal).getId();
 		this.appointments.cancelByOwner(ownerId, id);
-		return "redirect:/my/appointments";
+		return "redirect:/my/appointments/" + id;
 	}
 
 }
