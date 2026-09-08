@@ -3,7 +3,7 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-2.md` at `72f152ed4c11545020d14d0627ec9024f8b80d50`
-- Verdict: PENDING WALKTHROUGH
+- Verdict: APPROVE
 - Findings: 0 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
 - Suite: 325 run, 0 failed, 0 errors, 0 skipped
 - Working tree impact from verification: none
@@ -81,7 +81,7 @@ None. C-1 from the previous convergence report is resolved by the principal-scop
 
 ## Walkthrough
 
-Result: pending user confirmation.
+Result: PASS confirmed by the user on 2026-09-08.
 
 1. Sign in as `george` / `george123`. Confirm the shared PetClinic layout shows `george`, Logout, My pets, and My appointments, with no staff navigation.
 2. Open My pets. Confirm George Franklin's owner details and Leo appear read-only, with no create or edit controls.
@@ -93,8 +93,8 @@ Result: pending user confirmation.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; UC-2 remains current and no later use case is eligible until the walkthrough passes.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-4, UC-5, UC-6, UC-7, and UC-8 are eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: perform the UC-2 owner activity and cancellation walkthrough, then reply PASS or report the failed step.
+APPROVED
