@@ -3,7 +3,7 @@
 ## Summary
 
 - Submission: `spec/checkpoints/UC-4.md` at `b5dd39d35207a76207e70ccf5502ff534d8dca68`
-- Verdict: PENDING WALKTHROUGH
+- Verdict: APPROVE
 - Findings: 0 critical, 0 gaps, 0 protocol, 0 drift, 0 cosmetic
 - Suite: 347 run, 0 failed, 0 errors, 0 skipped; focused convergence run 52/0/0/0
 - Working tree impact from verification: none
@@ -110,7 +110,7 @@ None. Prior C-1 is resolved by the exact persistence and bounded-default evidenc
 
 ## Walkthrough
 
-Result: pending user confirmation.
+Result: PASS confirmed by the user on 2026-09-08.
 
 1. Start the application with `./mvnw spring-boot:run`, sign in as `staff` / `staff123`, and open Scheduling queue. Confirm Needs staff contains only With staff requests oldest first with reason/origin, while In progress contains every other active request with state and any held-slot age.
 2. Create a request for a pet. Confirm it opens directly in With staff with reason Request created by staff, appears in Needs staff, and no consent or AI action is offered.
@@ -122,8 +122,8 @@ Result: pending user confirmation.
 
 ## Status Update
 
-`READY_FOR_CONVERGENCE` -> `PENDING_WALKTHROUGH`; no later use case is eligible until the walkthrough is confirmed.
+`PENDING_WALKTHROUGH` -> `APPROVED`; UC-5, UC-6, UC-7, and UC-8 are now eligible.
 
 ## Response to execute
 
-PENDING WALKTHROUGH: automated UC-4 convergence passed; confirm the seven-step staff/owner walkthrough.
+APPROVED
